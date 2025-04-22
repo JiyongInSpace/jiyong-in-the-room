@@ -8,23 +8,34 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '빈 화면',
+      title: '방탈일지',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const BlankScreen(),
+      home: const DiaryListScreen(),
     );
   }
 }
 
-class BlankScreen extends StatelessWidget {
-  const BlankScreen({super.key});
+class DiaryListScreen extends StatelessWidget {
+  const DiaryListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('빈 화면입니다')),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('방탈일지'),
+      ),
+      body: const Center(
+        child: Text('작성된 일지가 없습니다.'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // 일기 작성 화면으로 이동할 예정
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
