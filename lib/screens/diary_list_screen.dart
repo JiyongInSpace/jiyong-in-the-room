@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/write_diary_screen.dart';
+import 'package:jiyong_in_the_room/models/diary.dart';
 
 
 class DiaryListScreen extends StatelessWidget {
-  final List<String> diaryList;
+  final List<DiaryEntry> diaryList;
   final void Function(String) onAdd;
 
   const DiaryListScreen({
@@ -22,12 +23,15 @@ class DiaryListScreen extends StatelessWidget {
               itemCount: diaryList.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(diaryList[index]),
+                  title: Text(diaryList[index].name),
                 );
               },
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+
+          print(diaryList);
+
           final newDiary = await Navigator.push(
             context,
             MaterialPageRoute(
