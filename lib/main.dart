@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/diary_list_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -14,14 +15,9 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final List<DiaryEntry> diaryList = [];
-  void addDiary(String name) {
-    final newEntry = DiaryEntry(
-      id: DateTime.now().millisecondsSinceEpoch, // 유니크 ID 생성용
-      name: name,
-      theme: 'default', // 필수 파라미터 theme 추가
-    );
+  void addDiary(DiaryEntry entry) {
     setState(() {
-      diaryList.add(newEntry);
+      diaryList.add(entry);
     });
   }
 
