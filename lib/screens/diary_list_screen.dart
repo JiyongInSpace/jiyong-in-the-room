@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/write_diary_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
@@ -34,57 +35,62 @@ class DiaryListScreen extends StatelessWidget {
                       vertical: 8,
                       horizontal: 16,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.lock_clock),
-                              const SizedBox(width: 8),
-                              Text(
-                                entry.cafe.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DiaryDetailScreen(entry: entry),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${entry.theme.name} | ${formatDate(entry.date)}',
-                          ),
-                          const SizedBox(height: 8),
-                          if (entry.friends != null && entry.friends!.isNotEmpty)
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: entry.friends!
-                                  .map((friend) => Chip(label: Text(friend.user.name)))
-                                  .toList(),
-                            ),
-                          if (entry.memo != null) ...[
-                            const SizedBox(height: 8),
-                            Text(entry.memo!),
-                          ],
-                          if (entry.rating != null || entry.escaped != null || entry.hintUsedCount != null || entry.timeTaken != null) ...[
-                            const SizedBox(height: 8),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Row(
                               children: [
-                                if (entry.rating != null)
-                                  Text('평점: ${entry.rating}'),
-                                if (entry.escaped != null)
-                                  Text('탈출: ${entry.escaped! ? "성공" : "실패"}'),
-                                if (entry.hintUsedCount != null)
-                                  Text('힌트: ${entry.hintUsedCount}회'),
-                                if (entry.timeTaken != null)
-                                  Text('소요시간: ${entry.timeTaken!.inMinutes}분'),
+                                const Icon(Icons.lock_clock, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${entry.cafe.name} - ${entry.theme.name}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatDate(entry.date),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            if (entry.friends != null && entry.friends!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 2,
+                                children: entry.friends!
+                                    .map((friend) => Chip(
+                                          label: Text(
+                                            friend.user.name,
+                                            style: const TextStyle(fontSize: 12),
+                                          ),
+                                          backgroundColor: Colors.blue[50],
+                                          visualDensity: VisualDensity.compact,
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   );

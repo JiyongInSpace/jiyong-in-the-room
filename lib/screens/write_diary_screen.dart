@@ -24,11 +24,22 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
+  final TextEditingController _memoController = TextEditingController();
+  final TextEditingController _hintController = TextEditingController();
+  final TextEditingController _timeController = TextEditingController();
+  
+  double _rating = 3.0;
+  bool? _escaped;
+  int? _hintUsedCount;
+  Duration? _timeTaken;
 
   @override
   void dispose() {
     _cafeController.dispose();
     _themeController.dispose();
+    _memoController.dispose();
+    _hintController.dispose();
+    _timeController.dispose();
     super.dispose();
   }
 
@@ -59,8 +70,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
       appBar: AppBar(title: const Text('일지 작성')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
             RawAutocomplete<String>(
               textEditingController: _cafeController,
               focusNode: FocusNode(),
@@ -248,6 +260,145 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     );
                   }).toList(),
             ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _memoController,
+              decoration: const InputDecoration(
+                labelText: '메모',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Text('평점: '),
+                const SizedBox(width: 10),
+                Row(
+                  children: List.generate(5, (index) {
+                    return GestureDetector(
+                      onTapDown: (details) {
+                        setState(() {
+                          final starIndex = index + 1;
+                          final tapPosition = details.localPosition.dx;
+                          
+                          if (tapPosition < 16) {
+                            _rating = starIndex - 0.5;
+                          } else {
+                            _rating = starIndex.toDouble();
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Stack(
+                          children: [
+                            Icon(
+                              Icons.star_border,
+                              color: Colors.grey[400],
+                              size: 32,
+                            ),
+                            if (_rating > index) ...[
+                              if (_rating >= index + 1)
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 32,
+                                )
+                              else
+                                ClipRect(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: 0.5,
+                                    child: const Icon(
+                                      Icons.star,
+                                      color: Colors.amber,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(width: 10),
+                Text(_rating.toStringAsFixed(1)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Text('탈출 결과: '),
+                const SizedBox(width: 10),
+                Row(
+                  children: [
+                    Radio<bool>(
+                      value: true,
+                      groupValue: _escaped,
+                      onChanged: (value) {
+                        setState(() {
+                          _escaped = value;
+                        });
+                      },
+                    ),
+                    const Text('성공'),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Radio<bool>(
+                      value: false,
+                      groupValue: _escaped,
+                      onChanged: (value) {
+                        setState(() {
+                          _escaped = value;
+                        });
+                      },
+                    ),
+                    const Text('실패'),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _hintController,
+                    decoration: const InputDecoration(
+                      labelText: '힌트 사용 횟수',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      _hintUsedCount = int.tryParse(value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _timeController,
+                    decoration: const InputDecoration(
+                      labelText: '소요시간 (분)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      final minutes = int.tryParse(value);
+                      if (minutes != null) {
+                        _timeTaken = Duration(minutes: minutes);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 if (selectedCafe == null ||
@@ -264,11 +415,17 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   'theme': selectedTheme,
                   'date': selectedDate,
                   'friends': selectedFriends,
+                  'memo': _memoController.text.isEmpty ? null : _memoController.text,
+                  'rating': _rating,
+                  'escaped': _escaped,
+                  'hintUsedCount': _hintUsedCount,
+                  'timeTaken': _timeTaken,
                 });
               },
               child: const Text('저장'),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
