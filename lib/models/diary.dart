@@ -1,27 +1,29 @@
-import 'package:flutter/material.dart';
-
 // models/diary.dart
+import 'package:jiyong_in_the_room/models/escape_cafe.dart';
+import 'package:jiyong_in_the_room/models/user.dart';
 
-// models/diary.dart
 class DiaryEntry {
   final int id;
-  final String cafe;
-  final String theme;
+  final EscapeTheme theme;
   final DateTime date;
-  final List<String> friends; // ✅ 친구 이름 목록
+  final List<Friend>? friends;
+  final String? memo;
+  final double? rating;
+  final bool? escaped;
+  final int? hintUsedCount;
+  final Duration? timeTaken;
 
   DiaryEntry({
     required this.id,
-    required this.cafe,
     required this.theme,
     required this.date,
-    required this.friends,
+    this.friends,
+    this.memo,
+    this.rating,
+    this.hintUsedCount,
+    this.timeTaken,
+    this.escaped,
   });
-}
 
-class DiaryTag {
-  final String label;
-  final Color color;
-
-  DiaryTag({required this.label, required this.color});
+  EscapeCafe get cafe => theme.cafe;
 }
