@@ -20,6 +20,15 @@ class _MyAppState extends State<MyApp> {
       diaryList.add(entry);
     });
   }
+  
+  void updateDiary(DiaryEntry oldEntry, DiaryEntry newEntry) {
+    setState(() {
+      final index = diaryList.indexOf(oldEntry);
+      if (index != -1) {
+        diaryList[index] = newEntry;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +38,11 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: DiaryListScreen(diaryList: diaryList, onAdd: addDiary),
+      home: DiaryListScreen(
+        diaryList: diaryList, 
+        onAdd: addDiary,
+        onUpdate: updateDiary,
+      ),
     );
   }
 }

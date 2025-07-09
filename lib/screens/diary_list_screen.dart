@@ -8,11 +8,13 @@ import 'package:jiyong_in_the_room/models/user.dart';
 class DiaryListScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;
   final void Function(DiaryEntry) onAdd;
+  final void Function(DiaryEntry, DiaryEntry)? onUpdate;
 
   const DiaryListScreen({
     super.key,
     required this.diaryList,
     required this.onAdd,
+    this.onUpdate,
   });
 
   @override
@@ -36,13 +38,24 @@ class DiaryListScreen extends StatelessWidget {
                       horizontal: 16,
                     ),
                     child: InkWell(
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DiaryDetailScreen(entry: entry),
+                            builder: (context) => DiaryDetailScreen(
+                              entry: entry,
+                              onUpdate: (updatedEntry) {
+                                if (onUpdate != null) {
+                                  onUpdate!(entry, updatedEntry);
+                                }
+                              },
+                            ),
                           ),
                         );
+                        
+                        if (result != null && result is DiaryEntry && onUpdate != null) {
+                          onUpdate!(entry, result);
+                        }
                       },
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),

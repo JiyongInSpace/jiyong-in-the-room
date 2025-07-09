@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
+import 'package:jiyong_in_the_room/screens/edit_diary_screen.dart';
 
-class DiaryDetailScreen extends StatelessWidget {
+class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;
+  final void Function(DiaryEntry)? onUpdate;
 
   const DiaryDetailScreen({
     super.key,
     required this.entry,
+    this.onUpdate,
   });
+
+  @override
+  State<DiaryDetailScreen> createState() => _DiaryDetailScreenState();
+}
+
+class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   String formatDate(DateTime date) {
     return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
@@ -57,7 +66,7 @@ class DiaryDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(entry.theme.name),
+        title: Text(widget.entry.theme.name),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -75,7 +84,7 @@ class DiaryDetailScreen extends StatelessWidget {
                         const Icon(Icons.lock_clock, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          entry.cafe.name,
+                          widget.entry.cafe.name,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -85,7 +94,7 @@ class DiaryDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      entry.theme.name,
+                      widget.entry.theme.name,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -93,7 +102,7 @@ class DiaryDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      formatDate(entry.date),
+                      formatDate(widget.entry.date),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -105,7 +114,7 @@ class DiaryDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
-            if (entry.friends != null && entry.friends!.isNotEmpty) ...[
+            if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty) ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -129,7 +138,7 @@ class DiaryDetailScreen extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 4,
-                        children: entry.friends!
+                        children: widget.entry.friends!
                             .map((friend) => Chip(
                                   label: Text(friend.user.name),
                                   backgroundColor: Colors.blue[50],
@@ -164,14 +173,14 @@ class DiaryDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     
-                    if (entry.rating != null) ...[
+                    if (widget.entry.rating != null) ...[
                       Row(
                         children: [
                           const Text('평점: '),
-                          _buildStarRating(entry.rating!),
+                          _buildStarRating(widget.entry.rating!),
                           const SizedBox(width: 8),
                           Text(
-                            entry.rating!.toStringAsFixed(1),
+                            widget.entry.rating!.toStringAsFixed(1),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -179,20 +188,20 @@ class DiaryDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                     ],
                     
-                    if (entry.escaped != null) ...[
+                    if (widget.entry.escaped != null) ...[
                       Row(
                         children: [
                           const Text('탈출 결과: '),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: entry.escaped! ? Colors.green[100] : Colors.red[100],
+                              color: widget.entry.escaped! ? Colors.green[100] : Colors.red[100],
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              entry.escaped! ? '성공' : '실패',
+                              widget.entry.escaped! ? '성공' : '실패',
                               style: TextStyle(
-                                color: entry.escaped! ? Colors.green[800] : Colors.red[800],
+                                color: widget.entry.escaped! ? Colors.green[800] : Colors.red[800],
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -202,12 +211,12 @@ class DiaryDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                     ],
                     
-                    if (entry.timeTaken != null) ...[
+                    if (widget.entry.timeTaken != null) ...[
                       Row(
                         children: [
                           const Text('소요시간: '),
                           Text(
-                            '${entry.timeTaken!.inMinutes}분',
+                            '${widget.entry.timeTaken!.inMinutes}분',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -215,12 +224,12 @@ class DiaryDetailScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                     ],
                     
-                    if (entry.hintUsedCount != null) ...[
+                    if (widget.entry.hintUsedCount != null) ...[
                       Row(
                         children: [
                           const Text('힌트 사용: '),
                           Text(
-                            '${entry.hintUsedCount}회',
+                            '${widget.entry.hintUsedCount}회',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -231,7 +240,7 @@ class DiaryDetailScreen extends StatelessWidget {
               ),
             ),
             
-            if (entry.memo != null && entry.memo!.isNotEmpty) ...[
+            if (widget.entry.memo != null && widget.entry.memo!.isNotEmpty) ...[
               const SizedBox(height: 16),
               Card(
                 child: Padding(
@@ -254,7 +263,7 @@ class DiaryDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        entry.memo!,
+                        widget.entry.memo!,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ],
@@ -264,6 +273,24 @@ class DiaryDetailScreen extends StatelessWidget {
             ],
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EditDiaryScreen(entry: widget.entry),
+            ),
+          );
+
+          if (result != null && result is DiaryEntry && mounted) {
+            if (widget.onUpdate != null) {
+              widget.onUpdate!(result);
+            }
+            Navigator.pop(context, result);
+          }
+        },
+        child: const Icon(Icons.edit),
       ),
     );
   }

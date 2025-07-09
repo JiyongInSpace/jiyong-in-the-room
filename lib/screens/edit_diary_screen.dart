@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:jiyong_in_the_room/models/diary.dart';
+import 'package:jiyong_in_the_room/models/escape_cafe.dart';
+import 'package:jiyong_in_the_room/models/user.dart';
 
-class WriteDiaryScreen extends StatefulWidget {
-  const WriteDiaryScreen({super.key});
+class EditDiaryScreen extends StatefulWidget {
+  final DiaryEntry entry;
+
+  const EditDiaryScreen({
+    super.key,
+    required this.entry,
+  });
 
   @override
-  State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
+  State<EditDiaryScreen> createState() => _EditDiaryScreenState();
 }
 
-class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
+class _EditDiaryScreenState extends State<EditDiaryScreen> {
   final Map<String, List<String>> cafeThemes = {
     '비밀의화원': ['유령의집', '황금마차'],
     '키이스': ['타임머신', '사라진 도시'],
@@ -35,6 +43,52 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   bool _showDetails = false;
 
   @override
+  void initState() {
+    super.initState();
+    _initializeFields();
+  }
+
+  void _initializeFields() {
+    selectedCafe = widget.entry.cafe.name;
+    selectedTheme = widget.entry.theme.name;
+    selectedDate = widget.entry.date;
+    
+    _cafeController.text = selectedCafe!;
+    _themeController.text = selectedTheme!;
+    
+    if (widget.entry.friends != null) {
+      selectedFriends.addAll(widget.entry.friends!.map((f) => f.user.name));
+    }
+    
+    if (widget.entry.memo != null) {
+      _memoController.text = widget.entry.memo!;
+    }
+    
+    if (widget.entry.rating != null) {
+      _rating = widget.entry.rating!;
+    }
+    
+    _escaped = widget.entry.escaped;
+    _hintUsedCount = widget.entry.hintUsedCount;
+    _timeTaken = widget.entry.timeTaken;
+    
+    if (widget.entry.hintUsedCount != null) {
+      _hintController.text = widget.entry.hintUsedCount.toString();
+    }
+    
+    if (widget.entry.timeTaken != null) {
+      _timeController.text = widget.entry.timeTaken!.inMinutes.toString();
+    }
+    
+    // Show details if there's additional info
+    _showDetails = widget.entry.memo != null || 
+                   widget.entry.rating != null || 
+                   widget.entry.escaped != null || 
+                   widget.entry.hintUsedCount != null || 
+                   widget.entry.timeTaken != null;
+  }
+
+  @override
   void dispose() {
     _cafeController.dispose();
     _themeController.dispose();
@@ -48,7 +102,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: selectedDate ?? now,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 5),
     );
@@ -84,7 +138,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             : '날짜를 선택하세요';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('일지 작성')),
+      appBar: AppBar(title: const Text('일지 수정')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -112,7 +166,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 setState(() {
                   selectedCafe = value;
                   selectedTheme = null;
-                  _themeController.clear(); // 이전 테마 입력 초기화
+                  _themeController.clear();
                 });
               },
               fieldViewBuilder: (
@@ -209,8 +263,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               textEditingController: friendSearchController,
               focusNode: FocusNode(),
               optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text == '')
+                if (textEditingValue.text == '') {
                   return const Iterable<String>.empty();
+                }
                 return dummyFriends
                     .where(
                       (f) =>
@@ -429,19 +484,37 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   return;
                 }
 
-                Navigator.pop(context, {
-                  'cafe': selectedCafe,
-                  'theme': selectedTheme,
-                  'date': selectedDate,
-                  'friends': selectedFriends,
-                  'memo': _memoController.text.isEmpty ? null : _memoController.text,
-                  'rating': _rating,
-                  'escaped': _escaped,
-                  'hintUsedCount': _hintUsedCount,
-                  'timeTaken': _timeTaken,
-                });
+                final updatedEntry = DiaryEntry(
+                  id: widget.entry.id,
+                  theme: EscapeTheme(
+                    id: widget.entry.theme.id,
+                    name: selectedTheme!,
+                    cafe: EscapeCafe(
+                      id: widget.entry.cafe.id,
+                      name: selectedCafe!,
+                    ),
+                    difficulty: widget.entry.theme.difficulty,
+                  ),
+                  date: selectedDate!,
+                  friends: selectedFriends.map((name) => Friend(
+                    user: User(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      name: name,
+                      email: '$name@example.com',
+                      joinedAt: DateTime.now(),
+                    ),
+                    addedAt: DateTime.now(),
+                  )).toList(),
+                  memo: _memoController.text.isEmpty ? null : _memoController.text,
+                  rating: _rating,
+                  escaped: _escaped,
+                  hintUsedCount: _hintUsedCount,
+                  timeTaken: _timeTaken,
+                );
+
+                Navigator.pop(context, updatedEntry);
               },
-              child: const Text('저장'),
+              child: const Text('수정 완료'),
             ),
             ],
           ),
