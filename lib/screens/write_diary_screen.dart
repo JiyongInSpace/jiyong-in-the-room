@@ -32,6 +32,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   bool? _escaped;
   int? _hintUsedCount;
   Duration? _timeTaken;
+  bool _showDetails = false;
 
   @override
   void dispose() {
@@ -57,6 +58,22 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         selectedDate = picked;
       });
     }
+  }
+
+  void _updateRating(double position) {
+    setState(() {
+      const starWidth = 36.0; // 32 (icon size) + 4 (padding)
+      final starIndex = (position / starWidth).floor();
+      final positionInStar = position % starWidth;
+      
+      if (starIndex >= 0 && starIndex < 5) {
+        if (positionInStar < starWidth / 2) {
+          _rating = (starIndex + 0.5).clamp(0.5, 5.0);
+        } else {
+          _rating = (starIndex + 1.0).clamp(0.5, 5.0);
+        }
+      }
+    });
   }
 
   @override
@@ -261,143 +278,145 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   }).toList(),
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _memoController,
-              decoration: const InputDecoration(
-                labelText: '메모',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showDetails = !_showDetails;
+                });
+              },
+              icon: Icon(_showDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+              label: Text(_showDetails ? '간단히' : '자세히'),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text('평점: '),
-                const SizedBox(width: 10),
-                Row(
-                  children: List.generate(5, (index) {
-                    return GestureDetector(
-                      onTapDown: (details) {
-                        setState(() {
-                          final starIndex = index + 1;
-                          final tapPosition = details.localPosition.dx;
-                          
-                          if (tapPosition < 16) {
-                            _rating = starIndex - 0.5;
-                          } else {
-                            _rating = starIndex.toDouble();
-                          }
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Stack(
-                          children: [
-                            Icon(
-                              Icons.star_border,
-                              color: Colors.grey[400],
-                              size: 32,
-                            ),
-                            if (_rating > index) ...[
-                              if (_rating >= index + 1)
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 32,
-                                )
-                              else
-                                ClipRect(
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    widthFactor: 0.5,
-                                    child: const Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 32,
+            if (_showDetails) ...[
+              const SizedBox(height: 20),
+              TextField(
+                controller: _memoController,
+                decoration: const InputDecoration(
+                  labelText: '메모',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text('평점: '),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTapDown: (details) => _updateRating(details.localPosition.dx),
+                    onPanUpdate: (details) => _updateRating(details.localPosition.dx),
+                    child: Row(
+                      children: List.generate(5, (index) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Stack(
+                            children: [
+                              Icon(
+                                Icons.star_border,
+                                color: Colors.grey[400],
+                                size: 32,
+                              ),
+                              if (_rating > index) ...[
+                                if (_rating >= index + 1)
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 32,
+                                  )
+                                else
+                                  ClipRect(
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      widthFactor: 0.5,
+                                      child: const Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 32,
+                                      ),
                                     ),
                                   ),
-                                ),
+                              ],
                             ],
-                          ],
-                        ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(_rating.toStringAsFixed(1)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text('탈출 결과: '),
+                  const SizedBox(width: 10),
+                  Row(
+                    children: [
+                      Radio<bool>(
+                        value: true,
+                        groupValue: _escaped,
+                        onChanged: (value) {
+                          setState(() {
+                            _escaped = value;
+                          });
+                        },
                       ),
-                    );
-                  }),
-                ),
-                const SizedBox(width: 10),
-                Text(_rating.toStringAsFixed(1)),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text('탈출 결과: '),
-                const SizedBox(width: 10),
-                Row(
-                  children: [
-                    Radio<bool>(
-                      value: true,
-                      groupValue: _escaped,
+                      const Text('성공'),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Radio<bool>(
+                        value: false,
+                        groupValue: _escaped,
+                        onChanged: (value) {
+                          setState(() {
+                            _escaped = value;
+                          });
+                        },
+                      ),
+                      const Text('실패'),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _hintController,
+                      decoration: const InputDecoration(
+                        labelText: '힌트 사용 횟수',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
                       onChanged: (value) {
-                        setState(() {
-                          _escaped = value;
-                        });
+                        _hintUsedCount = int.tryParse(value);
                       },
                     ),
-                    const Text('성공'),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Radio<bool>(
-                      value: false,
-                      groupValue: _escaped,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _timeController,
+                      decoration: const InputDecoration(
+                        labelText: '소요시간 (분)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
                       onChanged: (value) {
-                        setState(() {
-                          _escaped = value;
-                        });
+                        final minutes = int.tryParse(value);
+                        if (minutes != null) {
+                          _timeTaken = Duration(minutes: minutes);
+                        }
                       },
                     ),
-                    const Text('실패'),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _hintController,
-                    decoration: const InputDecoration(
-                      labelText: '힌트 사용 횟수',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      _hintUsedCount = int.tryParse(value);
-                    },
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _timeController,
-                    decoration: const InputDecoration(
-                      labelText: '소요시간 (분)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      final minutes = int.tryParse(value);
-                      if (minutes != null) {
-                        _timeTaken = Duration(minutes: minutes);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
