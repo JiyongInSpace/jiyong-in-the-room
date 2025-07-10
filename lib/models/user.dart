@@ -17,15 +17,32 @@ class User {
 
 // 친구 정보
 class Friend {
-  final User user; // 실제 유저 정보
+  final String? connected; // 연결된 유저 ID (없으면 연결되지 않은 상태)
+  final User? user; // 연결된 경우에만 실제 유저 정보
   final DateTime addedAt;
-  final String? nickname; // 내가 부르는 이름
+  final String nickname; // 내가 부르는 이름 (필수)
   final String? memo;
 
   Friend({
-    required this.user,
+    this.connected,
+    this.user,
     required this.addedAt,
-    this.nickname,
+    required this.nickname,
     this.memo,
   });
+
+  // 연결된 친구인지 확인
+  bool get isConnected => connected != null && user != null;
+  
+  // 표시할 이름 (별명 우선)
+  String get displayName => nickname;
+  
+  // 표시할 이메일 (연결된 경우만)
+  String? get displayEmail => user?.email;
+  
+  // 표시할 아바타 URL (연결된 경우만)
+  String? get displayAvatarUrl => user?.avatarUrl;
+  
+  // 실제 이름 (연결된 경우만)
+  String? get realName => user?.name;
 }

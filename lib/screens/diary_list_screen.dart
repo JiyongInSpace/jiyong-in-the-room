@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/write_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary_detail_screen.dart';
+import 'package:jiyong_in_the_room/screens/friends_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
@@ -9,12 +10,20 @@ class DiaryListScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;
   final void Function(DiaryEntry) onAdd;
   final void Function(DiaryEntry, DiaryEntry)? onUpdate;
+  final List<Friend> friends;
+  final void Function(Friend) onAddFriend;
+  final void Function(Friend) onRemoveFriend;
+  final void Function(Friend, Friend) onUpdateFriend;
 
   const DiaryListScreen({
     super.key,
     required this.diaryList,
     required this.onAdd,
     this.onUpdate,
+    required this.friends,
+    required this.onAddFriend,
+    required this.onRemoveFriend,
+    required this.onUpdateFriend,
   });
 
   @override
@@ -24,7 +33,27 @@ class DiaryListScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('탈출일지')),
+      appBar: AppBar(
+        title: const Text('탈출일지'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.people),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FriendsScreen(
+                    friends: friends,
+                    onAdd: onAddFriend,
+                    onRemove: onRemoveFriend,
+                    onUpdate: onUpdateFriend,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body:
           diaryList.isEmpty
               ? const Center(child: Text('작성된 일지가 없습니다.'))
@@ -44,6 +73,7 @@ class DiaryListScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => DiaryDetailScreen(
                               entry: entry,
+                              friends: friends,
                               onUpdate: (updatedEntry) {
                                 if (onUpdate != null) {
                                   onUpdate!(entry, updatedEntry);
@@ -93,7 +123,7 @@ class DiaryListScreen extends StatelessWidget {
                                 children: entry.friends!
                                     .map((friend) => Chip(
                                           label: Text(
-                                            friend.user.name,
+                                            friend.displayName,
                                             style: const TextStyle(fontSize: 12),
                                           ),
                                           backgroundColor: Colors.blue[50],
@@ -113,7 +143,7 @@ class DiaryListScreen extends StatelessWidget {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const WriteDiaryScreen()),
+            MaterialPageRoute(builder: (context) => WriteDiaryScreen(friends: friends)),
           );
 
           if (result != null &&
@@ -121,7 +151,7 @@ class DiaryListScreen extends StatelessWidget {
               result['cafe'] is String &&
               result['theme'] is String &&
               result['date'] is DateTime &&
-              result['friends'] is List<dynamic>) {
+              result['friends'] is List<Friend>) {
             final entry = DiaryEntry(
               id: DateTime.now().millisecondsSinceEpoch,
               theme: EscapeTheme(
@@ -134,15 +164,7 @@ class DiaryListScreen extends StatelessWidget {
                 difficulty: 3,
               ),
               date: result['date'] as DateTime,
-              friends: (result['friends'] as List<dynamic>).map((name) => Friend(
-                user: User(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: name as String,
-                  email: '$name@example.com',
-                  joinedAt: DateTime.now(),
-                ),
-                addedAt: DateTime.now(),
-              )).toList(),
+              friends: result['friends'] as List<Friend>,
               memo: result['memo'] as String?,
               rating: result['rating'] as double?,
               escaped: result['escaped'] as bool?,

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
+import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/edit_diary_screen.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;
+  final List<Friend> friends;
   final void Function(DiaryEntry)? onUpdate;
 
   const DiaryDetailScreen({
     super.key,
     required this.entry,
+    required this.friends,
     this.onUpdate,
   });
 
@@ -140,7 +143,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                         runSpacing: 4,
                         children: widget.entry.friends!
                             .map((friend) => Chip(
-                                  label: Text(friend.user.name),
+                                  label: Text(friend.displayName),
                                   backgroundColor: Colors.blue[50],
                                 ))
                             .toList(),
@@ -279,7 +282,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => EditDiaryScreen(entry: widget.entry),
+              builder: (context) => EditDiaryScreen(
+                entry: widget.entry,
+                friends: widget.friends,
+              ),
             ),
           );
 

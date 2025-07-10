@@ -5,10 +5,12 @@ import 'package:jiyong_in_the_room/models/user.dart';
 
 class EditDiaryScreen extends StatefulWidget {
   final DiaryEntry entry;
+  final List<Friend> friends;
 
   const EditDiaryScreen({
     super.key,
     required this.entry,
+    required this.friends,
   });
 
   @override
@@ -22,13 +24,11 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
   };
 
-  final List<String> dummyFriends = ['수환', '지용', '민지', '철수', '은영'];
-
   String? selectedCafe;
   String? selectedTheme;
   DateTime? selectedDate;
 
-  final List<String> selectedFriends = [];
+  final List<Friend> selectedFriends = [];
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
@@ -57,7 +57,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     _themeController.text = selectedTheme!;
     
     if (widget.entry.friends != null) {
-      selectedFriends.addAll(widget.entry.friends!.map((f) => f.user.name));
+      selectedFriends.addAll(widget.entry.friends!);
     }
     
     if (widget.entry.memo != null) {
@@ -259,22 +259,22 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               },
             ),
             const SizedBox(height: 20),
-            RawAutocomplete<String>(
+            RawAutocomplete<Friend>(
               textEditingController: friendSearchController,
               focusNode: FocusNode(),
               optionsBuilder: (textEditingValue) {
                 if (textEditingValue.text == '') {
-                  return const Iterable<String>.empty();
+                  return const Iterable<Friend>.empty();
                 }
-                return dummyFriends
+                return widget.friends
                     .where(
                       (f) =>
-                          f.contains(textEditingValue.text) &&
+                          f.displayName.contains(textEditingValue.text) &&
                           !selectedFriends.contains(f),
                     )
                     .toList();
               },
-              onSelected: (String selected) {
+              onSelected: (Friend selected) {
                 setState(() {
                   selectedFriends.add(selected);
                   friendSearchController.clear();
@@ -307,7 +307,15 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
                           return ListTile(
-                            title: Text(option),
+                            title: Text(option.displayName),
+                            subtitle: option.isConnected && option.realName != null 
+                                ? Text(option.realName!) 
+                                : null,
+                            leading: Icon(
+                              option.isConnected ? Icons.link : Icons.link_off,
+                              size: 16,
+                              color: option.isConnected ? Colors.green : Colors.grey,
+                            ),
                             onTap: () => onSelected(option),
                           );
                         },
@@ -322,7 +330,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               children:
                   selectedFriends.map((friend) {
                     return Chip(
-                      label: Text(friend),
+                      label: Text(friend.displayName),
                       deleteIcon: const Icon(Icons.close),
                       onDeleted: () {
                         setState(() {
@@ -496,15 +504,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     difficulty: widget.entry.theme.difficulty,
                   ),
                   date: selectedDate!,
-                  friends: selectedFriends.map((name) => Friend(
-                    user: User(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      name: name,
-                      email: '$name@example.com',
-                      joinedAt: DateTime.now(),
-                    ),
-                    addedAt: DateTime.now(),
-                  )).toList(),
+                  friends: selectedFriends,
                   memo: _memoController.text.isEmpty ? null : _memoController.text,
                   rating: _rating,
                   escaped: _escaped,

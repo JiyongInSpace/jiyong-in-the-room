@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:jiyong_in_the_room/models/user.dart';
 
 class WriteDiaryScreen extends StatefulWidget {
-  const WriteDiaryScreen({super.key});
+  final List<Friend> friends;
+  
+  const WriteDiaryScreen({super.key, required this.friends});
 
   @override
   State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
@@ -14,13 +17,11 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
   };
 
-  final List<String> dummyFriends = ['수환', '지용', '민지', '철수', '은영'];
-
   String? selectedCafe;
   String? selectedTheme;
   DateTime? selectedDate;
 
-  final List<String> selectedFriends = [];
+  final List<Friend> selectedFriends = [];
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
@@ -205,21 +206,21 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               },
             ),
             const SizedBox(height: 20),
-            RawAutocomplete<String>(
+            RawAutocomplete<Friend>(
               textEditingController: friendSearchController,
               focusNode: FocusNode(),
               optionsBuilder: (textEditingValue) {
                 if (textEditingValue.text == '')
-                  return const Iterable<String>.empty();
-                return dummyFriends
+                  return const Iterable<Friend>.empty();
+                return widget.friends
                     .where(
                       (f) =>
-                          f.contains(textEditingValue.text) &&
+                          f.displayName.contains(textEditingValue.text) &&
                           !selectedFriends.contains(f),
                     )
                     .toList();
               },
-              onSelected: (String selected) {
+              onSelected: (Friend selected) {
                 setState(() {
                   selectedFriends.add(selected);
                   friendSearchController.clear();
@@ -252,7 +253,15 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
                           return ListTile(
-                            title: Text(option),
+                            title: Text(option.displayName),
+                            subtitle: option.isConnected && option.realName != null 
+                                ? Text(option.realName!) 
+                                : null,
+                            leading: Icon(
+                              option.isConnected ? Icons.link : Icons.link_off,
+                              size: 16,
+                              color: option.isConnected ? Colors.green : Colors.grey,
+                            ),
                             onTap: () => onSelected(option),
                           );
                         },
@@ -267,7 +276,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               children:
                   selectedFriends.map((friend) {
                     return Chip(
-                      label: Text(friend),
+                      label: Text(friend.displayName),
                       deleteIcon: const Icon(Icons.close),
                       onDeleted: () {
                         setState(() {

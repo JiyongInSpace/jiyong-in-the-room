@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/diary_list_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
+import 'package:jiyong_in_the_room/models/user.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,6 +16,8 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final List<DiaryEntry> diaryList = [];
+  final List<Friend> friendsList = [];
+  
   void addDiary(DiaryEntry entry) {
     setState(() {
       diaryList.add(entry);
@@ -26,6 +29,27 @@ class _MyAppState extends State<MyApp> {
       final index = diaryList.indexOf(oldEntry);
       if (index != -1) {
         diaryList[index] = newEntry;
+      }
+    });
+  }
+
+  void addFriend(Friend friend) {
+    setState(() {
+      friendsList.add(friend);
+    });
+  }
+
+  void removeFriend(Friend friend) {
+    setState(() {
+      friendsList.remove(friend);
+    });
+  }
+
+  void updateFriend(Friend oldFriend, Friend newFriend) {
+    setState(() {
+      final index = friendsList.indexOf(oldFriend);
+      if (index != -1) {
+        friendsList[index] = newFriend;
       }
     });
   }
@@ -42,6 +66,10 @@ class _MyAppState extends State<MyApp> {
         diaryList: diaryList, 
         onAdd: addDiary,
         onUpdate: updateDiary,
+        friends: friendsList,
+        onAddFriend: addFriend,
+        onRemoveFriend: removeFriend,
+        onUpdateFriend: updateFriend,
       ),
     );
   }
