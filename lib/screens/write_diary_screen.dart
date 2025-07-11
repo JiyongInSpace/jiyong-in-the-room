@@ -125,9 +125,14 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '방탈출 카페',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: selectedCafe != null 
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : controller.text.isNotEmpty
+                            ? const Icon(Icons.edit, color: Colors.orange)
+                            : null,
                   ),
                 );
               },
@@ -180,6 +185,11 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   decoration: InputDecoration(
                     labelText: selectedCafe != null ? '테마 선택' : '먼저 카페를 선택해주세요',
                     border: const OutlineInputBorder(),
+                    suffixIcon: selectedTheme != null 
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : controller.text.isNotEmpty && selectedCafe != null
+                            ? const Icon(Icons.edit, color: Colors.orange)
+                            : null,
                   ),
                 );
               },
@@ -210,8 +220,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               textEditingController: friendSearchController,
               focusNode: FocusNode(),
               optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text == '')
+                if (textEditingValue.text == '') {
                   return const Iterable<Friend>.empty();
+                }
                 return widget.friends
                     .where(
                       (f) =>
@@ -235,9 +246,12 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '친구 검색',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: controller.text.isNotEmpty
+                        ? const Icon(Icons.search, color: Colors.orange)
+                        : null,
                   ),
                 );
               },
