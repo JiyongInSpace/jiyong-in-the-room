@@ -1,34 +1,49 @@
+// 플러터의 기본 Material Design 위젯들을 사용하기 위한 import
 import 'package:flutter/material.dart';
+// 다이어리 엔트리 데이터 모델 import
 import 'package:jiyong_in_the_room/models/diary.dart';
+// 카페와 테마 데이터 모델 import
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
+// 사용자와 친구 데이터 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
 
+// 일지 수정 화면 - 기존 일지 엔트리를 수정하는 위젯
 class EditDiaryScreen extends StatefulWidget {
+  // 수정할 기존 일지 엔트리 데이터
   final DiaryEntry entry;
+  // 선택 가능한 친구 목록
   final List<Friend> friends;
 
+  // const 생성자: 컴파일 타임에 값이 결정되는 생성자
+  // required: 필수 매개변수임을 표시
   const EditDiaryScreen({
     super.key,
     required this.entry,
     required this.friends,
   });
 
+  // createState(): StatefulWidget의 상태 객체를 생성하는 메서드
   @override
   State<EditDiaryScreen> createState() => _EditDiaryScreenState();
 }
 
+// 수정 화면의 상태를 관리하는 State 클래스
 class _EditDiaryScreenState extends State<EditDiaryScreen> {
+  // 카페별 테마 목록을 저장하는 Map
   final Map<String, List<String>> cafeThemes = {
     '비밀의화원': ['유령의집', '황금마차'],
     '키이스': ['타임머신', '사라진 도시'],
     '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
   };
 
+  // 수정 중인 데이터를 저장하는 변수들
   String? selectedCafe;
   String? selectedTheme;
   DateTime? selectedDate;
 
+  // 선택된 친구들을 저장하는 리스트
   final List<Friend> selectedFriends = [];
+  // 각 입력 필드를 제어하는 컨트롤러들
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
@@ -36,51 +51,64 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   final TextEditingController _hintController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   
-  double _rating = 3.0;
-  bool? _escaped;
-  int? _hintUsedCount;
-  Duration? _timeTaken;
-  bool _showDetails = false;
+  // 게임 관련 데이터를 저장하는 변수들
+  double _rating = 3.0;        // 별점 평가
+  bool? _escaped;              // 탈출 성공 여부
+  int? _hintUsedCount;         // 힌트 사용 횟수
+  Duration? _timeTaken;        // 게임 소요 시간
+  bool _showDetails = false;   // 상세 정보 표시 여부
 
+  // initState(): 위젯이 처음 생성될 때 한 번만 호출되는 메서드
+  // 기존 데이터로 필드들을 초기화하기 위해 사용
   @override
   void initState() {
     super.initState();
-    _initializeFields();
+    _initializeFields(); // 기존 데이터로 필드 초기화
   }
 
+  // 기존 일지 데이터로 모든 필드를 초기화하는 메서드
   void _initializeFields() {
+    // widget.entry: 부모 위젯에서 전달받은 기존 일지 데이터
     selectedCafe = widget.entry.cafe.name;
     selectedTheme = widget.entry.theme.name;
     selectedDate = widget.entry.date;
     
+    // TextEditingController에 기존 값을 설정
     _cafeController.text = selectedCafe!;
     _themeController.text = selectedTheme!;
     
+    // 기존에 선택된 친구들이 있다면 추가
     if (widget.entry.friends != null) {
       selectedFriends.addAll(widget.entry.friends!);
     }
     
+    // 기존 메모가 있다면 설정
     if (widget.entry.memo != null) {
       _memoController.text = widget.entry.memo!;
     }
     
+    // 기존 별점이 있다면 설정
     if (widget.entry.rating != null) {
       _rating = widget.entry.rating!;
     }
     
+    // 게임 결과 데이터 설정
     _escaped = widget.entry.escaped;
     _hintUsedCount = widget.entry.hintUsedCount;
     _timeTaken = widget.entry.timeTaken;
     
+    // 힌트 사용 횟수를 텍스트로 변환하여 설정
     if (widget.entry.hintUsedCount != null) {
       _hintController.text = widget.entry.hintUsedCount.toString();
     }
     
+    // 소요 시간을 분 단위로 변환하여 설정
     if (widget.entry.timeTaken != null) {
       _timeController.text = widget.entry.timeTaken!.inMinutes.toString();
     }
     
-    // Show details if there's additional info
+    // 추가 정보가 있다면 상세 정보 영역을 기본적으로 표시
+    // ||(OR) 연산자: 하나라도 참이면 참
     _showDetails = widget.entry.memo != null || 
                    widget.entry.rating != null || 
                    widget.entry.escaped != null || 
@@ -492,19 +520,21 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                   return;
                 }
 
+                // 수정된 데이터로 새로운 DiaryEntry 객체 생성
                 final updatedEntry = DiaryEntry(
-                  id: widget.entry.id,
+                  id: widget.entry.id, // 기존 ID 유지
                   theme: EscapeTheme(
-                    id: widget.entry.theme.id,
+                    id: widget.entry.theme.id, // 기존 테마 ID 유지
                     name: selectedTheme!,
                     cafe: EscapeCafe(
-                      id: widget.entry.cafe.id,
+                      id: widget.entry.cafe.id, // 기존 카페 ID 유지
                       name: selectedCafe!,
                     ),
-                    difficulty: widget.entry.theme.difficulty,
+                    difficulty: widget.entry.theme.difficulty, // 기존 난이도 유지
                   ),
                   date: selectedDate!,
                   friends: selectedFriends,
+                  // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
                   memo: _memoController.text.isEmpty ? null : _memoController.text,
                   rating: _rating,
                   escaped: _escaped,
@@ -512,6 +542,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                   timeTaken: _timeTaken,
                 );
 
+                // Navigator.pop(): 현재 화면을 닫고 이전 화면으로 돌아감
+                // 두 번째 매개변수로 수정된 데이터를 전달
                 Navigator.pop(context, updatedEntry);
               },
               child: const Text('수정 완료'),

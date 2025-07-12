@@ -1,6 +1,10 @@
+// 플러터의 기본 Material Design 위젯들을 사용하기 위한 import
 import 'package:flutter/material.dart';
+// 사용자 정의 모델 클래스 import (Friend 모델 사용)
 import 'package:jiyong_in_the_room/models/user.dart';
 
+// StatefulWidget: 상태가 변할 수 있는 위젯 클래스
+// 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
 class WriteDiaryScreen extends StatefulWidget {
   final List<Friend> friends;
   
@@ -10,18 +14,30 @@ class WriteDiaryScreen extends StatefulWidget {
   State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
 }
 
+// State 클래스: StatefulWidget의 실제 상태와 UI 로직을 담당
 class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
+  // Map<키타입, 값타입>: 키-값 쌍으로 데이터를 저장하는 자료구조
+  // 카페별로 테마 목록을 관리하는 맵
   final Map<String, List<String>> cafeThemes = {
     '비밀의화원': ['유령의집', '황금마차'],
     '키이스': ['타임머신', '사라진 도시'],
     '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
   };
 
+  // String?: null이 될 수 있는 String 타입 (nullable)
+  // 사용자가 선택한 카페를 저장하는 변수
   String? selectedCafe;
+  // 사용자가 선택한 테마를 저장하는 변수
   String? selectedTheme;
+  // 사용자가 선택한 날짜를 저장하는 변수
   DateTime? selectedDate;
 
+  // List<타입>: 여러 개의 같은 타입 데이터를 순서대로 저장하는 자료구조
+  // 선택된 친구들을 저장하는 리스트
   final List<Friend> selectedFriends = [];
+  
+  // TextEditingController: TextField의 텍스트 입력을 제어하는 컨트롤러
+  // 각 입력 필드마다 별도의 컨트롤러가 필요함
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
@@ -29,24 +45,45 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   final TextEditingController _hintController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   
+  // double: 소수점을 포함한 숫자 타입
+  // 별점 평가를 저장하는 변수 (기본값 3.0)
   double _rating = 3.0;
+  // bool?: null이 될 수 있는 불린(참/거짓) 타입
+  // 탈출 성공 여부를 저장하는 변수
   bool? _escaped;
+  // int?: null이 될 수 있는 정수 타입
+  // 힌트 사용 횟수를 저장하는 변수
   int? _hintUsedCount;
+  // Duration?: null이 될 수 있는 시간 간격 타입
+  // 게임에 걸린 시간을 저장하는 변수
   Duration? _timeTaken;
+  // bool: 불린 타입 (true/false만 가능)
+  // 상세 정보 표시 여부를 저장하는 변수
   bool _showDetails = false;
 
+  // @override: 부모 클래스의 메서드를 재정의한다는 표시
+  // dispose(): 위젯이 메모리에서 제거될 때 호출되는 메서드
+  // TextEditingController 같은 리소스를 정리해야 메모리 누수 방지
   @override
   void dispose() {
+    // 각 TextEditingController를 메모리에서 해제
     _cafeController.dispose();
     _themeController.dispose();
     _memoController.dispose();
     _hintController.dispose();
     _timeController.dispose();
+    // 부모 클래스의 dispose() 메서드도 호출해야 함
     super.dispose();
   }
 
+  // Future<void>: 비동기 작업을 나타내는 타입 (결과값 없음)
+  // async: 비동기 메서드임을 표시
+  // 날짜 선택 다이얼로그를 표시하는 메서드
   Future<void> _pickDate() async {
+    // DateTime.now(): 현재 날짜와 시간을 가져옴
     final now = DateTime.now();
+    // await: 비동기 작업이 완료될 때까지 기다림
+    // showDatePicker(): 플러터에서 제공하는 날짜 선택 다이얼로그
     final picked = await showDatePicker(
       context: context,
       initialDate: now,
@@ -54,21 +91,30 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
       lastDate: DateTime(now.year + 5),
     );
 
+    // 사용자가 날짜를 선택했는지 확인 (취소하면 null 반환)
     if (picked != null) {
+      // setState(): 상태가 변경되었음을 플러터에 알려서 화면을 다시 그리게 함
       setState(() {
         selectedDate = picked;
       });
     }
   }
 
+  // 별점 드래그/클릭 시 평점을 업데이트하는 메서드
+  // position: 사용자가 터치한 가로 위치
   void _updateRating(double position) {
     setState(() {
+      // const: 컴파일 타임에 값이 결정되는 상수
       const starWidth = 36.0; // 32 (icon size) + 4 (padding)
+      // floor(): 소수점 이하를 버림 (몇 번째 별인지 계산)
       final starIndex = (position / starWidth).floor();
+      // %: 나머지 연산자 (별 내에서의 위치 계산)
       final positionInStar = position % starWidth;
       
       if (starIndex >= 0 && starIndex < 5) {
+        // 별의 왼쪽 절반을 클릭했는지 오른쪽 절반을 클릭했는지 판단
         if (positionInStar < starWidth / 2) {
+          // clamp(): 값을 최소값과 최대값 사이로 제한
           _rating = (starIndex + 0.5).clamp(0.5, 5.0);
         } else {
           _rating = (starIndex + 1.0).clamp(0.5, 5.0);
@@ -77,30 +123,48 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     });
   }
 
+  // build(): 위젯의 UI를 구성하는 메서드 (상태가 변경될 때마다 호출됨)
+  // BuildContext: 위젯 트리에서 현재 위젯의 위치 정보를 담고 있는 객체
   @override
   Widget build(BuildContext context) {
+    // 삼항연산자 (조건 ? 참일때값 : 거짓일때값)
+    // selectedDate!: null이 아님을 확신할 때 사용하는 연산자
     final selectedDateStr =
         selectedDate != null
             ? selectedDate!.toLocal().toString().split(' ')[0]
             : '날짜를 선택하세요';
 
+    // Scaffold: 기본적인 화면 구조를 제공하는 위젯 (AppBar, Body 등)
     return Scaffold(
+      // AppBar: 화면 상단에 제목과 뒒로가기 버튼을 표시하는 위젯
       appBar: AppBar(title: const Text('일지 작성')),
+      // body: 화면의 주요 내용을 담는 영역
+      // Padding: 자식 위젯 주변에 여백을 주는 위젯
       body: Padding(
+        // EdgeInsets.all(): 모든 방향에 동일한 여백 적용
         padding: const EdgeInsets.all(16.0),
+        // SingleChildScrollView: 내용이 화면을 넘을 때 스크롤 가능하게 하는 위젯
         child: SingleChildScrollView(
+          // Column: 자식 위젯들을 세로로 배치하는 위젯
           child: Column(
             children: [
+            // Row: 자식 위젯들을 가로로 배치하는 위젯
             Row(
               children: [
+                // Expanded: 남은 공간을 채우도록 확장하는 위젯
                 Expanded(child: Text('선택한 날짜: $selectedDateStr')),
+                // ElevatedButton: 입체감 있는 버튼 위젯
+                // onPressed: 버튼이 눌렸을 때 실행할 함수
                 ElevatedButton(
                   onPressed: _pickDate,
                   child: const Text('날짜 선택'),
                 ),
               ],
             ),
+            // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
             const SizedBox(height: 20),
+            // RawAutocomplete<타입>: 자동완성 기능을 제공하는 위젯
+            // <String>: 제네릭 타입으로 String 타입의 옵션들을 처리
             RawAutocomplete<String>(
               textEditingController: _cafeController,
               focusNode: FocusNode(),
@@ -285,20 +349,24 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 );
               },
             ),
+            // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
             Wrap(
-              spacing: 8,
+              spacing: 8, // 아이템들 사이의 간격
               children:
+                  // map(): 리스트의 각 요소를 다른 형태로 변환
                   selectedFriends.map((friend) {
+                    // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
                     return Chip(
                       label: Text(friend.displayName),
                       deleteIcon: const Icon(Icons.close),
+                      // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
                       onDeleted: () {
                         setState(() {
-                          selectedFriends.remove(friend);
+                          selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
                         });
                       },
                     );
-                  }).toList(),
+                  }).toList(), // map 결과를 List로 변환
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
