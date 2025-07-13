@@ -21,10 +21,12 @@ class DiaryDetailScreen extends StatefulWidget {
 
 class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
+  // 날짜를 YYYY.MM.DD 형식으로 포맷팅하는 함수
   String formatDate(DateTime date) {
     return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
   }
 
+  // 별점을 표시하는 위젯을 생성하는 함수
   Widget _buildStarRating(double rating) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -66,6 +68,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 
   @override
+  // 화면의 UI를 구성하는 메인 빌드 함수
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -76,6 +79,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 카페 및 테마 정보 카드
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -117,6 +121,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             ),
             const SizedBox(height: 16),
             
+            // 함께한 사람들 정보 카드 (친구가 있는 경우에만 표시)
             if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty) ...[
               Card(
                 child: Padding(
@@ -155,6 +160,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               const SizedBox(height: 16),
             ],
             
+            // 게임 결과 정보 카드
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -243,6 +249,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               ),
             ),
             
+            // 메모 카드 (메모가 있는 경우에만 표시)
             if (widget.entry.memo != null && widget.entry.memo!.isNotEmpty) ...[
               const SizedBox(height: 16),
               Card(
@@ -277,6 +284,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           ],
         ),
       ),
+      // 수정 버튼 (플로팅 액션 버튼)
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
