@@ -3,6 +3,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary_list_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends_screen.dart';
+import 'package:jiyong_in_the_room/screens/settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;
@@ -59,6 +60,21 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('탈출일지'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(
+                    isLoggedIn: false, // TODO: 실제 로그인 상태로 변경
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.settings),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
