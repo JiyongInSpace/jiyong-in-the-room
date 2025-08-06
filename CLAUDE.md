@@ -73,3 +73,7 @@ The app follows a simple Flutter architecture pattern:
 - Uses flutter_lints for code analysis
 - Analysis rules defined in analysis_options.yaml
 - Follows standard Flutter/Dart conventions
+
+# Do Not Section
+- 주석을 칠땐, 최상단 import 에는 설명용 주석을 할 필요 없습니다. 
+- 
