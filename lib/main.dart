@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jiyong_in_the_room/screens/diary_list_screen.dart';
+import 'package:jiyong_in_the_room/screens/home_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 
@@ -62,11 +62,11 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: DiaryListScreen(
-        diaryList: diaryList, 
+      home: HomeScreen(
+        diaryList: diaryList,
+        friends: friendsList,
         onAdd: addDiary,
         onUpdate: updateDiary,
-        friends: friendsList,
         onAddFriend: addFriend,
         onRemoveFriend: removeFriend,
         onUpdateFriend: updateFriend,
