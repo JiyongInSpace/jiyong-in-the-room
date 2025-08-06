@@ -9,6 +9,7 @@ This is a Flutter application for tracking escape room experiences. The app allo
 ## Development Commands
 
 ### Flutter Commands
+
 - `flutter run` - Run the application in development mode
 - `flutter build apk` - Build Android APK
 - `flutter build ios` - Build iOS app
@@ -18,6 +19,7 @@ This is a Flutter application for tracking escape room experiences. The app allo
 - `flutter pub upgrade` - Upgrade dependencies
 
 ### Platform-Specific Commands
+
 - `flutter run -d android` - Run on Android device/emulator
 - `flutter run -d ios` - Run on iOS device/simulator
 - `flutter run -d web` - Run on web browser
@@ -28,6 +30,7 @@ This is a Flutter application for tracking escape room experiences. The app allo
 ## Architecture
 
 ### Core Structure
+
 The app follows a simple Flutter architecture pattern:
 
 - **main.dart**: Entry point with global state management for diary entries
@@ -42,16 +45,19 @@ The app follows a simple Flutter architecture pattern:
   - `edit_diary_screen.dart`: Form for editing existing entries
 
 ### State Management
+
 - Uses StatefulWidget at the app level (MyApp) to manage the global list of diary entries
 - Callback functions (onAdd, onUpdate) are passed down to child widgets for state updates
 - No external state management library is used
 
 ### Data Flow
+
 - DiaryEntry objects are created with mock data structure including cafe, theme, friends, ratings, and game results
 - Navigation between screens uses Navigator.push with MaterialPageRoute
 - Data is passed between screens through constructor parameters and return values
 
 ### Key Models Relationships
+
 - DiaryEntry contains an EscapeTheme
 - EscapeTheme belongs to an EscapeCafe
 - DiaryEntry can have multiple Friend objects
@@ -60,20 +66,24 @@ The app follows a simple Flutter architecture pattern:
 ## Development Notes
 
 ### Language and Framework
+
 - Flutter SDK version: ^3.7.2
 - Uses Material 3 design system
 - Korean language used for UI strings ("탈출일지" means "Escape Diary")
 
 ### Testing
+
 - Test files are located in the `test/` directory
 - Uses flutter_test framework
 - Run tests with `flutter test`
 
 ### Code Style
+
 - Uses flutter_lints for code analysis
 - Analysis rules defined in analysis_options.yaml
 - Follows standard Flutter/Dart conventions
+- 모델이 추가되는 경우, data_models.md 에 추가할 것. 해당 파일은 Flutter 모델 + Supabase 테이블을 관리
 
 # Do Not Section
-- 주석을 칠땐, 최상단 import 에는 설명용 주석을 할 필요 없습니다. 
-- 
+
+- 주석을 칠땐, 최상단 import 에는 설명용 주석을 할 필요 없음
