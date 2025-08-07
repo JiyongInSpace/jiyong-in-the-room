@@ -13,6 +13,8 @@ class HomeScreen extends StatelessWidget {
   final Function(Friend) onAddFriend;
   final Function(Friend) onRemoveFriend;
   final Function(Friend, Friend) onUpdateFriend;
+  final bool isLoggedIn;
+  final Map<String, dynamic>? userProfile;
 
   const HomeScreen({
     super.key,
@@ -23,6 +25,8 @@ class HomeScreen extends StatelessWidget {
     required this.onAddFriend,
     required this.onRemoveFriend,
     required this.onUpdateFriend,
+    required this.isLoggedIn,
+    this.userProfile,
   });
 
   Map<Friend, int> _getFriendStats() {
@@ -66,8 +70,9 @@ class HomeScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(
-                    isLoggedIn: false, // TODO: 실제 로그인 상태로 변경
+                  builder: (context) => SettingsScreen(
+                    isLoggedIn: isLoggedIn,
+                    userProfile: userProfile,
                   ),
                 ),
               );

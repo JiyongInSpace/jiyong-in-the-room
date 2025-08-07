@@ -23,7 +23,7 @@
 
 ### 🔥 높은 우선순위 [상]
 - [ ] 사진 첨부 기능 (테마 사진, 인증샷)
-- [ ] oAuth 회원가입/로그인 (애플, 구글)
+- [x] oAuth 회원가입/로그인 (구글) ✅
 
 ### 🌟 중간 우선순위 [중]
 - [ ] 검색 기능 (테마명, 카페명으로 검색)
@@ -64,3 +64,53 @@
 1. **비회원**: 로컬(Hive)에서만 데이터 관리
 2. **회원가입**: OAuth 로그인 + 로컬 데이터 클라우드 업로드
 3. **회원**: 로컬 + 클라우드 동기화, 친구 기능 활성화
+
+## 🚀 최근 구현 완료
+
+### ✅ 완료된 기능들 (2025-08-07)
+- **설정 페이지** - 계정 관리 및 앱 정보
+- **Google OAuth 로그인** - 실시간 인증 상태 관리
+- **Supabase 데이터베이스** - 완전한 스키마 구축
+- **회원/비회원 UI** - 동적 인터페이스
+- **프로필 자동 생성** - 로그인 시 자동 프로필 생성
+
+### 🔧 기술 스택
+- **Frontend**: Flutter 3.7.2+, Material 3 Design
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **로컬 저장**: Hive + SharedPreferences  
+- **인증**: Google OAuth 2.0
+- **폰트**: Pretendard
+- **아이콘**: flutter_launcher_icons
+
+### 📱 현재 테스트 가능한 기능
+1. **OAuth 로그인/로그아웃** - Google 계정으로 로그인
+2. **설정 페이지** - 회원 상태에 따른 동적 UI
+3. **프로필 관리** - 사용자 정보 자동 동기화
+4. **외부 링크** - 앱 가이드, 개인정보처리방침
+5. **문의하기** - 이메일 정보 제공
+
+## 🔧 개발 환경 설정
+
+### Supabase 설정 (.env 방식)
+1. `.env.example` 파일을 복사하여 `.env` 파일 생성
+2. `.env` 파일에 실제 Supabase 프로젝트 정보 입력:
+```
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_ACCESS_TOKEN=your_access_token_here  # MCP용
+SUPABASE_PROJECT_REF=your_project_ref_here    # MCP용
+```
+
+3. **MCP 설정 (선택적)**:
+   - `.mcp.example.json`을 복사해서 `.mcp.json` 생성
+   - 프로젝트 정보 입력
+
+### 보안 주의사항
+- `.env`, `.mcp.json` 파일은 `.gitignore`에 포함되어 있습니다
+- 절대 실제 키 값이 포함된 파일을 커밋하지 마세요
+- Next.js와 같은 방식의 환경변수 관리
+
+---
+
+**개발자**: Claude Code + 지용  
+**최종 업데이트**: 2025-08-07
