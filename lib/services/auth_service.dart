@@ -1,5 +1,6 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jiyong_in_the_room/utils/supabase.dart';
 
 class AuthService {
@@ -7,6 +8,7 @@ class AuthService {
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: _scopes,
+    clientId: dotenv.env['GOOGLE_CLIENT_ID'],
   );
 
   // 현재 사용자 상태

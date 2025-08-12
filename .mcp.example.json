@@ -1,4 +1,5 @@
 {
+  "_comment": "Copy this file to .mcp.json and replace YOUR_* values with actual Supabase credentials",
   "mcpServers": {
     "supabase": {
       "command": "npx",
