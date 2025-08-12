@@ -1,5 +1,5 @@
 class EscapeCafe {
-  final String id;
+  final int id;
   final String name;
   final String? address;
   final String? contact;
@@ -26,7 +26,7 @@ class EscapeCafe {
 
   factory EscapeCafe.fromJson(Map<String, dynamic> json) {
     return EscapeCafe(
-      id: json['id'] as String,
+      id: json['id'] as int,
       name: json['name'] as String,
       address: json['address'] as String?,
       contact: json['contact'] as String?,
@@ -36,7 +36,7 @@ class EscapeCafe {
 }
 
 class EscapeTheme {
-  final String id;
+  final int id;
   final String name;
   final EscapeCafe cafe;
   final int difficulty; // 1~5
@@ -70,7 +70,7 @@ class EscapeTheme {
 
   factory EscapeTheme.fromJson(Map<String, dynamic> json) {
     return EscapeTheme(
-      id: json['id'] as String,
+      id: json['id'] as int,
       name: json['name'] as String,
       cafe: EscapeCafe.fromJson(json['cafe'] as Map<String, dynamic>),
       difficulty: json['difficulty'] as int,

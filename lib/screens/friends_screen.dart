@@ -95,6 +95,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
               }
 
               final friend = Friend(
+                connectedUserId: null, // 연결되지 않은 친구로 추가
+                user: null,
                 addedAt: DateTime.now(),
                 nickname: nickname,
                 memo: _memoController.text.isEmpty ? null : _memoController.text,
@@ -159,7 +161,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               }
 
               final updatedFriend = Friend(
-                connected: friend.connected,
+                connectedUserId: friend.connectedUserId,
                 user: friend.user,
                 addedAt: friend.addedAt,
                 nickname: nickname,
@@ -362,4 +364,5 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
     );
   }
+
 }

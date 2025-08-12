@@ -131,7 +131,7 @@ CREATE POLICY "Users can manage own friends" ON friends USING (auth.uid() = user
 #### Flutter Model
 ```dart
 class EscapeCafe {
-  final String id;           // 카페 고유 ID
+  final int id;              // 카페 고유 ID (SERIAL/INTEGER)
   final String name;         // 카페명
   final String? address;     // 주소
   final String? contact;     // 연락처
@@ -157,15 +157,13 @@ class EscapeCafe {
 #### Supabase Table (escape_cafes)
 ```sql
 CREATE TABLE escape_cafes (
-  id UUID DEFAULT gen_random_uuid(),
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   address TEXT,
   contact TEXT,
   logo_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  PRIMARY KEY (id)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- RLS 정책: 모든 인증된 유저가 조회 가능
@@ -181,8 +179,8 @@ CREATE POLICY "Anyone can view cafes" ON escape_cafes FOR SELECT TO authenticate
 #### Flutter Model
 ```dart
 class EscapeTheme {
-  final String id;                // 테마 고유 ID
-  final String cafeId;            // 소속 카페 ID
+  final int id;                   // 테마 고유 ID (SERIAL/INTEGER)
+  final int cafeId;               // 소속 카페 ID (INTEGER)
   final EscapeCafe? cafe;         // 소속 카페 (조인 시에만)
   final String name;              // 테마명
   final int difficulty;           // 난이도 (1~5)
@@ -213,17 +211,15 @@ class EscapeTheme {
 #### Supabase Table (escape_themes)
 ```sql
 CREATE TABLE escape_themes (
-  id UUID DEFAULT gen_random_uuid(),
-  cafe_id UUID REFERENCES escape_cafes(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  cafe_id INTEGER REFERENCES escape_cafes(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   difficulty INTEGER CHECK (difficulty >= 1 AND difficulty <= 5),
   time_limit_minutes INTEGER,
   genre TEXT[], -- 배열 타입
   theme_image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  PRIMARY KEY (id)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- RLS 정책: 모든 인증된 유저가 조회 가능
@@ -243,8 +239,8 @@ CREATE INDEX idx_escape_themes_cafe_id ON escape_themes(cafe_id);
 ```dart
 class DiaryEntry {
   final String id;                    // 엔트리 고유 ID (UUID)
-  final String userId;                // 작성자 ID
-  final String themeId;               // 진행한 테마 ID
+  final String userId;                // 작성자 ID (UUID)
+  final int themeId;                  // 진행한 테마 ID (INTEGER)
   final EscapeTheme? theme;           // 테마 정보 (조인 시에만)
   final DateTime date;                // 진행 날짜
   final List<String>? friendIds;      // 함께한 친구들 ID 목록
@@ -287,9 +283,9 @@ class DiaryEntry {
 #### Supabase Table (diary_entries)
 ```sql
 CREATE TABLE diary_entries (
-  id UUID DEFAULT gen_random_uuid(),
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  theme_id UUID REFERENCES escape_themes(id) ON DELETE CASCADE,
+  theme_id INTEGER REFERENCES escape_themes(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   memo TEXT,
   rating DECIMAL(2,1) CHECK (rating >= 0 AND rating <= 5),
@@ -298,9 +294,7 @@ CREATE TABLE diary_entries (
   time_taken_minutes INTEGER,
   photos TEXT[], -- 사진 URL 배열
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  PRIMARY KEY (id)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- RLS 정책: 자신의 일지만 관리 가능

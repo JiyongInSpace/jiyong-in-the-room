@@ -131,18 +131,13 @@ class DatabaseService {
       final currentUserId = AuthService.currentUser!.id;
       final response = await supabase
           .from('friends')
-          .select('''
-            connected, nickname, memo, added_at,
-            users!friends_connected_fkey(id, name, email, avatar_url, joined_at)
-          ''')
+          .select('connected_user_id, nickname, memo, added_at')
           .eq('user_id', currentUserId);
 
       return (response as List).map((json) {
-        final userData = json['users'] as Map<String, dynamic>?;
-        
         return Friend(
-          connected: json['connected'],
-          user: userData != null ? User.fromJson(userData) : null,
+          connectedUserId: json['connected_user_id'],
+          user: null, // 일단 null로 처리, 추후 연결된 사용자 정보 로드 가능
           nickname: json['nickname'],
           memo: json['memo'],
           addedAt: DateTime.parse(json['added_at']),
@@ -166,7 +161,7 @@ class DatabaseService {
       final currentUserId = AuthService.currentUser!.id;
       final friendData = {
         'user_id': currentUserId,
-        'connected': friend.connected,
+        'connected_user_id': friend.connectedUserId,
         'nickname': friend.nickname,
         'memo': friend.memo,
         'added_at': friend.addedAt.toIso8601String(),
@@ -175,17 +170,12 @@ class DatabaseService {
       final response = await supabase
           .from('friends')
           .insert(friendData)
-          .select('''
-            connected, nickname, memo, added_at,
-            users!friends_connected_fkey(id, name, email, avatar_url, joined_at)
-          ''')
+          .select('connected_user_id, nickname, memo, added_at')
           .single();
 
-      final userData = response['users'] as Map<String, dynamic>?;
-      
       return Friend(
-        connected: response['connected'],
-        user: userData != null ? User.fromJson(userData) : null,
+        connectedUserId: response['connected_user_id'],
+        user: null, // 일단 null로 처리
         nickname: response['nickname'],
         memo: response['memo'],
         addedAt: DateTime.parse(response['added_at']),
@@ -221,17 +211,12 @@ class DatabaseService {
           .update(updateData)
           .eq('user_id', currentUserId)
           .eq('nickname', friend.nickname) // 기존 닉네임으로 식별
-          .select('''
-            connected, nickname, memo, added_at,
-            users!friends_connected_fkey(id, name, email, avatar_url, joined_at)
-          ''')
+          .select('connected_user_id, nickname, memo, added_at')
           .single();
 
-      final userData = response['users'] as Map<String, dynamic>?;
-      
       return Friend(
-        connected: response['connected'],
-        user: userData != null ? User.fromJson(userData) : null,
+        connectedUserId: response['connected_user_id'],
+        user: null, // 일단 null로 처리
         nickname: response['nickname'],
         memo: response['memo'],
         addedAt: DateTime.parse(response['added_at']),

@@ -1,6 +1,6 @@
 // 가입한 유저 정보
 class User {
-  final String id; // 고유 식별자
+  final String id; // 고유 식별자 (UUID - auth.users와 동일)
   final String name;
   final String email;
   final String? avatarUrl;
@@ -38,14 +38,14 @@ class User {
 
 // 친구 정보
 class Friend {
-  final String? connected; // 연결된 유저 ID (없으면 연결되지 않은 상태)
+  final String? connectedUserId; // 연결된 유저 ID (없으면 연결되지 않은 상태)
   final User? user; // 연결된 경우에만 실제 유저 정보
   final DateTime addedAt;
   final String nickname; // 내가 부르는 이름 (필수)
   final String? memo;
 
   Friend({
-    this.connected,
+    this.connectedUserId,
     this.user,
     required this.addedAt,
     required this.nickname,
@@ -53,7 +53,7 @@ class Friend {
   });
 
   // 연결된 친구인지 확인
-  bool get isConnected => connected != null && user != null;
+  bool get isConnected => connectedUserId != null && user != null;
   
   // 표시할 이름 (별명 우선)
   String get displayName => nickname;
@@ -70,7 +70,7 @@ class Friend {
   // JSON 변환
   Map<String, dynamic> toJson() {
     return {
-      'connected': connected,
+      'connected_user_id': connectedUserId,
       'user': user?.toJson(),
       'added_at': addedAt.toIso8601String(),
       'nickname': nickname,
@@ -80,7 +80,7 @@ class Friend {
 
   factory Friend.fromJson(Map<String, dynamic> json) {
     return Friend(
-      connected: json['connected'] as String?,
+      connectedUserId: json['connected_user_id'] as String?,
       user: json['user'] != null 
           ? User.fromJson(json['user'] as Map<String, dynamic>)
           : null,
