@@ -12,6 +12,27 @@ class EscapeCafe {
     this.contact,
     this.logoUrl,
   });
+
+  // JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+      'contact': contact,
+      'logo_url': logoUrl,
+    };
+  }
+
+  factory EscapeCafe.fromJson(Map<String, dynamic> json) {
+    return EscapeCafe(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      address: json['address'] as String?,
+      contact: json['contact'] as String?,
+      logoUrl: json['logo_url'] as String?,
+    );
+  }
 }
 
 class EscapeTheme {
@@ -32,4 +53,34 @@ class EscapeTheme {
     this.genre,
     this.themeImageUrl,
   });
+
+  // JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'cafe_id': cafe.id,
+      'cafe': cafe.toJson(),
+      'difficulty': difficulty,
+      'time_limit_minutes': timeLimit?.inMinutes,
+      'genre': genre,
+      'theme_image_url': themeImageUrl,
+    };
+  }
+
+  factory EscapeTheme.fromJson(Map<String, dynamic> json) {
+    return EscapeTheme(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      cafe: EscapeCafe.fromJson(json['cafe'] as Map<String, dynamic>),
+      difficulty: json['difficulty'] as int,
+      timeLimit: json['time_limit_minutes'] != null 
+          ? Duration(minutes: json['time_limit_minutes'] as int)
+          : null,
+      genre: json['genre'] != null 
+          ? List<String>.from(json['genre'] as List)
+          : null,
+      themeImageUrl: json['theme_image_url'] as String?,
+    );
+  }
 }

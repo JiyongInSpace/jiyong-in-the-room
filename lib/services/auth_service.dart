@@ -1,57 +1,32 @@
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jiyong_in_the_room/utils/supabase.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
-  static const List<String> _scopes = ['email', 'profile'];
-
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: _scopes,
-    clientId: dotenv.env['GOOGLE_CLIENT_ID'],
-  );
-
   // 현재 사용자 상태
   static User? get currentUser => supabase.auth.currentUser;
   static bool get isLoggedIn => currentUser != null;
 
   // Google 로그인
-  static Future<AuthResponse> signInWithGoogle() async {
+  static Future<bool> signInWithGoogle() async {
     try {
-      // Google 로그인 수행
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        throw Exception('Google 로그인이 취소되었습니다.');
+      // 플랫폼에 따라 다른 방법 사용
+      if (kIsWeb) {
+        // 웹에서는 Supabase OAuth 사용 
+        final bool success = await supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: 'http://localhost:3000',
+        );
+        
+        return success;
+      } else {
+        // 모바일에서는 OAuth 사용 (추후 구현)
+        final bool success = await supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+        );
+        
+        return success;
       }
-
-      // Google 인증 토큰 획득
-      final GoogleSignInAuthentication googleAuth = 
-          await googleUser.authentication;
-
-      final String? accessToken = googleAuth.accessToken;
-      final String? idToken = googleAuth.idToken;
-
-      if (accessToken == null) {
-        throw Exception('Google 액세스 토큰을 가져올 수 없습니다.');
-      }
-
-      if (idToken == null) {
-        throw Exception('Google ID 토큰을 가져올 수 없습니다.');
-      }
-
-      // Supabase로 Google OAuth 로그인
-      final AuthResponse response = await supabase.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
-
-      // 프로필 정보 자동 생성/업데이트
-      if (response.user != null) {
-        await _updateUserProfile(response.user!);
-      }
-
-      return response;
     } catch (e) {
       throw Exception('Google 로그인 중 오류가 발생했습니다: $e');
     }
@@ -60,31 +35,10 @@ class AuthService {
   // 로그아웃
   static Future<void> signOut() async {
     try {
-      // Google 로그아웃
-      await _googleSignIn.signOut();
-      
       // Supabase 로그아웃
       await supabase.auth.signOut();
     } catch (e) {
       throw Exception('로그아웃 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  // 사용자 프로필 정보 업데이트
-  static Future<void> _updateUserProfile(User user) async {
-    try {
-      final Map<String, dynamic> profileData = {
-        'id': user.id,
-        'email': user.email,
-        'display_name': user.userMetadata?['full_name'] ?? user.email?.split('@')[0],
-        'avatar_url': user.userMetadata?['avatar_url'],
-      };
-
-      // profiles 테이블에 upsert (없으면 생성, 있으면 업데이트)
-      await supabase.from('profiles').upsert(profileData);
-    } catch (e) {
-      print('프로필 업데이트 중 오류: $e');
-      // 프로필 업데이트 실패는 로그인을 방해하지 않음
     }
   }
 
@@ -104,7 +58,8 @@ class AuthService {
       
       return response;
     } catch (e) {
-      print('프로필 조회 중 오류: $e');
+      // TODO: 로깅 프레임워크로 교체
+      // print('프로필 조회 중 오류: $e');
       return null;
     }
   }

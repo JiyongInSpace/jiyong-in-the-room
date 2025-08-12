@@ -62,7 +62,27 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('탈출일지'),
+        title: Row(
+          children: [
+            const Text('탈출일지'),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isLoggedIn ? Colors.green : Colors.grey,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isLoggedIn ? '로그인됨' : '로그아웃',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(

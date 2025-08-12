@@ -13,6 +13,27 @@ class User {
     this.avatarUrl,
     required this.joinedAt,
   });
+
+  // JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'avatar_url': avatarUrl,
+      'joined_at': joinedAt.toIso8601String(),
+    };
+  }
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      avatarUrl: json['avatar_url'] as String?,
+      joinedAt: DateTime.parse(json['joined_at'] as String),
+    );
+  }
 }
 
 // 친구 정보
@@ -45,4 +66,27 @@ class Friend {
   
   // 실제 이름 (연결된 경우만)
   String? get realName => user?.name;
+
+  // JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'connected': connected,
+      'user': user?.toJson(),
+      'added_at': addedAt.toIso8601String(),
+      'nickname': nickname,
+      'memo': memo,
+    };
+  }
+
+  factory Friend.fromJson(Map<String, dynamic> json) {
+    return Friend(
+      connected: json['connected'] as String?,
+      user: json['user'] != null 
+          ? User.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
+      addedAt: DateTime.parse(json['added_at'] as String),
+      nickname: json['nickname'] as String,
+      memo: json['memo'] as String?,
+    );
+  }
 }

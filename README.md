@@ -105,8 +105,13 @@ SUPABASE_PROJECT_REF=your_project_ref_here    # MCP용
    - `.mcp.example.json`을 복사해서 `.mcp.json` 생성
    - 프로젝트 정보 입력
 
+### Google OAuth 설정 (Android)
+1. `android/app/google-services.json.example`을 복사하여 `google-services.json` 생성
+2. Firebase Console에서 다운로드한 실제 파일로 교체
+3. 패키지 명: `com.jiyong.escape_diary`
+
 ### 보안 주의사항
-- `.env`, `.mcp.json` 파일은 `.gitignore`에 포함되어 있습니다
+- `.env`, `.mcp.json`, `google-services.json` 파일은 `.gitignore`에 포함되어 있습니다
 - 절대 실제 키 값이 포함된 파일을 커밋하지 마세요
 - Next.js와 같은 방식의 환경변수 관리
 

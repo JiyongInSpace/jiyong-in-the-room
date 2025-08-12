@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jiyong_in_the_room/screens/contact_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
@@ -159,23 +160,27 @@ class SettingsScreen extends StatelessWidget {
         ),
       );
 
-      final response = await AuthService.signInWithGoogle();
+      final success = await AuthService.signInWithGoogle();
+      
+      if (kDebugMode) {
+        print('🚀 OAuth 시작 결과: $success');
+      }
       
       // 로딩 다이얼로그 닫기
       if (context.mounted) {
         Navigator.of(context).pop();
       }
 
-      if (response.user != null) {
+      if (success) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${response.user!.email}으로 로그인되었습니다!'),
+            const SnackBar(
+              content: Text('로그인이 시작되었습니다. 브라우저에서 인증을 완료해주세요.'),
               backgroundColor: Colors.green,
             ),
           );
-          // 설정 화면 닫기
-          Navigator.of(context).pop();
+          // 설정 화면 닫기 - 잠시 제거해서 상태 변화 확인
+          // Navigator.of(context).pop();
         }
       }
     } catch (e) {
