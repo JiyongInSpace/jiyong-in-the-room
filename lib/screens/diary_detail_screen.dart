@@ -91,7 +91,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                         const Icon(Icons.lock_clock, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          widget.entry.cafe.name,
+                          widget.entry.cafe?.name ?? '알 수 없음',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

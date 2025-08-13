@@ -25,5 +25,5 @@ class DiaryEntry {
     this.escaped,
   });
 
-  EscapeCafe get cafe => theme.cafe;
+  EscapeCafe? get cafe => theme.cafe;
 }

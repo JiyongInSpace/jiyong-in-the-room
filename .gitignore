@@ -46,6 +46,7 @@ app.*.map.json
 
 # Environment variables
 .env
+*.bak
 
 # Google Services (Firebase)
 android/app/google-services.json

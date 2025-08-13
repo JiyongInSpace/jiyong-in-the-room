@@ -69,7 +69,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   // 기존 일지 데이터로 모든 필드를 초기화하는 메서드
   void _initializeFields() {
     // widget.entry: 부모 위젯에서 전달받은 기존 일지 데이터
-    selectedCafe = widget.entry.cafe.name;
+    selectedCafe = widget.entry.cafe?.name ?? '알 수 없음';
     selectedTheme = widget.entry.theme.name;
     selectedDate = widget.entry.date;
     
@@ -526,8 +526,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                   theme: EscapeTheme(
                     id: widget.entry.theme.id, // 기존 테마 ID 유지
                     name: selectedTheme!,
-                    cafe: EscapeCafe(
-                      id: widget.entry.cafe.id, // 기존 카페 ID 유지
+                    cafeId: widget.entry.theme.cafeId,                    cafe: EscapeCafe(
+                      id: widget.entry.cafe?.id ?? 0, // 기존 카페 ID 유지
                       name: selectedCafe!,
                     ),
                     difficulty: widget.entry.theme.difficulty, // 기존 난이도 유지

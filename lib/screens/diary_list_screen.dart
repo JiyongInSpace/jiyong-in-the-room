@@ -143,7 +143,7 @@ class DiaryListScreen extends StatelessWidget {
                                 Expanded(
                                   // 문자열 보간법: ${}로 변수 값을 문자열에 삽입
                                   child: Text(
-                                    '${entry.cafe.name} - ${entry.theme.name}',
+                                    '${entry.cafe?.name ?? '알 수 없음'} - ${entry.theme.name}',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold, // 굵은 글씨
@@ -202,23 +202,15 @@ class DiaryListScreen extends StatelessWidget {
           // is 연산자로 타입 확인
           if (result != null &&
               result is Map<String, dynamic> && // Map 타입인지 확인
-              result['cafe'] is String &&        // 카페가 문자열인지 확인
-              result['theme'] is String &&       // 테마가 문자열인지 확인
+              result['selectedCafe'] is EscapeCafe &&        // 카페가 EscapeCafe인지 확인
+              result['selectedTheme'] is EscapeTheme &&       // 테마가 EscapeTheme인지 확인
               result['date'] is DateTime &&      // 날짜가 DateTime인지 확인
               result['friends'] is List<Friend>) { // 친구가 Friend 리스트인지 확인
             // 사용자가 입력한 데이터로 새로운 DiaryEntry 객체 생성
             final entry = DiaryEntry(
               // millisecondsSinceEpoch: 1970년 1월 1일부터의 밀리초를 유니크 ID로 사용
               id: DateTime.now().millisecondsSinceEpoch,
-              theme: EscapeTheme(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                name: result['theme'] as String, // as String: 타입 캠스팅
-                cafe: EscapeCafe(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: result['cafe'] as String,
-                ),
-                difficulty: 3, // 기본 난이도
-              ),
+              theme: result['selectedTheme'] as EscapeTheme,
               date: result['date'] as DateTime,
               friends: result['friends'] as List<Friend>,
               memo: result['memo'] as String?,     // nullable

@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 // 사용자 정의 모델 클래스 import (Friend 모델 사용)
 import 'package:jiyong_in_the_room/models/user.dart';
+import 'package:jiyong_in_the_room/models/escape_cafe.dart';
+import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
 // 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
@@ -16,19 +18,15 @@ class WriteDiaryScreen extends StatefulWidget {
 
 // State 클래스: StatefulWidget의 실제 상태와 UI 로직을 담당
 class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
-  // Map<키타입, 값타입>: 키-값 쌍으로 데이터를 저장하는 자료구조
-  // 카페별로 테마 목록을 관리하는 맵
-  final Map<String, List<String>> cafeThemes = {
-    '비밀의화원': ['유령의집', '황금마차'],
-    '키이스': ['타임머신', '사라진 도시'],
-    '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
-  };
+  // 카페와 테마 데이터
+  List<EscapeCafe> cafes = [];
+  Map<int, List<EscapeTheme>> cafeThemes = {};
+  bool isLoading = true;
 
-  // String?: null이 될 수 있는 String 타입 (nullable)
   // 사용자가 선택한 카페를 저장하는 변수
-  String? selectedCafe;
+  EscapeCafe? selectedCafe;
   // 사용자가 선택한 테마를 저장하는 변수
-  String? selectedTheme;
+  EscapeTheme? selectedTheme;
   // 사용자가 선택한 날짜를 저장하는 변수
   DateTime? selectedDate;
 
@@ -60,6 +58,34 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // bool: 불린 타입 (true/false만 가능)
   // 상세 정보 표시 여부를 저장하는 변수
   bool _showDetails = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCafesAndThemes();
+  }
+
+  Future<void> _loadCafesAndThemes() async {
+    try {
+      final loadedCafes = await EscapeRoomService.getAllCafes();
+      final loadedThemes = await EscapeRoomService.getThemesGroupedByCafe();
+      
+      setState(() {
+        cafes = loadedCafes;
+        cafeThemes = loadedThemes;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('데이터를 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
 
   // @override: 부모 클래스의 메서드를 재정의한다는 표시
   // dispose(): 위젯이 메모리에서 제거될 때 호출되는 메서드
@@ -163,23 +189,26 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             ),
             // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
             const SizedBox(height: 20),
-            // RawAutocomplete<타입>: 자동완성 기능을 제공하는 위젯
-            // <String>: 제네릭 타입으로 String 타입의 옵션들을 처리
-            RawAutocomplete<String>(
-              textEditingController: _cafeController,
-              focusNode: FocusNode(),
-              optionsBuilder: (text) {
-                return cafeThemes.keys
-                    .where((cafe) => cafe.contains(text.text))
-                    .toList();
-              },
-              onSelected: (value) {
-                setState(() {
-                  selectedCafe = value;
-                  selectedTheme = null;
-                  _themeController.clear(); // 이전 테마 입력 초기화
-                });
-              },
+            // 로딩 중이면 로딩 인디케이터 표시
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              // RawAutocomplete<타입>: 자동완성 기능을 제공하는 위젯
+              RawAutocomplete<EscapeCafe>(
+                textEditingController: _cafeController,
+                focusNode: FocusNode(),
+                optionsBuilder: (text) {
+                  return cafes
+                      .where((cafe) => cafe.name.contains(text.text))
+                      .toList();
+                },
+                onSelected: (cafe) {
+                  setState(() {
+                    selectedCafe = cafe;
+                    selectedTheme = null;
+                    _themeController.clear(); // 이전 테마 입력 초기화
+                  });
+                },
               fieldViewBuilder: (
                 context,
                 controller,
@@ -212,7 +241,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
                           return ListTile(
-                            title: Text(option),
+                            title: Text(option.name),
                             onTap: () => onSelected(option),
                           );
                         },
@@ -223,19 +252,20 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               },
             ),
             const SizedBox(height: 20),
-            RawAutocomplete<String>(
-              textEditingController: _themeController,
-              focusNode: FocusNode(),
-              optionsBuilder: (text) {
-                if (selectedCafe == null) return const Iterable<String>.empty();
-                final themes = cafeThemes[selectedCafe]!;
-                return themes.where((t) => t.contains(text.text)).toList();
-              },
-              onSelected: (value) {
-                setState(() {
-                  selectedTheme = value;
-                });
-              },
+            if (!isLoading)
+              RawAutocomplete<EscapeTheme>(
+                textEditingController: _themeController,
+                focusNode: FocusNode(),
+                optionsBuilder: (text) {
+                  if (selectedCafe == null) return const Iterable<EscapeTheme>.empty();
+                  final themes = cafeThemes[selectedCafe!.id] ?? [];
+                  return themes.where((theme) => theme.name.contains(text.text)).toList();
+                },
+                onSelected: (theme) {
+                  setState(() {
+                    selectedTheme = theme;
+                  });
+                },
               fieldViewBuilder: (
                 context,
                 controller,
@@ -269,7 +299,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
                           return ListTile(
-                            title: Text(option),
+                            title: Text(option.name),
                             onTap: () => onSelected(option),
                           );
                         },
@@ -521,8 +551,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 }
 
                 Navigator.pop(context, {
-                  'cafe': selectedCafe,
-                  'theme': selectedTheme,
+                  'cafe': selectedCafe!.name,
+                  'theme': selectedTheme!.name,
+                  'selectedCafe': selectedCafe,
+                  'selectedTheme': selectedTheme,
                   'date': selectedDate,
                   'friends': selectedFriends,
                   'memo': _memoController.text.isEmpty ? null : _memoController.text,

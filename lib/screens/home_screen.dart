@@ -180,7 +180,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     title: Text(entry.theme.name),
                     subtitle: Text(
-                      '${entry.cafe.name} • ${entry.date.year}.${entry.date.month.toString().padLeft(2, '0')}.${entry.date.day.toString().padLeft(2, '0')}',
+                      '${entry.cafe?.name ?? '알 수 없음'} • ${entry.date.year}.${entry.date.month.toString().padLeft(2, '0')}.${entry.date.day.toString().padLeft(2, '0')}',
                     ),
                     trailing: entry.rating != null
                         ? Row(

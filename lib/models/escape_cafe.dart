@@ -38,7 +38,8 @@ class EscapeCafe {
 class EscapeTheme {
   final int id;
   final String name;
-  final EscapeCafe cafe;
+  final int cafeId; // cafe_id 필드 추가
+  final EscapeCafe? cafe; // nullable로 변경 (조인 시에만 사용)
   final int difficulty; // 1~5
   final Duration? timeLimit;
   final List<String>? genre; // ex: 추리, 공포, SF 등
@@ -47,7 +48,8 @@ class EscapeTheme {
   EscapeTheme({
     required this.id,
     required this.name,
-    required this.cafe,
+    required this.cafeId,
+    this.cafe,
     required this.difficulty,
     this.timeLimit,
     this.genre,
@@ -59,12 +61,12 @@ class EscapeTheme {
     return {
       'id': id,
       'name': name,
-      'cafe_id': cafe.id,
-      'cafe': cafe.toJson(),
+      'cafe_id': cafeId,
       'difficulty': difficulty,
       'time_limit_minutes': timeLimit?.inMinutes,
       'genre': genre,
       'theme_image_url': themeImageUrl,
+      if (cafe != null) 'escape_cafes': cafe!.toJson(),
     };
   }
 
@@ -72,7 +74,10 @@ class EscapeTheme {
     return EscapeTheme(
       id: json['id'] as int,
       name: json['name'] as String,
-      cafe: EscapeCafe.fromJson(json['cafe'] as Map<String, dynamic>),
+      cafeId: json['cafe_id'] as int,
+      cafe: json['escape_cafes'] != null 
+          ? EscapeCafe.fromJson(json['escape_cafes'] as Map<String, dynamic>)
+          : null,
       difficulty: json['difficulty'] as int,
       timeLimit: json['time_limit_minutes'] != null 
           ? Duration(minutes: json['time_limit_minutes'] as int)

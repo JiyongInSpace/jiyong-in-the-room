@@ -24,6 +24,7 @@ class DatabaseService {
         return EscapeTheme(
           id: themeData['id'],
           name: themeData['name'],
+          cafeId: themeData['cafe_id'],
           cafe: EscapeCafe.fromJson(cafeData),
           difficulty: themeData['difficulty'],
           timeLimit: themeData['time_limit_minutes'] != null 
@@ -76,11 +77,11 @@ class DatabaseService {
       final cafeExists = await supabase
           .from('escape_cafes')
           .select('id')
-          .eq('id', theme.cafe.id)
+          .eq('id', theme.cafe?.id ?? 0)
           .maybeSingle();
 
-      if (cafeExists == null) {
-        await createCafe(theme.cafe);
+      if (cafeExists == null && theme.cafe != null) {
+        await createCafe(theme.cafe!);
       }
 
       // 테마 생성
@@ -101,6 +102,7 @@ class DatabaseService {
       return EscapeTheme(
         id: response['id'],
         name: response['name'],
+        cafeId: response['cafe_id'],
         cafe: EscapeCafe.fromJson(cafeData),
         difficulty: response['difficulty'],
         timeLimit: response['time_limit_minutes'] != null 
