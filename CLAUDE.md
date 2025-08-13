@@ -110,15 +110,25 @@ dependencies:
 
 ### 현재 작동하는 기능
 1. **OAuth 로그인/로그아웃** - 완전 구현
-2. **사용자 프로필 관리** - 자동 생성/동기화
+2. **사용자 프로필 관리** - 자동 생성/동기화 (UPSERT 방식)
 3. **설정 페이지** - 인증 상태별 동적 UI
 4. **데이터베이스 연결** - RLS 보안 정책 적용
 5. **실시간 상태 관리** - 인증 변경 감지
+6. **방탈출 테마 DB 연동** - 지연 로딩 방식 구현 ✨
+7. **카페/테마 자동완성** - Supabase 실시간 데이터
+8. **JSON 직렬화** - EscapeCafe, EscapeTheme 모델 완성
+
+### 최근 구현 완료 (2025-08-13)
+- **🔄 지연 로딩**: 카페 선택 시에만 테마 로드 (성능 최적화)
+- **🎯 자동 포커스**: 테마 로딩 완료 시 자동으로 옵션박스 표시
+- **🛠️ Nullable 안전성**: difficulty 등 DB 필드 nullable 처리
+- **⚡ 실시간 데이터**: 하드코딩 제거, 완전 DB 기반
+- **🔧 프로필 자동 생성**: 로그인 시 profiles 테이블 자동 생성/업데이트
 
 ### 다음 구현 예정
-- **JSON 직렬화 메서드** - 모델 클래스 Supabase 연동
-- **CRUD 작업** - 실제 데이터 저장/조회
 - **로컬-클라우드 동기화** - 회원 전환 시 데이터 마이그레이션
+- **일지 CRUD 작업** - Supabase 연동 완성
+- **친구 기능** - 실제 연결된 사용자와의 관계
 
 ## Development Notes
 
@@ -150,9 +160,11 @@ dependencies:
 - `lib/models/user.dart` - User, Friend 모델
 
 ### 핵심 로직
-- `lib/services/auth_service.dart` - **OAuth 인증 중앙 관리** (Google)
+- `lib/services/auth_service.dart` - **OAuth 인증 중앙 관리** (Google + 프로필 자동 생성)
+- `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
 - `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적
 - `lib/screens/settings_screen.dart` - 설정 페이지 (OAuth UI 포함)
+- `lib/screens/write_diary_screen.dart` - **DB 기반 일지 작성** (지연 로딩)
 - `lib/screens/home_screen.dart` - 홈 화면 (인증 상태 반영)
 
 ### 환경변수 및 설정

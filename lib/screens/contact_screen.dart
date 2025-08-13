@@ -32,7 +32,7 @@ class ContactScreen extends StatelessWidget {
               ),
               SizedBox(height: 24),
               SelectableText(
-                'support@escapediary.com',
+                'devjiyong1219@gmail.com',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

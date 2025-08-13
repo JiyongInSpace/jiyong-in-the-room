@@ -183,7 +183,7 @@ class EscapeTheme {
   final int cafeId;               // 소속 카페 ID (INTEGER)
   final EscapeCafe? cafe;         // 소속 카페 (조인 시에만)
   final String name;              // 테마명
-  final int difficulty;           // 난이도 (1~5)
+  final int? difficulty;          // 난이도 (1~5) - NULLABLE: DB에서 null 값 허용
   final Duration? timeLimit;      // 제한시간
   final List<String>? genre;      // 장르 (추리, 공포, SF 등)
   final String? themeImageUrl;    // 테마 이미지 URL
@@ -195,7 +195,7 @@ class EscapeTheme {
     required this.cafeId,
     this.cafe,
     required this.name,
-    required this.difficulty,
+    this.difficulty,              // NULLABLE로 변경 (2025-08-13)
     this.timeLimit,
     this.genre,
     this.themeImageUrl,
@@ -203,8 +203,8 @@ class EscapeTheme {
     required this.updatedAt,
   });
   
-  factory EscapeTheme.fromJson(Map<String, dynamic> json) { /* 구현 예정 */ }
-  Map<String, dynamic> toJson() { /* 구현 예정 */ }
+  factory EscapeTheme.fromJson(Map<String, dynamic> json) { /* 구현 완료 */ }
+  Map<String, dynamic> toJson() { /* 구현 완료 */ }
 }
 ```
 
@@ -214,7 +214,7 @@ CREATE TABLE escape_themes (
   id SERIAL PRIMARY KEY,
   cafe_id INTEGER REFERENCES escape_cafes(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  difficulty INTEGER CHECK (difficulty >= 1 AND difficulty <= 5),
+  difficulty INTEGER CHECK (difficulty IS NULL OR (difficulty >= 1 AND difficulty <= 5)), -- NULLABLE (2025-08-13)
   time_limit_minutes INTEGER,
   genre TEXT[], -- 배열 타입
   theme_image_url TEXT,
@@ -372,10 +372,29 @@ WHERE def.diary_entry_id = $1;
 
 ---
 
-## 🎯 데이터 흐름
+## 🚀 최근 구현 완료 (2025-08-13)
+
+### ⚡ 주요 업데이트 사항
+1. **지연 로딩 패턴** - `EscapeRoomService` 클래스로 DB 쿼리 분리
+2. **EscapeTheme.difficulty** - nullable 처리로 DB null 값 대응
+3. **자동 프로필 생성** - OAuth 로그인 시 UPSERT로 중복 처리
+4. **RawAutocomplete UX 개선** - 자동 포커스 및 옵션 표시 최적화
+5. **JSON 직렬화** - Flutter 모델의 `fromJson/toJson` 구현 완료
+
+### 🔄 서비스 계층 구조
+```dart
+// 새로 추가된 서비스 클래스들
+- AuthService      // OAuth 인증 관리
+- EscapeRoomService // 카페/테마 DB 쿼리 (지연 로딩)
+- DatabaseService   // 친구/일지 CRUD 작업
+```
+
+### 🎯 데이터 흐름
 
 1. **OAuth 로그인** → `auth.users` 자동 생성
-2. **프로필 설정** → `profiles` 테이블에 추가 정보 저장
-3. **친구 추가** → `friends` 테이블에 저장 (연결/비연결 모두 가능)
-4. **일지 작성** → `diary_entries` + `diary_entry_friends` 관계 생성
-5. **통계 조회** → 각 테이블에서 집계 데이터 산출
+2. **프로필 자동 생성** → `AuthService.getCurrentUserProfile()` UPSERT
+3. **카페 목록 로드** → `EscapeRoomService.getAllCafes()` 
+4. **테마 지연 로딩** → 카페 선택 시 `EscapeRoomService.getThemesByCafe(cafeId)`
+5. **친구 관리** → `DatabaseService` CRUD + 오프라인 지원
+6. **일지 작성** → `diary_entries` + `diary_entry_friends` 관계 생성
+7. **통계 조회** → 각 테이블에서 집계 데이터 산출
