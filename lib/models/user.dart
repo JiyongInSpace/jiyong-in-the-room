@@ -72,7 +72,7 @@ class Friend {
     return {
       'connected_user_id': connectedUserId,
       'user': user?.toJson(),
-      'added_at': addedAt.toIso8601String(),
+      'added_at': addedAt.toUtc().toIso8601String(),
       'nickname': nickname,
       'memo': memo,
     };

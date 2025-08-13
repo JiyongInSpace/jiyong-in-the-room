@@ -166,7 +166,7 @@ class DatabaseService {
         'connected_user_id': friend.connectedUserId,
         'nickname': friend.nickname,
         'memo': friend.memo,
-        'added_at': friend.addedAt.toIso8601String(),
+        'added_at': friend.addedAt.toUtc().toIso8601String(),
       };
 
       final response = await supabase
