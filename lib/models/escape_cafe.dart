@@ -40,7 +40,7 @@ class EscapeTheme {
   final String name;
   final int cafeId; // cafe_id 필드 추가
   final EscapeCafe? cafe; // nullable로 변경 (조인 시에만 사용)
-  final int difficulty; // 1~5
+  final int? difficulty; // nullable로 변경 - DB에서 null이 올 수 있음
   final Duration? timeLimit;
   final List<String>? genre; // ex: 추리, 공포, SF 등
   final String? themeImageUrl;
@@ -50,7 +50,7 @@ class EscapeTheme {
     required this.name,
     required this.cafeId,
     this.cafe,
-    required this.difficulty,
+    this.difficulty, // required 제거 - nullable로 변경
     this.timeLimit,
     this.genre,
     this.themeImageUrl,
@@ -71,14 +71,22 @@ class EscapeTheme {
   }
 
   factory EscapeTheme.fromJson(Map<String, dynamic> json) {
+    print('EscapeTheme.fromJson received: $json');
+    
+    // cafe_id가 null인지 확인
+    final cafeId = json['cafe_id'];
+    if (cafeId == null) {
+      throw Exception('cafe_id is null in EscapeTheme data: $json');
+    }
+    
     return EscapeTheme(
       id: json['id'] as int,
       name: json['name'] as String,
-      cafeId: json['cafe_id'] as int,
+      cafeId: cafeId as int,
       cafe: json['escape_cafes'] != null 
           ? EscapeCafe.fromJson(json['escape_cafes'] as Map<String, dynamic>)
           : null,
-      difficulty: json['difficulty'] as int,
+      difficulty: json['difficulty'] as int?, // nullable로 변경
       timeLimit: json['time_limit_minutes'] != null 
           ? Duration(minutes: json['time_limit_minutes'] as int)
           : null,

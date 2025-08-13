@@ -38,10 +38,16 @@ class EscapeRoomService {
           .eq('cafe_id', cafeId)
           .order('name', ascending: true);
       
+      print('Raw theme response: $response');
+      
       return (response as List)
-          .map((theme) => EscapeTheme.fromJson(theme))
+          .map((theme) {
+            print('Processing theme: $theme');
+            return EscapeTheme.fromJson(theme);
+          })
           .toList();
     } catch (e) {
+      print('Error details: $e');
       throw Exception('테마 목록을 불러오는데 실패했습니다: $e');
     }
   }

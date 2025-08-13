@@ -20,8 +20,12 @@ class WriteDiaryScreen extends StatefulWidget {
 class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // 카페와 테마 데이터
   List<EscapeCafe> cafes = [];
-  Map<int, List<EscapeTheme>> cafeThemes = {};
-  bool isLoading = true;
+  List<EscapeTheme> currentThemes = []; // 현재 선택된 카페의 테마들
+  bool isLoadingCafes = true;
+  bool isLoadingThemes = false;
+  
+  // 테마 필드의 포커스 노드
+  final FocusNode _themeFocusNode = FocusNode();
 
   // 사용자가 선택한 카페를 저장하는 변수
   EscapeCafe? selectedCafe;
@@ -62,26 +66,68 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCafesAndThemes();
+    _loadCafes();
   }
 
-  Future<void> _loadCafesAndThemes() async {
+  Future<void> _loadCafes() async {
     try {
       final loadedCafes = await EscapeRoomService.getAllCafes();
-      final loadedThemes = await EscapeRoomService.getThemesGroupedByCafe();
       
       setState(() {
         cafes = loadedCafes;
-        cafeThemes = loadedThemes;
-        isLoading = false;
+        isLoadingCafes = false;
       });
     } catch (e) {
       setState(() {
-        isLoading = false;
+        isLoadingCafes = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터를 불러오는데 실패했습니다: $e')),
+          SnackBar(content: Text('카페 목록을 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadThemesForCafe(int cafeId) async {
+    print('Loading themes for cafe ID: $cafeId');
+    setState(() {
+      isLoadingThemes = true;
+      currentThemes = [];
+      selectedTheme = null;
+      _themeController.clear();
+    });
+
+    try {
+      final loadedThemes = await EscapeRoomService.getThemesByCafe(cafeId);
+      print('Loaded ${loadedThemes.length} themes');
+      
+      setState(() {
+        currentThemes = loadedThemes;
+        isLoadingThemes = false;
+      });
+      
+      // 테마 로딩 완료 후 포커스 주고 optionsBuilder 트리거
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _themeFocusNode.requestFocus();
+          // 빈 스페이스를 추가했다가 바로 제거하여 optionsBuilder 트리거
+          _themeController.text = ' ';
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {
+              _themeController.text = '';
+            }
+          });
+        }
+      });
+    } catch (e) {
+      print('Error loading themes: $e');
+      setState(() {
+        isLoadingThemes = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('테마 목록을 불러오는데 실패했습니다: $e')),
         );
       }
     }
@@ -98,6 +144,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     _memoController.dispose();
     _hintController.dispose();
     _timeController.dispose();
+    // 포커스 노드도 해제
+    _themeFocusNode.dispose();
     // 부모 클래스의 dispose() 메서드도 호출해야 함
     super.dispose();
   }
@@ -153,6 +201,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // BuildContext: 위젯 트리에서 현재 위젯의 위치 정보를 담고 있는 객체
   @override
   Widget build(BuildContext context) {
+    print('Build - selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}');
+    
     // 삼항연산자 (조건 ? 참일때값 : 거짓일때값)
     // selectedDate!: null이 아님을 확신할 때 사용하는 연산자
     final selectedDateStr =
@@ -189,8 +239,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             ),
             // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
             const SizedBox(height: 20),
-            // 로딩 중이면 로딩 인디케이터 표시
-            if (isLoading)
+            // 카페 로딩 중이면 로딩 인디케이터 표시
+            if (isLoadingCafes)
               const Center(child: CircularProgressIndicator())
             else
               // RawAutocomplete<타입>: 자동완성 기능을 제공하는 위젯
@@ -203,11 +253,16 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       .toList();
                 },
                 onSelected: (cafe) {
+                  print('Cafe selected: ${cafe.name} (ID: ${cafe.id})');
                   setState(() {
                     selectedCafe = cafe;
-                    selectedTheme = null;
-                    _themeController.clear(); // 이전 테마 입력 초기화
                   });
+                  // 컨트롤러 텍스트를 카페 이름으로 설정
+                  _cafeController.text = cafe.name;
+                  // 포커스 해제로 옵션 박스를 즉시 닫음
+                  FocusScope.of(context).unfocus();
+                  // 선택된 카페의 테마들을 로드
+                  _loadThemesForCafe(cafe.id);
                 },
               fieldViewBuilder: (
                 context,
@@ -252,19 +307,36 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               },
             ),
             const SizedBox(height: 20),
-            if (!isLoading)
-              RawAutocomplete<EscapeTheme>(
-                textEditingController: _themeController,
-                focusNode: FocusNode(),
-                optionsBuilder: (text) {
-                  if (selectedCafe == null) return const Iterable<EscapeTheme>.empty();
-                  final themes = cafeThemes[selectedCafe!.id] ?? [];
-                  return themes.where((theme) => theme.name.contains(text.text)).toList();
-                },
+            // 테마 선택 영역 - 항상 텍스트 필드를 표시하되 상태에 따라 비활성화
+            RawAutocomplete<EscapeTheme>(
+              textEditingController: _themeController,
+              focusNode: _themeFocusNode,
+              optionsBuilder: (text) {
+                print('optionsBuilder called - text: "${text.text}", selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}');
+                
+                if (selectedCafe == null || isLoadingThemes) {
+                  print('Returning empty - no cafe or loading');
+                  return const Iterable<EscapeTheme>.empty();
+                }
+                
+                // 텍스트가 비어있어도 모든 테마를 보여주도록 변경
+                if (text.text.isEmpty) {
+                  print('Returning all ${currentThemes.length} themes');
+                  return currentThemes;
+                }
+                
+                final filtered = currentThemes.where((theme) => theme.name.contains(text.text)).toList();
+                print('Returning ${filtered.length} filtered themes');
+                return filtered;
+              },
                 onSelected: (theme) {
                   setState(() {
                     selectedTheme = theme;
                   });
+                  // 컨트롤러 텍스트를 테마 이름으로 설정
+                  _themeController.text = theme.name;
+                  // 포커스 해제로 옵션 박스를 즉시 닫음
+                  FocusScope.of(context).unfocus();
                 },
               fieldViewBuilder: (
                 context,
@@ -275,13 +347,20 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
-                  enabled: selectedCafe != null,
+                  enabled: selectedCafe != null && !isLoadingThemes,
                   decoration: InputDecoration(
-                    labelText: selectedCafe != null ? '테마 선택' : '먼저 카페를 선택해주세요',
+                    labelText: selectedCafe == null 
+                        ? '먼저 카페를 선택해주세요'
+                        : isLoadingThemes 
+                            ? '테마 로딩 중...'
+                            : '테마 선택',
+                    hintText: selectedCafe != null && !isLoadingThemes 
+                        ? '테마를 입력하거나 선택하세요' 
+                        : null,
                     border: const OutlineInputBorder(),
                     suffixIcon: selectedTheme != null 
                         ? const Icon(Icons.check_circle, color: Colors.green)
-                        : controller.text.isNotEmpty && selectedCafe != null
+                        : controller.text.isNotEmpty
                             ? const Icon(Icons.edit, color: Colors.orange)
                             : null,
                   ),
