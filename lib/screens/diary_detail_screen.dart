@@ -297,11 +297,17 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             ),
           );
 
-          if (result != null && result is DiaryEntry && mounted) {
-            if (widget.onUpdate != null) {
-              widget.onUpdate!(result);
+          if (result != null && mounted) {
+            if (result == 'deleted') {
+              // 일지가 삭제된 경우 - 메인 화면으로 돌아가면서 삭제 신호 전달
+              Navigator.pop(context, 'deleted');
+            } else if (result is DiaryEntry) {
+              // 일지가 수정된 경우 - 수정된 내용 반영
+              if (widget.onUpdate != null) {
+                widget.onUpdate!(result);
+              }
+              Navigator.pop(context, result);
             }
-            Navigator.pop(context, result);
           }
         },
         child: const Icon(Icons.edit),

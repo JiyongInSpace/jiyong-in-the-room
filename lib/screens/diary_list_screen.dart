@@ -23,6 +23,8 @@ class DiaryListScreen extends StatelessWidget {
   final void Function(DiaryEntry) onAdd;
   // 일지 수정 시 호출될 콜백 함수 (nullable - 수정 기능이 없을 수도 있음)
   final void Function(DiaryEntry, DiaryEntry)? onUpdate;
+  // 일지 삭제 시 호출될 콜백 함수 (nullable - 삭제 기능이 없을 수도 있음)
+  final void Function(DiaryEntry)? onDelete;
   // 친구 목록
   final List<Friend> friends;
   // 친구 추가 콜백 함수
@@ -38,6 +40,7 @@ class DiaryListScreen extends StatelessWidget {
     required this.diaryList,
     required this.onAdd,
     this.onUpdate, // 선택사항: onUpdate는 null이 될 수 있음
+    this.onDelete, // 선택사항: onDelete는 null이 될 수 있음
     required this.friends,
     required this.onAddFriend,
     required this.onRemoveFriend,
@@ -123,10 +126,15 @@ class DiaryListScreen extends StatelessWidget {
                           ),
                         );
                         
-                        // 상세 화면에서 돌아온 결과가 수정된 일지라면 업데이트
-                        // is: 타입 확인 연산자
-                        if (result != null && result is DiaryEntry && onUpdate != null) {
-                          onUpdate!(entry, result);
+                        // 상세 화면에서 돌아온 결과 처리
+                        if (result != null) {
+                          if (result == 'deleted' && onDelete != null) {
+                            // 일지가 삭제된 경우
+                            onDelete!(entry);
+                          } else if (result is DiaryEntry && onUpdate != null) {
+                            // 일지가 수정된 경우
+                            onUpdate!(entry, result);
+                          }
                         }
                       },
                       child: Padding(

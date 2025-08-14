@@ -5,6 +5,10 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 데이터 모델 import
 // 사용자와 친구 데이터 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
+// 데이터베이스 서비스 import
+import 'package:jiyong_in_the_room/services/database_service.dart';
+// 인증 서비스 import
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 
 // 일지 수정 화면 - 기존 일지 엔트리를 수정하는 위젯
 class EditDiaryScreen extends StatefulWidget {
@@ -508,40 +512,115 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               ),
             ],
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                if (selectedCafe == null ||
-                    selectedTheme == null ||
-                    selectedDate == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('모든 항목을 선택해주세요')),
-                  );
-                  return;
-                }
+            // 버튼들을 가로로 배치
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // 삭제 버튼
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // 현재 사용자가 작성자인지 확인
+                    final currentUserId = AuthService.currentUser?.id;
+                    final isAuthor = widget.entry.userId == currentUserId;
+                    
+                    // 사용자 역할에 따른 메시지
+                    final String title = isAuthor ? '일지 삭제' : '참여 해제';
+                    final String content = isAuthor 
+                        ? '정말로 이 일지를 삭제하시겠습니까?\n일지가 완전히 삭제되며 복구할 수 없습니다.'
+                        : '이 일지에서 나가시겠습니까?\n다른 참여자들은 계속 볼 수 있습니다.';
+                    final String buttonText = isAuthor ? '삭제' : '나가기';
+                    
+                    // 삭제 확인 다이얼로그
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(title),
+                        content: Text(content),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('취소'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text(buttonText),
+                          ),
+                        ],
+                      ),
+                    );
 
-                // 수정된 데이터로 새로운 DiaryEntry 객체 생성
-                final updatedEntry = DiaryEntry(
-                  id: widget.entry.id, // 기존 ID 유지
-                  userId: widget.entry.userId, // 기존 사용자 ID 유지
-                  themeId: widget.entry.themeId, // 기존 테마 ID 유지
-                  theme: widget.entry.theme, // 기존 테마 정보 유지
-                  createdAt: widget.entry.createdAt, // 기존 생성일시 유지
-                  updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
-                  date: selectedDate!,
-                  friends: selectedFriends,
-                  // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
-                  memo: _memoController.text.isEmpty ? null : _memoController.text,
-                  rating: _rating,
-                  escaped: _escaped,
-                  hintUsedCount: _hintUsedCount,
-                  timeTaken: _timeTaken,
-                );
+                    if (confirmed == true) {
+                      try {
+                        // 데이터베이스에서 삭제
+                        await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                        
+                        // 삭제 성공 - 'deleted' 신호와 함께 화면 닫기
+                        if (mounted) {
+                          Navigator.pop(context, 'deleted');
+                        }
+                      } catch (e) {
+                        // 삭제 실패 시 스낵바 표시
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('삭제 실패: $e')),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  icon: Icon(AuthService.currentUser?.id == widget.entry.userId 
+                      ? Icons.delete 
+                      : Icons.exit_to_app),
+                  label: Text(AuthService.currentUser?.id == widget.entry.userId 
+                      ? '삭제' 
+                      : '나가기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[100],
+                    foregroundColor: Colors.red[800],
+                  ),
+                ),
+                
+                // 수정 완료 버튼
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedCafe == null ||
+                        selectedTheme == null ||
+                        selectedDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('모든 항목을 선택해주세요')),
+                      );
+                      return;
+                    }
 
-                // Navigator.pop(): 현재 화면을 닫고 이전 화면으로 돌아감
-                // 두 번째 매개변수로 수정된 데이터를 전달
-                Navigator.pop(context, updatedEntry);
-              },
-              child: const Text('수정 완료'),
+                    // 수정된 데이터로 새로운 DiaryEntry 객체 생성
+                    final updatedEntry = DiaryEntry(
+                      id: widget.entry.id, // 기존 ID 유지
+                      userId: widget.entry.userId, // 기존 사용자 ID 유지
+                      themeId: widget.entry.themeId, // 기존 테마 ID 유지
+                      theme: widget.entry.theme, // 기존 테마 정보 유지
+                      createdAt: widget.entry.createdAt, // 기존 생성일시 유지
+                      updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
+                      date: selectedDate!,
+                      friends: selectedFriends,
+                      // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
+                      memo: _memoController.text.isEmpty ? null : _memoController.text,
+                      rating: _rating,
+                      escaped: _escaped,
+                      hintUsedCount: _hintUsedCount,
+                      timeTaken: _timeTaken,
+                    );
+
+                    // Navigator.pop(): 현재 화면을 닫고 이전 화면으로 돌아감
+                    // 두 번째 매개변수로 수정된 데이터를 전달
+                    Navigator.pop(context, updatedEntry);
+                  },
+                  child: const Text('수정 완료'),
+                ),
+              ],
             ),
             ],
           ),

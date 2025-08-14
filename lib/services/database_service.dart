@@ -582,7 +582,7 @@ class DatabaseService {
     }
   }
 
-  /// 일지 삭제
+  /// 일지 삭제 - 작성자면 전체 삭제, 참여자면 자신만 참여자에서 제거
   static Future<void> deleteDiaryEntry(int entryId) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -591,21 +591,45 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // 참여자 관계 먼저 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
-      await supabase
-          .from('diary_entry_participants')
-          .delete()
-          .eq('diary_entry_id', entryId);
-      
-      // 일지 삭제
-      await supabase
+      // 해당 일지의 작성자 확인
+      final diaryResponse = await supabase
           .from('diary_entries')
-          .delete()
+          .select('user_id')
           .eq('id', entryId)
-          .eq('user_id', currentUserId); // 보안: 자신의 일지만 삭제 가능
+          .maybeSingle();
+          
+      if (diaryResponse == null) {
+        throw Exception('일지를 찾을 수 없습니다');
+      }
+      
+      final authorId = diaryResponse['user_id'] as String;
+      
+      if (authorId == currentUserId) {
+        // 작성자인 경우: 일지 전체 삭제 (participants도 CASCADE로 함께 삭제됨)
+        await supabase
+            .from('diary_entries')
+            .delete()
+            .eq('id', entryId)
+            .eq('user_id', currentUserId);
+            
+        if (kDebugMode) {
+          print('✅ 일지 전체 삭제 완료 (작성자)');
+        }
+      } else {
+        // 참여자인 경우: 자신만 참여자 목록에서 제거
+        final deleteResult = await supabase
+            .from('diary_entry_participants')
+            .delete()
+            .eq('diary_entry_id', entryId)
+            .eq('user_id', currentUserId);
+            
+        if (kDebugMode) {
+          print('✅ 참여자 목록에서 제거 완료 (참여자)');
+        }
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('일지 삭제 실패: $e');
+        print('❌ 일지 삭제/참여 해제 실패: $e');
       }
       rethrow;
     }

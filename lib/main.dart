@@ -73,6 +73,12 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void deleteDiary(DiaryEntry entry) {
+    setState(() {
+      diaryList.remove(entry);
+    });
+  }
+
   Future<void> addFriend(Friend friend) async {
     try {
       if (AuthService.isLoggedIn) {
@@ -300,6 +306,7 @@ class _MyAppState extends State<MyApp> {
         friends: friendsList,
         onAdd: addDiary,
         onUpdate: updateDiary,
+        onDelete: deleteDiary,
         onAddFriend: addFriend,
         onRemoveFriend: removeFriend,
         onUpdateFriend: updateFriend,

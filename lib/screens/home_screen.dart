@@ -10,6 +10,7 @@ class HomeScreen extends StatelessWidget {
   final List<Friend> friends;
   final Function(DiaryEntry) onAdd;
   final Function(DiaryEntry, DiaryEntry) onUpdate;
+  final Function(DiaryEntry) onDelete;
   final Function(Friend) onAddFriend;
   final Function(Friend) onRemoveFriend;
   final Function(Friend, Friend) onUpdateFriend;
@@ -22,6 +23,7 @@ class HomeScreen extends StatelessWidget {
     required this.friends,
     required this.onAdd,
     required this.onUpdate,
+    required this.onDelete,
     required this.onAddFriend,
     required this.onRemoveFriend,
     required this.onUpdateFriend,
@@ -145,6 +147,7 @@ class HomeScreen extends StatelessWidget {
                             diaryList: diaryList,
                             onAdd: onAdd,
                             onUpdate: onUpdate,
+                            onDelete: onDelete,
                             friends: friends,
                             onAddFriend: onAddFriend,
                             onRemoveFriend: onRemoveFriend,
