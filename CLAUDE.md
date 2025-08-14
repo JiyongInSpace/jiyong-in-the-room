@@ -166,22 +166,69 @@ dependencies:
 
 ### 스키마 및 설계
 - `lib/models/data_models.md` - **완전한 데이터베이스 스키마 명세** (SQL 포함)
-- `lib/models/diary.dart` - DiaryEntry 모델 (JSON 직렬화 미구현)
+- `lib/models/diary.dart` - DiaryEntry 모델 (JSON 직렬화 + copyWith 구현 완료)
 - `lib/models/escape_cafe.dart` - EscapeCafe, EscapeTheme 모델 
 - `lib/models/user.dart` - User, Friend 모델
 
 ### 핵심 로직
 - `lib/services/auth_service.dart` - **OAuth 인증 중앙 관리** (Google + 프로필 자동 생성)
+- `lib/services/database_service.dart` - **완전한 CRUD 시스템** (일지, 친구, 참여자 관리)
 - `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
 - `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적
 - `lib/screens/settings_screen.dart` - 설정 페이지 (OAuth UI 포함)
 - `lib/screens/write_diary_screen.dart` - **DB 기반 일지 작성** (지연 로딩)
-- `lib/screens/home_screen.dart` - 홈 화면 (인증 상태 반영)
+- `lib/screens/edit_diary_screen.dart` - **스마트 삭제 시스템** (작성자/참여자별 분기)
+- `lib/screens/home_screen.dart` - **개선된 통계 표시** (친구 중복 제거)
 
 ### 환경변수 및 설정
 - `.env` - Supabase 환경변수 (URL, API 키 등)
 - `lib/utils/supabase.dart` - 클라이언트 접근 헬퍼
 - `.mcp.json` - MCP Supabase 서버 설정 (선택적)
+
+## 🚀 최신 구현 완료 사항 (2025-08-14)
+
+### ⚡ 참여자 중심 일지 시스템 완성
+
+#### 🔄 데이터베이스 아키텍처 개선
+1. **Nullable 참여자 시스템**: `diary_entry_participants.user_id` nullable로 변경하여 연결/비연결 친구 모두 지원
+2. **자동 작성자 참여**: 일지 작성 시 본인도 자동으로 참여자에 포함
+3. **참여자 기준 조회**: `getMyDiaryEntries()`가 "내가 참여한 모든 일지" 조회로 변경 (작성 + 참여)
+4. **완전한 JSON 직렬화**: DiaryEntry 모델에 `fromJson/toJson/copyWith` 메서드 구현
+
+#### 🗑️ 스마트 삭제 시스템
+- **작성자 삭제**: 일지 완전 삭제 (모든 참여자에게서 사라짐)
+- **참여자 나가기**: 자신만 참여자 목록에서 제거 (일지는 유지됨)
+- **동적 UI**: 사용자 역할에 따라 "삭제"/"나가기" 버튼과 메시지 자동 변경
+- **확인 다이얼로그**: 역할별 맞춤 경고 메시지 표시
+
+#### 📊 홈 화면 UX 개선
+1. **친구 통계 중복 제거**: 같은 사람이 여러 번 나오던 문제 해결
+2. **사회적 메시지 강화**: "총 N개 테마를 M명의 친구들과 진행" 메시지 추가
+3. **실시간 친구 표시**: 메인 화면 "최근 진행한 테마"에도 친구 정보 표시
+
+#### 🔐 UX 보안 개선
+- **로그인 체크**: 일지 작성, 친구 추가 시 사전 로그인 확인
+- **즉시 피드백**: 비회원이 기능 접근 시 즉시 안내 메시지 표시
+
+#### 🎯 데이터 동기화 완성
+- **실시간 반영**: 일지 작성 후 친구 정보가 즉시 목록에 표시
+- **참여자 정보 자동 로드**: DB 저장 시 완전한 DiaryEntry 객체 반환
+- **상태 전파**: 삭제/수정 결과가 모든 관련 화면에 자동 반영
+
+### 🎨 현재 완전히 작동하는 기능들
+1. **OAuth 로그인/로그아웃** - Google 연동 완성
+2. **친구 관리** - 추가/수정/삭제 + 연결/비연결 지원
+3. **일지 작성/수정** - DB 저장 + 참여자 자동 관리
+4. **스마트 삭제** - 작성자/참여자별 차별화 처리
+5. **통계 표시** - 중복 제거된 정확한 친구 랭킹
+6. **참여자 중심 조회** - 내가 관련된 모든 일지 표시
+7. **실시간 UI 업데이트** - 모든 변경사항 즉시 반영
+
+### 🔧 주요 기술적 성취
+- **관계형 데이터 모델링**: nullable 제약조건으로 유연한 참여자 시스템 구현
+- **상태 관리 최적화**: 콜백 체인을 통한 효율적인 상태 전파
+- **사용자 중심 UX**: 역할 기반 동적 인터페이스 구현
+- **데이터 정합성**: 자동 작성자 포함 + 중복 제거 로직
 
 # Do Not Section
 
