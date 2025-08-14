@@ -258,7 +258,7 @@ class DatabaseService {
 
   // 일지 관련 메서드들
   
-  /// 내 일지 목록 가져오기 (테마, 카페, 참여자 정보 포함)
+  /// 내가 참여한 모든 일지 목록 조회 (작성한 일지 + 참여한 일지)
   static Future<List<DiaryEntry>> getMyDiaryEntries() async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -266,6 +266,24 @@ class DatabaseService {
 
     try {
       final currentUserId = AuthService.currentUser!.id;
+      
+      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 먼저 조회
+      final participantResponse = await supabase
+          .from('diary_entry_participants')
+          .select('diary_entry_id')
+          .eq('user_id', currentUserId);
+          
+      if (participantResponse.isEmpty) {
+        return [];
+      }
+      
+      // 참여한 일지 ID 목록 추출
+      final diaryIds = participantResponse
+          .map((row) => row['diary_entry_id'] as int)
+          .toSet() // 중복 제거
+          .toList();
+      
+      // 해당 ID들의 일지 정보 조회 (테마, 카페 정보 포함)
       final response = await supabase
           .from('diary_entries')
           .select('''
@@ -275,7 +293,7 @@ class DatabaseService {
               escape_cafes!inner(id, name, address, contact, logo_url)
             )
           ''')
-          .eq('user_id', currentUserId)
+          .inFilter('id', diaryIds)
           .order('date', ascending: false);
 
       // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
