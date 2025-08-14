@@ -32,15 +32,29 @@ class HomeScreen extends StatelessWidget {
   });
 
   Map<Friend, int> _getFriendStats() {
-    Map<Friend, int> friendStats = {};
+    Map<String, int> friendCountByName = {};
+    Map<String, Friend> friendByName = {};
     
+    // 친구 이름(displayName)을 기준으로 그룹화하여 카운트
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
-          friendStats[friend] = (friendStats[friend] ?? 0) + 1;
+          final name = friend.displayName;
+          friendCountByName[name] = (friendCountByName[name] ?? 0) + 1;
+          
+          // 각 이름의 대표 Friend 객체 저장 (첫 번째로 등장한 것)
+          if (!friendByName.containsKey(name)) {
+            friendByName[name] = friend;
+          }
         }
       }
     }
+    
+    // 결과를 Map<Friend, int> 형태로 변환
+    Map<Friend, int> friendStats = {};
+    friendCountByName.forEach((name, count) {
+      friendStats[friendByName[name]!] = count;
+    });
     
     return friendStats;
   }
@@ -56,6 +70,18 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalThemes = diaryList.length;
     final topFriends = _getTopFriends();
+    
+    // 함께한 친구들의 총 수 계산 (중복 제거)
+    final uniqueFriendNames = <String>{};
+    for (var entry in diaryList) {
+      if (entry.friends != null) {
+        for (var friend in entry.friends!) {
+          uniqueFriendNames.add(friend.displayName);
+        }
+      }
+    }
+    final totalFriendsCount = uniqueFriendNames.length;
+    
     final recentEntries = diaryList
         .toList()
         ..sort((a, b) => b.date.compareTo(a.date))
@@ -121,7 +147,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        '총 $totalThemes개의 테마를 진행했습니다!',
+                        totalFriendsCount > 0 
+                            ? '총 $totalThemes개의 테마를\n${totalFriendsCount}명의 친구들과 진행했습니다!'
+                            : '총 $totalThemes개의 테마를 진행했습니다!',
                         style: Theme.of(context).textTheme.titleLarge,
                         textAlign: TextAlign.center,
                       ),
