@@ -466,7 +466,12 @@ class DatabaseService {
             .insert(participantRelations);
       }
 
-      return savedEntry;
+      // 친구 정보를 포함한 완전한 일지 데이터 반환
+      final entryWithFriends = savedEntry.copyWith(
+        friends: await getDiaryParticipants(savedEntry.id!),
+      );
+      
+      return entryWithFriends;
     } catch (e) {
       if (kDebugMode) {
         print('일지 추가 실패: $e');

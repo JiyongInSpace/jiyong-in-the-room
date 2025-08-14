@@ -38,6 +38,41 @@ class DiaryEntry {
   // Helper getter
   EscapeCafe? get cafe => theme?.cafe;
 
+  // copyWith 메서드
+  DiaryEntry copyWith({
+    int? id,
+    String? userId,
+    int? themeId,
+    EscapeTheme? theme,
+    DateTime? date,
+    List<Friend>? friends,
+    String? memo,
+    double? rating,
+    bool? escaped,
+    int? hintUsedCount,
+    Duration? timeTaken,
+    List<String>? photos,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return DiaryEntry(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      themeId: themeId ?? this.themeId,
+      theme: theme ?? this.theme,
+      date: date ?? this.date,
+      friends: friends ?? this.friends,
+      memo: memo ?? this.memo,
+      rating: rating ?? this.rating,
+      escaped: escaped ?? this.escaped,
+      hintUsedCount: hintUsedCount ?? this.hintUsedCount,
+      timeTaken: timeTaken ?? this.timeTaken,
+      photos: photos ?? this.photos,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   // JSON 직렬화
   Map<String, dynamic> toJson() {
     return {

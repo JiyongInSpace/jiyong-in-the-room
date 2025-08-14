@@ -11,6 +11,8 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 모델 import
 // 사용자와 친구 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
+// 인증 서비스를 사용하기 위한 import
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 
 // 다이어리 목록 화면 - 메인 화면으로 작성된 일지들을 목록으로 표시
 // StatelessWidget: 상태가 변하지 않는 위젯 (데이터는 부모에서 관리)
@@ -191,6 +193,17 @@ class DiaryListScreen extends StatelessWidget {
       // 일지 작성 버튼 (화면 우하단의 둥근 버튼)
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          // 로그인 확인
+          if (!AuthService.isLoggedIn) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('일지 작성 기능을 사용하려면 로그인이 필요합니다'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+          
           // 일지 작성 화면으로 이동하고 결과를 기다림
           final result = await Navigator.push(
             context,
