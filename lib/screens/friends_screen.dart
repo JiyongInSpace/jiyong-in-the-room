@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 // Friend 모델 클래스를 사용하기 위한 import
 import 'package:jiyong_in_the_room/models/user.dart';
+// 인증 서비스를 사용하기 위한 import
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 
 // 친구 관리 화면 - 친구 추가, 수정, 삭제 기능을 제공
 class FriendsScreen extends StatefulWidget {
@@ -44,6 +46,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   // 친구 추가 다이얼로그를 표시하는 메서드
   void _showAddFriendDialog() {
+    // 로그인 확인
+    if (!AuthService.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('친구 추가 기능을 사용하려면 로그인이 필요합니다'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
     // 입력 필드들을 초기화
     _nicknameController.clear();
     _memoController.clear();
