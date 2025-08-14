@@ -690,6 +690,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     themeId: selectedTheme!.id,
                     theme: selectedTheme,
                     date: selectedDate!,
+                    friends: null, // 별도 테이블로 관리
                     memo: _memoController.text.isEmpty ? null : _memoController.text,
                     rating: _rating,
                     escaped: _escaped,
@@ -700,24 +701,16 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     updatedAt: now,
                   );
                   
-                  // 참여자 user_id 목록 생성 (연결된 친구들의 실제 user_id만)
-                  print('선택된 친구들: ${selectedFriends.length}');
-                  for (var friend in selectedFriends) {
-                    print('친구: ${friend.displayName}, id: ${friend.id}, connectedUserId: ${friend.connectedUserId}, isConnected: ${friend.isConnected}');
-                  }
-                  
-                  // 임시: 일단 모든 선택된 친구들의 ID를 사용 (connectedUserId가 있는 경우 그것을, 없으면 id 사용)
-                  final participantUserIds = selectedFriends
-                      .where((friend) => friend.connectedUserId != null || friend.id != null)
-                      .map((friend) => friend.connectedUserId ?? friend.id!)
+                  // 친구 ID 목록 생성 (모든 선택된 친구)
+                  final friendIds = selectedFriends
+                      .where((friend) => friend.id != null)
+                      .map((friend) => friend.id!)
                       .toList();
                   
-                  print('참여자 user_ids: $participantUserIds');
-                  
-                  // DB에 저장
+                  // DB에 저장 (본인 + 선택된 친구들이 participants에 추가됨)
                   final savedEntry = await DatabaseService.addDiaryEntry(
                     newEntry, 
-                    friendIds: participantUserIds.isNotEmpty ? participantUserIds : null,
+                    friendIds: friendIds.isNotEmpty ? friendIds : null,
                   );
                   
                   if (mounted) {

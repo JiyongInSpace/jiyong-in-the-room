@@ -65,6 +65,7 @@ class DiaryEntry {
           ? EscapeTheme.fromJson(json['escape_themes'] as Map<String, dynamic>)
           : null,
       date: DateTime.parse(json['date'] as String),
+      friends: null, // 별도 메서드로 조회
       memo: json['memo'] as String?,
       rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
       escaped: json['escaped'] as bool?,

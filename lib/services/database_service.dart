@@ -278,7 +278,10 @@ class DatabaseService {
           .eq('user_id', currentUserId)
           .order('date', ascending: false);
 
-      return (response as List).map((json) {
+      // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
+      List<DiaryEntry> diaryEntries = [];
+      
+      for (var json in response as List) {
         final entryData = Map<String, dynamic>.from(json);
         final themeData = entryData['escape_themes'] as Map<String, dynamic>;
         
@@ -298,14 +301,17 @@ class DatabaseService {
           themeImageUrl: themeData['theme_image_url'],
         );
 
-        // DiaryEntry 생성 (theme 포함, friends는 별도 조회 필요)
-        return DiaryEntry(
+        // 해당 일지의 참여자 정보 조회
+        final participants = await getDiaryParticipants(entryData['id']);
+
+        // DiaryEntry 생성 (theme과 friends 포함)
+        diaryEntries.add(DiaryEntry(
           id: entryData['id'],
           userId: entryData['user_id'],
           themeId: entryData['theme_id'],
           theme: theme,
           date: DateTime.parse(entryData['date']),
-          friends: null, // 별도 메서드로 조회
+          friends: participants.isNotEmpty ? participants : null,
           memo: entryData['memo'],
           rating: entryData['rating'] != null ? (entryData['rating'] as num).toDouble() : null,
           escaped: entryData['escaped'],
@@ -318,8 +324,10 @@ class DatabaseService {
               : null,
           createdAt: DateTime.parse(entryData['created_at']),
           updatedAt: DateTime.parse(entryData['updated_at']),
-        );
-      }).toList();
+        ));
+      }
+      
+      return diaryEntries;
     } catch (e) {
       if (kDebugMode) {
         print('일지 목록 조회 실패: $e');
@@ -339,28 +347,49 @@ class DatabaseService {
           .from('diary_entry_participants')
           .select('''
             user_id,
-            profiles!inner(id, name, email, avatar_url)
+            friend_id,
+            profiles(id, display_name, email, avatar_url),
+            friends(id, nickname, connected_user_id)
           ''')
           .eq('diary_entry_id', diaryEntryId);
 
-      return (response as List).map((json) {
-        final profile = json['profiles'] as Map<String, dynamic>;
-        
-        // 참여자를 Friend 객체로 변환 (실제 사용자 정보 포함)
-        return Friend(
-          id: json['user_id'], // 참여자의 user_id를 Friend의 id로 사용
-          connectedUserId: json['user_id'],
-          user: User(
-            id: profile['id'],
-            name: profile['name'],
-            email: profile['email'],
-            avatarUrl: profile['avatar_url'],
-            joinedAt: DateTime.now(), // 실제로는 profiles에서 가져와야 함
-          ),
-          addedAt: DateTime.now(),
-          nickname: profile['name'], // 기본적으로 실제 이름을 닉네임으로 사용
-        );
-      }).toList();
+      List<Friend> participants = [];
+      
+      for (var json in response as List) {
+        if (json['user_id'] != null) {
+          // 연결된 사용자 (실제 프로필 있음)
+          final profile = json['profiles'] as Map<String, dynamic>?;
+          if (profile != null) {
+            participants.add(Friend(
+              id: json['user_id'],
+              connectedUserId: json['user_id'],
+              user: User(
+                id: profile['id'],
+                name: profile['display_name'],
+                email: profile['email'],
+                avatarUrl: profile['avatar_url'],
+                joinedAt: DateTime.now(),
+              ),
+              addedAt: DateTime.now(),
+              nickname: profile['display_name'],
+            ));
+          }
+        } else if (json['friend_id'] != null) {
+          // 연결되지 않은 친구
+          final friend = json['friends'] as Map<String, dynamic>?;
+          if (friend != null) {
+            participants.add(Friend(
+              id: friend['id'],
+              connectedUserId: friend['connected_user_id'],
+              user: null,
+              addedAt: DateTime.now(),
+              nickname: friend['nickname'],
+            ));
+          }
+        }
+      }
+      
+      return participants;
     } catch (e) {
       if (kDebugMode) {
         print('참여자 목록 조회 실패: $e');
@@ -401,12 +430,37 @@ class DatabaseService {
       final savedEntry = DiaryEntry.fromJson(response);
       
       // 참여자 관계 저장
+      List<Map<String, dynamic>> participantRelations = [];
+      
+      // 1. 본인(작성자)을 참여자로 추가
+      participantRelations.add({
+        'diary_entry_id': savedEntry.id,
+        'user_id': currentUserId,
+        'friend_id': null,
+      });
+      
+      // 2. 선택된 친구들을 참여자로 추가
       if (friendIds != null && friendIds.isNotEmpty) {
-        final participantRelations = friendIds.map((friendId) => {
-          'diary_entry_id': savedEntry.id,
-          'user_id': friendId,
-        }).toList();
-        
+        for (String friendId in friendIds) {
+          // friendId가 실제 user_id인지 friends 테이블의 ID인지 확인
+          final friend = await supabase
+              .from('friends')
+              .select('id, connected_user_id')
+              .eq('id', friendId)
+              .maybeSingle();
+              
+          if (friend != null) {
+            participantRelations.add({
+              'diary_entry_id': savedEntry.id,
+              'user_id': friend['connected_user_id'], // null일 수 있음
+              'friend_id': friend['id'], // friends 테이블의 ID
+            });
+          }
+        }
+      }
+      
+      // participants 테이블에 저장
+      if (participantRelations.isNotEmpty) {
         await supabase
             .from('diary_entry_participants')
             .insert(participantRelations);
@@ -452,26 +506,51 @@ class DatabaseService {
           ''')
           .single();
 
+      final updatedEntry = DiaryEntry.fromJson(response);
+      
       // 기존 참여자 관계 삭제 후 새로 추가
-      if (friendIds != null) {
-        await supabase
-            .from('diary_entry_participants')
-            .delete()
-            .eq('diary_entry_id', entry.id);
-            
-        if (friendIds.isNotEmpty) {
-          final participantRelations = friendIds.map((friendId) => {
-            'diary_entry_id': entry.id,
-            'user_id': friendId,
-          }).toList();
+      await supabase
+          .from('diary_entry_participants')
+          .delete()
+          .eq('diary_entry_id', entry.id);
           
-          await supabase
-              .from('diary_entry_participants')
-              .insert(participantRelations);
+      // 참여자 관계 재구성
+      List<Map<String, dynamic>> participantRelations = [];
+      
+      // 1. 본인(작성자)을 참여자로 추가
+      participantRelations.add({
+        'diary_entry_id': updatedEntry.id,
+        'user_id': currentUserId,
+        'friend_id': null,
+      });
+      
+      // 2. 선택된 친구들을 참여자로 추가
+      if (friendIds != null && friendIds.isNotEmpty) {
+        for (String friendId in friendIds) {
+          final friend = await supabase
+              .from('friends')
+              .select('id, connected_user_id')
+              .eq('id', friendId)
+              .maybeSingle();
+              
+          if (friend != null) {
+            participantRelations.add({
+              'diary_entry_id': updatedEntry.id,
+              'user_id': friend['connected_user_id'],
+              'friend_id': friend['id'],
+            });
+          }
         }
       }
-
-      return DiaryEntry.fromJson(response);
+      
+      // participants 테이블에 저장
+      if (participantRelations.isNotEmpty) {
+        await supabase
+            .from('diary_entry_participants')
+            .insert(participantRelations);
+      }
+      
+      return updatedEntry;
     } catch (e) {
       if (kDebugMode) {
         print('일지 수정 실패: $e');
