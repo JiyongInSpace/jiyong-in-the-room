@@ -238,15 +238,14 @@ CREATE INDEX idx_escape_themes_cafe_id ON escape_themes(cafe_id);
 #### Flutter Model
 ```dart
 class DiaryEntry {
-  final String id;                    // 엔트리 고유 ID (UUID)
+  final int id;                       // 엔트리 고유 ID (SERIAL INTEGER) - ✅ 2025-08-14 변경
   final String userId;                // 작성자 ID (UUID)
   final int themeId;                  // 진행한 테마 ID (INTEGER)
   final EscapeTheme? theme;           // 테마 정보 (조인 시에만)
   final DateTime date;                // 진행 날짜
-  final List<String>? friendIds;      // 함께한 친구들 ID 목록
-  final List<Friend>? friends;        // 친구들 정보 (조인 시에만)
+  final List<Friend>? friends;        // 참여자 정보 (별도 테이블에서 조회) - ✅ 2025-08-14
   final String? memo;                 // 메모/후기
-  final double? rating;               // 별점 (0.0~5.0)
+  final double? rating;               // 별점 (0.0~5.0) - nullable (기본값 없음)
   final bool? escaped;                // 탈출 성공 여부
   final int? hintUsedCount;           // 사용한 힌트 횟수
   final Duration? timeTaken;          // 소요 시간
@@ -260,7 +259,6 @@ class DiaryEntry {
     required this.themeId,
     this.theme,
     required this.date,
-    this.friendIds,
     this.friends,
     this.memo,
     this.rating,
@@ -275,15 +273,15 @@ class DiaryEntry {
   // Helper getter
   EscapeCafe? get cafe => theme?.cafe;
   
-  factory DiaryEntry.fromJson(Map<String, dynamic> json) { /* 구현 예정 */ }
-  Map<String, dynamic> toJson() { /* 구현 예정 */ }
+  factory DiaryEntry.fromJson(Map<String, dynamic> json) { /* ✅ 구현 완료 */ }
+  Map<String, dynamic> toJson() { /* ✅ 구현 완료 */ }
 }
 ```
 
 #### Supabase Table (diary_entries)
 ```sql
 CREATE TABLE diary_entries (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  id SERIAL PRIMARY KEY,  -- ✅ 2025-08-14: UUID에서 SERIAL INTEGER로 변경
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   theme_id INTEGER REFERENCES escape_themes(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -305,25 +303,43 @@ CREATE POLICY "Users can manage own entries" ON diary_entries USING (auth.uid() 
 CREATE INDEX idx_diary_entries_user_date ON diary_entries(user_id, date DESC);
 ```
 
-#### 관계 테이블 (diary_entry_friends)
+#### 관계 테이블 (diary_entry_participants) - ✅ 2025-08-14 구조 개선
 ```sql
-CREATE TABLE diary_entry_friends (
-  diary_entry_id UUID REFERENCES diary_entries(id) ON DELETE CASCADE,
-  friend_id UUID REFERENCES friends(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+CREATE TABLE diary_entry_participants (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  diary_entry_id INTEGER REFERENCES diary_entries(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,        -- 연결된 사용자 (nullable)
+  friend_id UUID REFERENCES friends(id) ON DELETE CASCADE,       -- 친구 정보 (nullable)
+  added_at TIMESTAMPTZ DEFAULT NOW(),
   
-  PRIMARY KEY (diary_entry_id, friend_id)
+  -- 제약조건: user_id 또는 friend_id 중 하나는 반드시 존재
+  CONSTRAINT check_user_or_friend_exists CHECK (user_id IS NOT NULL OR friend_id IS NOT NULL),
+  
+  -- 중복 방지
+  UNIQUE(diary_entry_id, COALESCE(user_id, '00000000-0000-0000-0000-000000000000'), 
+         COALESCE(friend_id, '00000000-0000-0000-0000-000000000000'))
 );
 
--- RLS 정책: 자신의 일지에 대한 친구 관계만 관리 가능
-ALTER TABLE diary_entry_friends ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own entry friends" ON diary_entry_friends 
-USING (
-  EXISTS (
-    SELECT 1 FROM diary_entries 
-    WHERE id = diary_entry_id AND user_id = auth.uid()
+-- RLS 정책: 자신이 참여한 일지의 참여자 정보만 조회/관리 가능
+ALTER TABLE diary_entry_participants ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view participants of their entries" ON diary_entry_participants
+FOR SELECT USING (
+  diary_entry_id IN (
+    SELECT id FROM diary_entries WHERE user_id = auth.uid()
+  ) OR user_id = auth.uid()
+);
+
+CREATE POLICY "Authors can manage participants" ON diary_entry_participants
+FOR ALL USING (
+  diary_entry_id IN (
+    SELECT id FROM diary_entries WHERE user_id = auth.uid()
   )
 );
+
+-- 성능 최적화 인덱스
+CREATE INDEX idx_diary_entry_participants_diary_entry_id ON diary_entry_participants(diary_entry_id);
+CREATE INDEX idx_diary_entry_participants_user_id ON diary_entry_participants(user_id);
 ```
 
 ---
@@ -372,9 +388,32 @@ WHERE def.diary_entry_id = $1;
 
 ---
 
-## 🚀 최근 구현 완료 (2025-08-13)
+## 🚀 최근 구현 완료
 
-### ⚡ 주요 업데이트 사항
+### ⚡ 2025-08-14 주요 업데이트 (참여자 시스템 개선)
+
+#### 🔄 데이터베이스 구조 변경
+1. **`diary_entries.id`**: UUID → SERIAL INTEGER 변경 (성능 최적화)
+2. **`diary_entry_friends` → `diary_entry_participants`**: 테이블명 변경
+3. **nullable `user_id`**: 연결되지 않은 친구도 참여자로 추가 가능
+4. **`friend_id` 컬럼 추가**: `friends` 테이블 직접 참조로 친구 정보 실시간 반영
+5. **작성자 자동 추가**: 일지 작성 시 본인도 자동으로 참여자에 포함
+
+#### 🎯 참여자 관리 시스템 개선
+```sql
+-- 새로운 participants 테이블 구조
+diary_entry_participants:
+- 작성자(본인): user_id = "author-uuid", friend_id = null
+- 연결된 친구: user_id = "friend-user-uuid", friend_id = "friend-record-uuid"  
+- 연결되지 않은 친구: user_id = null, friend_id = "friend-record-uuid"
+```
+
+#### 🎨 UI/UX 개선
+1. **메인 화면 개선**: "최근 진행한 테마"에 친구 정보 표시 추가
+2. **친구 정보 실시간 표시**: 일지 리스트와 메인 화면에서 참여자 정보 표시
+3. **일관된 친구 표시**: 모든 화면에서 동일한 Chip 스타일로 친구 표시
+
+### ⚡ 2025-08-13 주요 업데이트 사항
 1. **지연 로딩 패턴** - `EscapeRoomService` 클래스로 DB 쿼리 분리
 2. **EscapeTheme.difficulty** - nullable 처리로 DB null 값 대응
 3. **자동 프로필 생성** - OAuth 로그인 시 UPSERT로 중복 처리
@@ -383,18 +422,19 @@ WHERE def.diary_entry_id = $1;
 
 ### 🔄 서비스 계층 구조
 ```dart
-// 새로 추가된 서비스 클래스들
-- AuthService      // OAuth 인증 관리
-- EscapeRoomService // 카페/테마 DB 쿼리 (지연 로딩)
-- DatabaseService   // 친구/일지 CRUD 작업
+// 서비스 클래스들
+- AuthService           // OAuth 인증 관리
+- EscapeRoomService     // 카페/테마 DB 쿼리 (지연 로딩)
+- DatabaseService       // 친구/일지 CRUD 작업 + 참여자 관리 ✅
 ```
 
-### 🎯 데이터 흐름
+### 🎯 데이터 흐름 (업데이트)
 
 1. **OAuth 로그인** → `auth.users` 자동 생성
 2. **프로필 자동 생성** → `AuthService.getCurrentUserProfile()` UPSERT
 3. **카페 목록 로드** → `EscapeRoomService.getAllCafes()` 
 4. **테마 지연 로딩** → 카페 선택 시 `EscapeRoomService.getThemesByCafe(cafeId)`
-5. **친구 관리** → `DatabaseService` CRUD + 오프라인 지원
-6. **일지 작성** → `diary_entries` + `diary_entry_friends` 관계 생성
-7. **통계 조회** → 각 테이블에서 집계 데이터 산출
+5. **친구 관리** → `DatabaseService` CRUD + 실시간 정보 반영 ✅
+6. **일지 작성** → `diary_entries` + `diary_entry_participants` 관계 생성 ✅
+7. **참여자 자동 추가** → 작성자 본인 + 선택된 친구들 자동 포함 ✅
+8. **친구 정보 표시** → 메인화면 및 일지 리스트에서 실시간 표시 ✅
