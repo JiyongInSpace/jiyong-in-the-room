@@ -67,6 +67,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   void initState() {
     super.initState();
     _loadCafes();
+    
+    // 날짜를 오늘 날짜로 기본 설정
+    selectedDate = DateTime.now();
   }
 
   Future<void> _loadCafes() async {
@@ -107,9 +110,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         isLoadingThemes = false;
       });
       
-      // 테마 로딩 완료 후 포커스 주고 optionsBuilder 트리거
+      // 테마 로딩 완료 후 포커스 주고 optionsBuilder 트리거 (테마가 아직 선택되지 않은 경우에만)
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        if (mounted && selectedTheme == null) {
           _themeFocusNode.requestFocus();
           // 빈 스페이스를 추가했다가 바로 제거하여 optionsBuilder 트리거
           _themeController.text = ' ';
@@ -312,14 +315,23 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               textEditingController: _themeController,
               focusNode: _themeFocusNode,
               optionsBuilder: (text) {
-                print('optionsBuilder called - text: "${text.text}", selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}');
+                print('optionsBuilder called - text: "${text.text}", selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}, selectedTheme: ${selectedTheme?.name}');
                 
                 if (selectedCafe == null || isLoadingThemes) {
                   print('Returning empty - no cafe or loading');
                   return const Iterable<EscapeTheme>.empty();
                 }
                 
-                // 텍스트가 비어있어도 모든 테마를 보여주도록 변경
+                // 테마가 이미 선택된 경우 빈 목록 반환 (수정하려는 경우 제외)
+                if (selectedTheme != null) {
+                  // 현재 입력된 텍스트가 선택된 테마 이름과 다르면 수정 중인 것으로 간주
+                  if (text.text == selectedTheme!.name) {
+                    print('Returning empty - theme selected and text matches');
+                    return const Iterable<EscapeTheme>.empty();
+                  }
+                }
+                
+                // 텍스트가 비어있으면 모든 테마 표시
                 if (text.text.isEmpty) {
                   print('Returning all ${currentThemes.length} themes');
                   return currentThemes;
@@ -393,15 +405,19 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               textEditingController: friendSearchController,
               focusNode: FocusNode(),
               optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text == '') {
-                  return const Iterable<Friend>.empty();
+                // 선택되지 않은 친구들 필터링
+                final availableFriends = widget.friends
+                    .where((f) => !selectedFriends.contains(f))
+                    .toList();
+                
+                // 텍스트가 비어있으면 모든 사용 가능한 친구들 표시
+                if (textEditingValue.text.isEmpty) {
+                  return availableFriends;
                 }
-                return widget.friends
-                    .where(
-                      (f) =>
-                          f.displayName.contains(textEditingValue.text) &&
-                          !selectedFriends.contains(f),
-                    )
+                
+                // 텍스트가 있으면 필터링된 친구들 표시
+                return availableFriends
+                    .where((f) => f.displayName.contains(textEditingValue.text))
                     .toList();
               },
               onSelected: (Friend selected) {
@@ -409,6 +425,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   selectedFriends.add(selected);
                   friendSearchController.clear();
                 });
+                // 포커스 해제로 다른 필드로 포커스가 넘어가는 것을 방지
+                FocusScope.of(context).unfocus();
               },
               fieldViewBuilder: (
                 context,
