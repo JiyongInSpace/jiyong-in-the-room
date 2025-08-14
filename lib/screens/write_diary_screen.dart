@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 // 사용자 정의 모델 클래스 import (Friend 모델 사용)
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
+import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
+import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
 // 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
@@ -47,9 +50,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   final TextEditingController _hintController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   
-  // double: 소수점을 포함한 숫자 타입
-  // 별점 평가를 저장하는 변수 (기본값 3.0)
-  double _rating = 3.0;
+  // double?: nullable 소수점 타입
+  // 별점 평가를 저장하는 변수 (기본값 null - 평가하지 않은 상태)
+  double? _rating;
   // bool?: null이 될 수 있는 불린(참/거짓) 타입
   // 탈출 성공 여부를 저장하는 변수
   bool? _escaped;
@@ -534,8 +537,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                                 color: Colors.grey[400],
                                 size: 32,
                               ),
-                              if (_rating > index) ...[
-                                if (_rating >= index + 1)
+                              if (_rating != null && _rating! > index) ...[
+                                if (_rating! >= index + 1)
                                   const Icon(
                                     Icons.star,
                                     color: Colors.amber,
@@ -561,7 +564,21 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(_rating.toStringAsFixed(1)),
+                  Text(_rating?.toStringAsFixed(1) ?? '미평가'),
+                  if (_rating != null) ...[
+                    const SizedBox(width: 10),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _rating = null;
+                        });
+                      },
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: '평점 제거',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 20),
@@ -637,7 +654,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             ],
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (selectedCafe == null ||
                     selectedTheme == null ||
                     selectedDate == null) {
@@ -646,20 +663,86 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   );
                   return;
                 }
-
-                Navigator.pop(context, {
-                  'cafe': selectedCafe!.name,
-                  'theme': selectedTheme!.name,
-                  'selectedCafe': selectedCafe,
-                  'selectedTheme': selectedTheme,
-                  'date': selectedDate,
-                  'friends': selectedFriends,
-                  'memo': _memoController.text.isEmpty ? null : _memoController.text,
-                  'rating': _rating,
-                  'escaped': _escaped,
-                  'hintUsedCount': _hintUsedCount,
-                  'timeTaken': _timeTaken,
-                });
+                
+                // 로그인 확인
+                if (!AuthService.isLoggedIn) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('로그인이 필요합니다')),
+                  );
+                  return;
+                }
+                
+                try {
+                  // 로딩 표시
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                  
+                  // DiaryEntry 생성
+                  final now = DateTime.now();
+                  final newEntry = DiaryEntry(
+                    id: 0, // DB에서 자동 생성
+                    userId: AuthService.currentUser!.id,
+                    themeId: selectedTheme!.id,
+                    theme: selectedTheme,
+                    date: selectedDate!,
+                    memo: _memoController.text.isEmpty ? null : _memoController.text,
+                    rating: _rating,
+                    escaped: _escaped,
+                    hintUsedCount: _hintUsedCount,
+                    timeTaken: _timeTaken,
+                    photos: null,
+                    createdAt: now,
+                    updatedAt: now,
+                  );
+                  
+                  // 참여자 user_id 목록 생성 (연결된 친구들의 실제 user_id만)
+                  print('선택된 친구들: ${selectedFriends.length}');
+                  for (var friend in selectedFriends) {
+                    print('친구: ${friend.displayName}, id: ${friend.id}, connectedUserId: ${friend.connectedUserId}, isConnected: ${friend.isConnected}');
+                  }
+                  
+                  // 임시: 일단 모든 선택된 친구들의 ID를 사용 (connectedUserId가 있는 경우 그것을, 없으면 id 사용)
+                  final participantUserIds = selectedFriends
+                      .where((friend) => friend.connectedUserId != null || friend.id != null)
+                      .map((friend) => friend.connectedUserId ?? friend.id!)
+                      .toList();
+                  
+                  print('참여자 user_ids: $participantUserIds');
+                  
+                  // DB에 저장
+                  final savedEntry = await DatabaseService.addDiaryEntry(
+                    newEntry, 
+                    friendIds: participantUserIds.isNotEmpty ? participantUserIds : null,
+                  );
+                  
+                  if (mounted) {
+                    // 로딩 다이얼로그 닫기
+                    Navigator.of(context).pop();
+                    
+                    // 성공 메시지
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('일지가 저장되었습니다!')),
+                    );
+                    
+                    // 저장된 일지와 함께 이전 화면으로 돌아가기
+                    Navigator.pop(context, savedEntry);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    // 로딩 다이얼로그 닫기
+                    Navigator.of(context).pop();
+                    
+                    // 에러 메시지
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('일지 저장에 실패했습니다: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('저장'),
             ),

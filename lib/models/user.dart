@@ -38,6 +38,7 @@ class User {
 
 // 친구 정보
 class Friend {
+  final String? id; // 친구 고유 ID (UUID)
   final String? connectedUserId; // 연결된 유저 ID (없으면 연결되지 않은 상태)
   final User? user; // 연결된 경우에만 실제 유저 정보
   final DateTime addedAt;
@@ -45,6 +46,7 @@ class Friend {
   final String? memo;
 
   Friend({
+    this.id,
     this.connectedUserId,
     this.user,
     required this.addedAt,
@@ -70,6 +72,7 @@ class Friend {
   // JSON 변환
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'connected_user_id': connectedUserId,
       'user': user?.toJson(),
       'added_at': addedAt.toUtc().toIso8601String(),
@@ -80,6 +83,7 @@ class Friend {
 
   factory Friend.fromJson(Map<String, dynamic> json) {
     return Friend(
+      id: json['id'] as String?,
       connectedUserId: json['connected_user_id'] as String?,
       user: json['user'] != null 
           ? User.fromJson(json['user'] as Map<String, dynamic>)

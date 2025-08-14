@@ -72,7 +72,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.entry.theme.name),
+        title: Text(widget.entry.theme?.name ?? '알 수 없는 테마'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -101,7 +101,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.entry.theme.name,
+                      widget.entry.theme?.name ?? '알 수 없는 테마',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

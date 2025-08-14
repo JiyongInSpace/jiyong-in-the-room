@@ -44,6 +44,26 @@ class _MyAppState extends State<MyApp> {
     });
   }
   
+  // DB에서 일지 목록 로드
+  Future<void> _loadDiaryEntries() async {
+    try {
+      if (AuthService.isLoggedIn) {
+        final entries = await DatabaseService.getMyDiaryEntries();
+        setState(() {
+          diaryList.clear();
+          diaryList.addAll(entries);
+        });
+        if (kDebugMode) {
+          print('📋 일지 목록 로드됨: ${entries.length}개');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 일지 목록 로드 실패: $e');
+      }
+    }
+  }
+  
   void updateDiary(DiaryEntry oldEntry, DiaryEntry newEntry) {
     setState(() {
       final index = diaryList.indexOf(oldEntry);
@@ -233,6 +253,9 @@ class _MyAppState extends State<MyApp> {
       if (kDebugMode) {
         print('📋 친구 목록 로드됨: ${friends.length}명');
       }
+      
+      // 일지 목록 로드
+      await _loadDiaryEntries();
     } catch (e) {
       if (kDebugMode) {
         print('❌ 사용자 데이터 로드 실패: $e');

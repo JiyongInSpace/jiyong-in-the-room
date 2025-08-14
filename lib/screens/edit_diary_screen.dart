@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 // 다이어리 엔트리 데이터 모델 import
 import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 데이터 모델 import
-import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 // 사용자와 친구 데이터 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
 
@@ -70,7 +69,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   void _initializeFields() {
     // widget.entry: 부모 위젯에서 전달받은 기존 일지 데이터
     selectedCafe = widget.entry.cafe?.name ?? '알 수 없음';
-    selectedTheme = widget.entry.theme.name;
+    selectedTheme = widget.entry.theme?.name ?? '알 수 없는 테마';
     selectedDate = widget.entry.date;
     
     // TextEditingController에 기존 값을 설정
@@ -523,15 +522,11 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                 // 수정된 데이터로 새로운 DiaryEntry 객체 생성
                 final updatedEntry = DiaryEntry(
                   id: widget.entry.id, // 기존 ID 유지
-                  theme: EscapeTheme(
-                    id: widget.entry.theme.id, // 기존 테마 ID 유지
-                    name: selectedTheme!,
-                    cafeId: widget.entry.theme.cafeId,                    cafe: EscapeCafe(
-                      id: widget.entry.cafe?.id ?? 0, // 기존 카페 ID 유지
-                      name: selectedCafe!,
-                    ),
-                    difficulty: widget.entry.theme.difficulty, // 기존 난이도 유지
-                  ),
+                  userId: widget.entry.userId, // 기존 사용자 ID 유지
+                  themeId: widget.entry.themeId, // 기존 테마 ID 유지
+                  theme: widget.entry.theme, // 기존 테마 정보 유지
+                  createdAt: widget.entry.createdAt, // 기존 생성일시 유지
+                  updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
                   date: selectedDate!,
                   friends: selectedFriends,
                   // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용

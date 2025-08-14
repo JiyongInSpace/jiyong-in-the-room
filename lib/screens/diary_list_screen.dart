@@ -9,7 +9,6 @@ import 'package:jiyong_in_the_room/screens/friends_screen.dart';
 // 다이어리 엔트리 모델 import
 import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 모델 import
-import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 // 사용자와 친구 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
 
@@ -143,7 +142,7 @@ class DiaryListScreen extends StatelessWidget {
                                 Expanded(
                                   // 문자열 보간법: ${}로 변수 값을 문자열에 삽입
                                   child: Text(
-                                    '${entry.cafe?.name ?? '알 수 없음'} - ${entry.theme.name}',
+                                    '${entry.cafe?.name ?? '알 수 없음'} - ${entry.theme?.name ?? '알 수 없는 테마'}',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold, // 굵은 글씨
@@ -198,29 +197,10 @@ class DiaryListScreen extends StatelessWidget {
             MaterialPageRoute(builder: (context) => WriteDiaryScreen(friends: friends)),
           );
 
-          // 작성 화면에서 돌아온 결과가 유효한 데이터인지 확인
-          // is 연산자로 타입 확인
-          if (result != null &&
-              result is Map<String, dynamic> && // Map 타입인지 확인
-              result['selectedCafe'] is EscapeCafe &&        // 카페가 EscapeCafe인지 확인
-              result['selectedTheme'] is EscapeTheme &&       // 테마가 EscapeTheme인지 확인
-              result['date'] is DateTime &&      // 날짜가 DateTime인지 확인
-              result['friends'] is List<Friend>) { // 친구가 Friend 리스트인지 확인
-            // 사용자가 입력한 데이터로 새로운 DiaryEntry 객체 생성
-            final entry = DiaryEntry(
-              // millisecondsSinceEpoch: 1970년 1월 1일부터의 밀리초를 유니크 ID로 사용
-              id: DateTime.now().millisecondsSinceEpoch,
-              theme: result['selectedTheme'] as EscapeTheme,
-              date: result['date'] as DateTime,
-              friends: result['friends'] as List<Friend>,
-              memo: result['memo'] as String?,     // nullable
-              rating: result['rating'] as double?, // nullable
-              escaped: result['escaped'] as bool?, // nullable
-              hintUsedCount: result['hintUsedCount'] as int?, // nullable
-              timeTaken: result['timeTaken'] as Duration?,     // nullable
-            );
-            // 부모 위젯에 새 일지 추가를 알림
-            onAdd(entry);
+          // WriteDiaryScreen에서 저장된 DiaryEntry 객체 확인
+          if (result != null && result is DiaryEntry) {
+            // DB에서 저장된 일지 객체를 받아서 목록에 추가
+            onAdd(result);
           }
         },
         child: const Icon(Icons.add), // 더하기 아이콘

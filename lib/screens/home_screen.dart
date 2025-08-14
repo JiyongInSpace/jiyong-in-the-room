@@ -178,7 +178,7 @@ class HomeScreen extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    title: Text(entry.theme.name),
+                    title: Text(entry.theme?.name ?? '알 수 없는 테마'),
                     subtitle: Text(
                       '${entry.cafe?.name ?? '알 수 없음'} • ${entry.date.year}.${entry.date.month.toString().padLeft(2, '0')}.${entry.date.day.toString().padLeft(2, '0')}',
                     ),
