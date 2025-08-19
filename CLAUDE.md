@@ -78,23 +78,30 @@ The app follows a simple Flutter architecture pattern:
 - `diary_entries` - 일지 엔트리 (개인 데이터, ID: SERIAL INTEGER) ✅
 - `diary_entry_participants` - 일지-참여자 관계 테이블 ✅ 개선
 
-### OAuth 인증 시스템
-- **Google OAuth 2.0 구현 완료**
+### OAuth 인증 시스템 (업데이트: 2025-08-19)
+- **Google Sign-In 플러그인 기반 구현 완료** ✅
+- **크로스 플랫폼 호환성** - 웹(OAuth) + 모바일(네이티브) 지원
 - **실시간 인증 상태 관리**
 - **자동 프로필 생성 및 동기화**
 
 #### 주요 컴포넌트
 - `AuthService` - 중앙 인증 관리 클래스
-  - Google 로그인/로그아웃
-  - 사용자 상태 추적
-  - 프로필 자동 생성
-- `SettingsScreen` - OAuth 연동 UI
+  - **Google Sign-In 플러그인** 사용 (모바일 네이티브 UI)
+  - Supabase OAuth 백업 (웹 브라우저)
+  - ID 토큰 기반 Supabase 인증 연동
+  - 사용자 상태 추적 + 프로필 자동 생성
+  - 개선된 로그아웃 처리 (Google + Supabase 세션 정리)
+- `SettingsScreen` - **실시간 상태 반영** OAuth UI
+  - **StatefulWidget으로 변경** - 로그인 상태 실시간 업데이트
   - 회원/비회원 동적 인터페이스
-  - 로그인/로그아웃 플로우
+  - 즉시 피드백 로그인/로그아웃 플로우
 
 ### 설정 및 구성
-#### 환경변수 및 설정 파일
-- `.env` - 환경변수 (SUPABASE_URL, SUPABASE_ANON_KEY 등)
+#### 환경변수 및 설정 파일 (업데이트: 2025-08-19)
+- `.env` - 환경변수
+  - `SUPABASE_URL`, `SUPABASE_ANON_KEY` - Supabase 연결
+  - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - 웹 OAuth용
+  - **`GOOGLE_SERVER_CLIENT_ID`** - 모바일 네이티브 로그인용 (신규)
 - `lib/utils/supabase.dart` - 클라이언트 접근 유틸리티
 - `.mcp.json` - MCP 서버 설정 (선택적)
 
@@ -108,12 +115,12 @@ dependencies:
   flutter_dotenv: ^5.1.0     # 환경변수 관리
 ```
 
-### 현재 작동하는 기능 (업데이트: 2025-08-14)
-1. **OAuth 로그인/로그아웃** - 완전 구현
-2. **사용자 프로필 관리** - 자동 생성/동기화 (UPSERT 방식)
-3. **설정 페이지** - 인증 상태별 동적 UI
-4. **데이터베이스 연결** - RLS 보안 정책 적용
-5. **실시간 상태 관리** - 인증 변경 감지
+### 현재 작동하는 기능 (업데이트: 2025-08-19)
+1. **Google Sign-In 네이티브 로그인** - 모바일 최적화된 UX ✅
+2. **실시간 인증 상태 관리** - 설정화면 즉시 업데이트 ✅  
+3. **사용자 프로필 관리** - 자동 생성/동기화 (UPSERT 방식)
+4. **개선된 로그아웃** - Google/Supabase 세션 완전 정리 ✅
+5. **데이터베이스 연결** - RLS 보안 정책 적용
 6. **방탈출 테마 DB 연동** - 지연 로딩 방식 구현
 7. **카페/테마 자동완성** - Supabase 실시간 데이터
 8. **JSON 직렬화** - 모든 모델 클래스 완성
@@ -121,8 +128,25 @@ dependencies:
 10. **참여자 시스템** - 작성자 + 친구들 자동 관리 ✅
 11. **친구 정보 실시간 반영** - 친구 정보 변경 시 모든 일지에 반영 ✅
 12. **UI 친구 표시** - 메인화면, 일지리스트에서 참여자 표시 ✅
+13. **본인 제외 통계** - 친구 수/랭킹에서 자기 자신 제외 ✅
 
 ### 최근 구현 완료
+
+#### 🚀 2025-08-19 주요 업데이트 (Google Sign-In 네이티브 구현)
+- **🔐 Google Sign-In 플러그인 전환**: Supabase OAuth → google_sign_in 플러그인
+  - **모바일 네이티브 UI**: 브라우저 리다이렉트 없는 매끄러운 로그인
+  - **크로스 플랫폼**: 웹은 기존 OAuth 유지, 모바일은 네이티브 사용
+  - **ID 토큰 연동**: Google 인증 → Supabase `signInWithIdToken` 변환
+- **⚡ 실시간 설정 화면**: `StatelessWidget` → `StatefulWidget`
+  - **즉시 UI 업데이트**: 로그인 완료 시 버튼이 실시간으로 변경
+  - **인증 스트림 리스닝**: AuthService 상태 변화 자동 감지
+- **🔧 개선된 로그아웃**: Google Sign-In + Supabase 세션 완전 정리
+  - **에러 핸들링**: disconnect 실패 시에도 로그아웃 진행
+  - **선택적 처리**: 각 단계별 독립적 에러 처리
+- **📊 본인 제외 통계 시스템**: 홈화면 친구 통계에서 자기 자신 제외
+  - **정확한 친구 수**: "N명의 친구들과" 메시지에서 본인 제외
+  - **랭킹 정화**: "가장 많이 함께한 친구" 목록에서 본인 제거
+  - **동적 필터링**: userProfile 기반 실시간 본인 식별
 
 #### 🚀 2025-08-14 주요 업데이트 (참여자 시스템 대폭 개선)
 - **🔄 데이터베이스 구조 개선**: 
@@ -170,15 +194,19 @@ dependencies:
 - `lib/models/escape_cafe.dart` - EscapeCafe, EscapeTheme 모델 
 - `lib/models/user.dart` - User, Friend 모델
 
-### 핵심 로직
-- `lib/services/auth_service.dart` - **OAuth 인증 중앙 관리** (Google + 프로필 자동 생성)
+### 핵심 로직 (업데이트: 2025-08-19)
+- `lib/services/auth_service.dart` - **Google Sign-In 플러그인 인증** (네이티브 + 웹 하이브리드)
+  - 모바일: google_sign_in 플러그인 → ID토큰 → Supabase 인증
+  - 웹: 기존 Supabase OAuth 유지 
+  - 개선된 로그아웃 (단계별 에러 핸들링)
 - `lib/services/database_service.dart` - **완전한 CRUD 시스템** (일지, 친구, 참여자 관리)
 - `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
 - `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적
-- `lib/screens/settings_screen.dart` - 설정 페이지 (OAuth UI 포함)
+- `lib/screens/settings_screen.dart` - **실시간 StatefulWidget** 설정 페이지
+  - 인증 상태 스트림 리스닝으로 즉시 UI 업데이트
 - `lib/screens/write_diary_screen.dart` - **DB 기반 일지 작성** (지연 로딩)
 - `lib/screens/edit_diary_screen.dart` - **스마트 삭제 시스템** (작성자/참여자별 분기)
-- `lib/screens/home_screen.dart` - **개선된 통계 표시** (친구 중복 제거)
+- `lib/screens/home_screen.dart` - **본인 제외 통계 표시** (정확한 친구 수 + 랭킹)
 
 ### 환경변수 및 설정
 - `.env` - Supabase 환경변수 (URL, API 키 등)
@@ -215,20 +243,25 @@ dependencies:
 - **참여자 정보 자동 로드**: DB 저장 시 완전한 DiaryEntry 객체 반환
 - **상태 전파**: 삭제/수정 결과가 모든 관련 화면에 자동 반영
 
-### 🎨 현재 완전히 작동하는 기능들
-1. **OAuth 로그인/로그아웃** - Google 연동 완성
-2. **친구 관리** - 추가/수정/삭제 + 연결/비연결 지원
-3. **일지 작성/수정** - DB 저장 + 참여자 자동 관리
-4. **스마트 삭제** - 작성자/참여자별 차별화 처리
-5. **통계 표시** - 중복 제거된 정확한 친구 랭킹
-6. **참여자 중심 조회** - 내가 관련된 모든 일지 표시
-7. **실시간 UI 업데이트** - 모든 변경사항 즉시 반영
+### 🎨 현재 완전히 작동하는 기능들 (업데이트: 2025-08-19)
+1. **Google Sign-In 네이티브 로그인** - 모바일 최적화된 UX
+2. **실시간 설정 화면** - 로그인/로그아웃 상태 즉시 반영
+3. **친구 관리** - 추가/수정/삭제 + 연결/비연결 지원
+4. **일지 작성/수정** - DB 저장 + 참여자 자동 관리
+5. **스마트 삭제** - 작성자/참여자별 차별화 처리
+6. **본인 제외 통계** - 정확한 친구 수 및 랭킹 표시
+7. **참여자 중심 조회** - 내가 관련된 모든 일지 표시
+8. **실시간 UI 업데이트** - 모든 변경사항 즉시 반영
+9. **크로스 플랫폼 인증** - 웹/모바일 최적화된 로그인 방식
 
-### 🔧 주요 기술적 성취
+### 🔧 주요 기술적 성취 (업데이트: 2025-08-19)
+- **하이브리드 인증 아키텍처**: 플랫폼별 최적화된 Google 로그인 구현
+- **실시간 상태 동기화**: Stream 기반 UI 자동 업데이트 시스템
 - **관계형 데이터 모델링**: nullable 제약조건으로 유연한 참여자 시스템 구현
 - **상태 관리 최적화**: 콜백 체인을 통한 효율적인 상태 전파
 - **사용자 중심 UX**: 역할 기반 동적 인터페이스 구현
-- **데이터 정합성**: 자동 작성자 포함 + 중복 제거 로직
+- **데이터 정합성**: 자동 작성자 포함 + 중복 제거 + 본인 제외 로직
+- **에러 처리 강화**: 단계별 독립적 에러 핸들링으로 견고한 로그아웃
 
 # Do Not Section
 

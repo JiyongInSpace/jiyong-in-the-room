@@ -123,27 +123,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Text('탈출일지'),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isLoggedIn ? Colors.green : Colors.grey,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                isLoggedIn ? '로그인됨' : '로그아웃',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
+        title: const Text('탈출일지'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -158,8 +138,22 @@ class HomeScreen extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.settings),
+            icon: CircleAvatar(
+              radius: 16,
+              backgroundColor: isLoggedIn ? Colors.blue[400] : Colors.grey[300],
+              backgroundImage: (isLoggedIn && userProfile?['avatar_url'] != null)
+                  ? NetworkImage(userProfile!['avatar_url'])
+                  : null,
+              child: (isLoggedIn && userProfile?['avatar_url'] != null)
+                  ? null
+                  : Icon(
+                      Icons.person,
+                      size: 20,
+                      color: isLoggedIn ? Colors.white : Colors.grey[600],
+                    ),
+            ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
@@ -331,6 +325,16 @@ class HomeScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {
+                      if (!isLoggedIn) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('친구 기능을 사용하려면 로그인이 필요합니다'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+                      
                       Navigator.push(
                         context,
                         MaterialPageRoute(

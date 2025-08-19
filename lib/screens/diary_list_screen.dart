@@ -62,24 +62,6 @@ class DiaryListScreen extends StatelessWidget {
         // actions: AppBar 오른쪽에 표시될 액션 버튼들
         actions: [
           // IconButton: 아이콘만 있는 버튼
-          IconButton(
-            icon: const Icon(Icons.people), // 사람 모양 아이콘
-            onPressed: () {
-              // Navigator.push(): 새로운 화면으로 이동
-              Navigator.push(
-                context,
-                // MaterialPageRoute: Material Design 스타일의 화면 전환 애니메이션
-                MaterialPageRoute(
-                  builder: (context) => FriendsScreen(
-                    friends: friends,
-                    onAdd: onAddFriend,
-                    onRemove: onRemoveFriend,
-                    onUpdate: onUpdateFriend,
-                  ),
-                ),
-              );
-            },
-          ),
         ],
       ),
       // body: 화면의 주요 내용 영역
