@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jiyong_in_the_room/screens/contact_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'dart:async';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final bool isLoggedIn;
   final Map<String, dynamic>? userProfile;
 
@@ -13,6 +14,47 @@ class SettingsScreen extends StatelessWidget {
     required this.isLoggedIn,
     this.userProfile,
   });
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _currentIsLoggedIn = false;
+  Map<String, dynamic>? _currentUserProfile;
+  StreamSubscription? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIsLoggedIn = widget.isLoggedIn;
+    _currentUserProfile = widget.userProfile;
+    _listenToAuthChanges();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription = AuthService.authStateChanges.listen((data) async {
+      final newIsLoggedIn = data.session != null;
+      Map<String, dynamic>? newUserProfile;
+      
+      if (newIsLoggedIn) {
+        newUserProfile = await AuthService.getCurrentUserProfile();
+      }
+      
+      if (mounted) {
+        setState(() {
+          _currentIsLoggedIn = newIsLoggedIn;
+          _currentUserProfile = newUserProfile;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ),
-        if (!isLoggedIn) ...[
+        if (!_currentIsLoggedIn) ...[
           ListTile(
             leading: const Icon(Icons.person_add),
             title: const Text('Google로 로그인'),
@@ -51,15 +93,15 @@ class SettingsScreen extends StatelessWidget {
           ),
         ] else ...[
           ListTile(
-            leading: userProfile?['avatar_url'] != null
+            leading: _currentUserProfile?['avatar_url'] != null
                 ? CircleAvatar(
-                    backgroundImage: NetworkImage(userProfile!['avatar_url']),
+                    backgroundImage: NetworkImage(_currentUserProfile!['avatar_url']),
                   )
                 : const CircleAvatar(
                     child: Icon(Icons.person),
                   ),
-            title: Text(userProfile?['display_name'] ?? '사용자'),
-            subtitle: Text(userProfile?['email'] ?? ''),
+            title: Text(_currentUserProfile?['display_name'] ?? '사용자'),
+            subtitle: Text(_currentUserProfile?['email'] ?? ''),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('프로필 편집 기능은 준비중입니다')),
@@ -175,12 +217,10 @@ class SettingsScreen extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('로그인이 시작되었습니다. 브라우저에서 인증을 완료해주세요.'),
+              content: Text('로그인 완료!'),
               backgroundColor: Colors.green,
             ),
           );
-          // 설정 화면 닫기 - 잠시 제거해서 상태 변화 확인
-          // Navigator.of(context).pop();
         }
       }
     } catch (e) {

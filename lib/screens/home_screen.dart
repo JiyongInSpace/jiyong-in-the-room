@@ -35,11 +35,28 @@ class HomeScreen extends StatelessWidget {
     Map<String, int> friendCountByName = {};
     Map<String, Friend> friendByName = {};
     
-    // 친구 이름(displayName)을 기준으로 그룹화하여 카운트
+    // 현재 사용자의 이름들 (제외할 대상)
+    final currentUserNames = <String>{};
+    if (userProfile != null) {
+      if (userProfile!['display_name'] != null) {
+        currentUserNames.add(userProfile!['display_name']);
+      }
+      if (userProfile!['email'] != null) {
+        currentUserNames.add(userProfile!['email']);
+      }
+    }
+    
+    // 친구 이름(displayName)을 기준으로 그룹화하여 카운트 (본인 제외)
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
           final name = friend.displayName;
+          
+          // 본인은 제외
+          if (currentUserNames.contains(name)) {
+            continue;
+          }
+          
           friendCountByName[name] = (friendCountByName[name] ?? 0) + 1;
           
           // 각 이름의 대표 Friend 객체 저장 (첫 번째로 등장한 것)
@@ -71,12 +88,28 @@ class HomeScreen extends StatelessWidget {
     final totalThemes = diaryList.length;
     final topFriends = _getTopFriends();
     
-    // 함께한 친구들의 총 수 계산 (중복 제거)
+    // 함께한 친구들의 총 수 계산 (중복 제거, 본인 제외)
     final uniqueFriendNames = <String>{};
+    
+    // 현재 사용자의 이름들 (제외할 대상)
+    final currentUserNames = <String>{};
+    if (userProfile != null) {
+      if (userProfile!['display_name'] != null) {
+        currentUserNames.add(userProfile!['display_name']);
+      }
+      if (userProfile!['email'] != null) {
+        currentUserNames.add(userProfile!['email']);
+      }
+    }
+    
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
-          uniqueFriendNames.add(friend.displayName);
+          final name = friend.displayName;
+          // 본인은 제외
+          if (!currentUserNames.contains(name)) {
+            uniqueFriendNames.add(name);
+          }
         }
       }
     }

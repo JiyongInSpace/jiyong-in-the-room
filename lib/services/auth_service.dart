@@ -63,12 +63,21 @@ class AuthService {
     try {
       // Google Sign-In 로그아웃 (모바일에서만)
       if (!kIsWeb) {
-        final GoogleSignIn googleSignIn = GoogleSignIn();
-        await googleSignIn.signOut();
-        await googleSignIn.disconnect();
+        try {
+          final GoogleSignIn googleSignIn = GoogleSignIn();
+          await googleSignIn.signOut();
+          // disconnect는 선택적으로 처리 (실패해도 무시)
+          try {
+            await googleSignIn.disconnect();
+          } catch (disconnectError) {
+            print('⚠️ Google disconnect 실패 (무시됨): $disconnectError');
+          }
+        } catch (googleError) {
+          print('⚠️ Google Sign-In 로그아웃 실패 (무시됨): $googleError');
+        }
       }
       
-      // Supabase 로그아웃
+      // Supabase 로그아웃 (핵심)
       await supabase.auth.signOut();
     } catch (e) {
       throw Exception('로그아웃 중 오류가 발생했습니다: $e');
