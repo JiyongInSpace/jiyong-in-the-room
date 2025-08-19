@@ -232,6 +232,7 @@ class _MyAppState extends State<MyApp> {
         print('🔐 Auth state changed: ${data.session != null ? "로그인됨" : "로그아웃됨"}');
         if (data.session != null) {
           print('👤 User: ${data.session!.user.email}');
+          print('🔑 Provider: ${data.session!.user.appMetadata['provider'] ?? 'unknown'}');
         }
       }
       setState(() {
