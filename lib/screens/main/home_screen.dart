@@ -76,6 +76,39 @@ class HomeScreen extends StatelessWidget {
     return sortedEntries.take(3).toList();
   }
 
+  // 방탈 횟수에 따른 칭호 계산
+  String _getEscapeTitle(int escapeCount) {
+    if (escapeCount <= 5) {
+      return '방알못';
+    } else if (escapeCount <= 49) {
+      return '방린이';
+    } else if (escapeCount <= 99) {
+      return '방청년';
+    } else if (escapeCount <= 299) {
+      return '고인물';
+    } else {
+      return '썩은물';
+    }
+  }
+
+  // 칭호별 색상 반환
+  Color _getTitleColor(String title) {
+    switch (title) {
+      case '방알못':
+        return Colors.grey[600]!;
+      case '방린이':
+        return Colors.green[600]!;
+      case '방청년':
+        return Colors.blue[600]!;
+      case '고인물':
+        return Colors.purple[600]!;
+      case '썩은물':
+        return Colors.amber[700]!;
+      default:
+        return Colors.grey[600]!;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalThemes = diaryList.length;
@@ -151,26 +184,86 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.analytics,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.primary,
+              // 통계 카드 (2개 카드 나란히 배치)
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    // 왼쪽 카드: 방탈 횟수 & 칭호
+                    Expanded(
+                      flex: 1,
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.emoji_events,
+                                size: 32,
+                                color: _getTitleColor(_getEscapeTitle(totalThemes)),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _getEscapeTitle(totalThemes),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: _getTitleColor(_getEscapeTitle(totalThemes)),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '방탈 $totalThemes회',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        totalFriendsCount > 0 
-                            ? '총 $totalThemes개의 테마를\n${totalFriendsCount}명의 친구들과 진행했습니다!'
-                            : '총 $totalThemes개의 테마를 진행했습니다!',
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(width: 8),
+                    
+                    // 오른쪽 카드: 향후 추가 예정
+                    Expanded(
+                      flex: 1,
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.group,
+                                size: 32,
+                                color: Colors.blue[600],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '함께한 친구들',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[600],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                totalFriendsCount > 0 
+                                    ? '총 $totalFriendsCount명'
+                                    : '혼자 진행',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -207,96 +300,105 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               
               if (recentEntries.isNotEmpty)
-                ...recentEntries.map((entry) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                ...recentEntries.asMap().entries.expand((indexedEntry) {
+                  final entry = indexedEntry.value;
+                  final index = indexedEntry.key;
+                  
+                  return [
+                    if (index > 0) const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              backgroundColor: entry.escaped == true 
-                                  ? Colors.green 
-                                  : entry.escaped == false 
-                                      ? Colors.red 
-                                      : Colors.grey,
-                              child: Icon(
-                                entry.escaped == true 
-                                    ? Icons.check 
-                                    : entry.escaped == false 
-                                        ? Icons.close 
-                                        : Icons.question_mark,
-                                color: Colors.white,
-                                size: 16,
-                              ),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: entry.escaped == true 
+                                      ? Colors.green 
+                                      : entry.escaped == false 
+                                          ? Colors.red 
+                                          : Colors.grey,
+                                  child: Icon(
+                                    entry.escaped == true 
+                                        ? Icons.check 
+                                        : entry.escaped == false 
+                                            ? Icons.close 
+                                            : Icons.question_mark,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        entry.theme?.name ?? '알 수 없는 테마',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${entry.cafe?.name ?? '알 수 없음'} • ${entry.date.year}.${entry.date.month.toString().padLeft(2, '0')}.${entry.date.day.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (entry.rating != null)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        entry.rating!.toStringAsFixed(1),
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    entry.theme?.name ?? '알 수 없는 테마',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${entry.cafe?.name ?? '알 수 없음'} • ${entry.date.year}.${entry.date.month.toString().padLeft(2, '0')}.${entry.date.day.toString().padLeft(2, '0')}',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                            // 친구 정보 표시
+                            if (entry.friends != null && entry.friends!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 2,
+                                children: entry.friends!
+                                    .map((friend) => Chip(
+                                          label: Text(
+                                            friend.displayName,
+                                            style: const TextStyle(fontSize: 10),
+                                          ),
+                                          backgroundColor: Colors.blue[50],
+                                          visualDensity: VisualDensity.compact,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ))
+                                    .toList(),
                               ),
-                            ),
-                            if (entry.rating != null)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    entry.rating!.toStringAsFixed(1),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
+                            ],
                           ],
                         ),
-                        // 친구 정보 표시
-                        if (entry.friends != null && entry.friends!.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 2,
-                            children: entry.friends!
-                                .map((friend) => Chip(
-                                      label: Text(
-                                        friend.displayName,
-                                        style: const TextStyle(fontSize: 10),
-                                      ),
-                                      backgroundColor: Colors.blue[50],
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ))
-                                .toList(),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                ))
+                  ];
+                })
               else
                 const Card(
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text('아직 기록이 없습니다.'),
@@ -344,6 +446,7 @@ class HomeScreen extends StatelessWidget {
               
               if (topFriends.isNotEmpty)
                 Card(
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -376,6 +479,7 @@ class HomeScreen extends StatelessWidget {
                 )
               else
                 const Card(
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text('아직 친구와 함께한 기록이 없습니다.'),
