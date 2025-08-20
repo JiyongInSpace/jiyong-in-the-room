@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/screens/edit_diary_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;

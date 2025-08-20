@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:jiyong_in_the_room/screens/contact_screen.dart';
-import 'package:jiyong_in_the_room/screens/profile_edit_screen.dart';
+import 'package:jiyong_in_the_room/screens/misc/contact_screen.dart';
+import 'package:jiyong_in_the_room/screens/auth/profile_edit_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'dart:async';
 

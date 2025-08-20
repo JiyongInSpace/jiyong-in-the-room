@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/screens/diary_list_screen.dart';
-import 'package:jiyong_in_the_room/screens/friends_screen.dart';
-import 'package:jiyong_in_the_room/screens/settings_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/diary_list_screen.dart';
+import 'package:jiyong_in_the_room/screens/friends/friends_screen.dart';
+import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;

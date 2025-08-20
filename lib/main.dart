@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:jiyong_in_the_room/screens/home_screen.dart';
+import 'package:jiyong_in_the_room/screens/main/home_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';

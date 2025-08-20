@@ -1,11 +1,9 @@
 // 플러터의 기본 Material Design 위젯들을 사용하기 위한 import
 import 'package:flutter/material.dart';
 // 일지 작성 화면 import
-import 'package:jiyong_in_the_room/screens/write_diary_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/write_diary_screen.dart';
 // 일지 상세 화면 import
-import 'package:jiyong_in_the_room/screens/diary_detail_screen.dart';
-// 친구 관리 화면 import
-import 'package:jiyong_in_the_room/screens/friends_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 // 다이어리 엔트리 모델 import
 import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 모델 import

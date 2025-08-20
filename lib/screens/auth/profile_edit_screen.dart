@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/profile_service.dart';
 import 'dart:io';
 
