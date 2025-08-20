@@ -354,56 +354,46 @@ class DatabaseService {
     }
   }
 
-  /// 일지의 참여자 목록 가져오기
+  /// 일지의 참여자 목록 가져오기 (실시간 프로필 정보 반영)
   static Future<List<Friend>> getDiaryParticipants(int diaryEntryId) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
 
     try {
+      // 새로 생성한 뷰를 사용하여 최신 프로필 정보 가져오기
       final response = await supabase
-          .from('diary_entry_participants')
-          .select('''
-            user_id,
-            friend_id,
-            profiles(id, display_name, email, avatar_url),
-            friends(id, nickname, connected_user_id)
-          ''')
+          .from('diary_participants_with_details')
+          .select('*')
           .eq('diary_entry_id', diaryEntryId);
 
       List<Friend> participants = [];
       
       for (var json in response as List) {
         if (json['user_id'] != null) {
-          // 연결된 사용자 (실제 프로필 있음)
-          final profile = json['profiles'] as Map<String, dynamic>?;
-          if (profile != null) {
-            participants.add(Friend(
+          // 연결된 사용자 (실제 프로필 있음) - 실시간 프로필 정보 사용
+          participants.add(Friend(
+            id: json['user_id'],
+            connectedUserId: json['user_id'],
+            user: User(
               id: json['user_id'],
-              connectedUserId: json['user_id'],
-              user: User(
-                id: profile['id'],
-                name: profile['display_name'],
-                email: profile['email'],
-                avatarUrl: profile['avatar_url'],
-                joinedAt: DateTime.now(),
-              ),
-              addedAt: DateTime.now(),
-              nickname: profile['display_name'],
-            ));
-          }
+              name: json['profile_display_name'] ?? '알 수 없는 사용자',
+              email: json['profile_email'] ?? '',
+              avatarUrl: json['profile_avatar_url'],
+              joinedAt: DateTime.now(),
+            ),
+            addedAt: DateTime.now(),
+            nickname: json['profile_display_name'] ?? '알 수 없는 사용자',
+          ));
         } else if (json['friend_id'] != null) {
-          // 연결되지 않은 친구
-          final friend = json['friends'] as Map<String, dynamic>?;
-          if (friend != null) {
-            participants.add(Friend(
-              id: friend['id'],
-              connectedUserId: friend['connected_user_id'],
-              user: null,
-              addedAt: DateTime.now(),
-              nickname: friend['nickname'],
-            ));
-          }
+          // 연결되지 않은 친구 (nickname 사용)
+          participants.add(Friend(
+            id: json['friend_table_id'],
+            connectedUserId: json['friend_connected_user_id'],
+            user: null,
+            addedAt: DateTime.now(),
+            nickname: json['friend_nickname'] ?? '알 수 없는 친구',
+          ));
         }
       }
       

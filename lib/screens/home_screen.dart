@@ -16,6 +16,7 @@ class HomeScreen extends StatelessWidget {
   final Function(Friend, Friend) onUpdateFriend;
   final bool isLoggedIn;
   final Map<String, dynamic>? userProfile;
+  final VoidCallback? onDataRefresh; // 데이터 새로고침 콜백 추가
 
   const HomeScreen({
     super.key,
@@ -29,34 +30,26 @@ class HomeScreen extends StatelessWidget {
     required this.onUpdateFriend,
     required this.isLoggedIn,
     this.userProfile,
+    this.onDataRefresh,
   });
 
   Map<Friend, int> _getFriendStats() {
     Map<String, int> friendCountByName = {};
     Map<String, Friend> friendByName = {};
     
-    // 현재 사용자의 이름들 (제외할 대상)
-    final currentUserNames = <String>{};
-    if (userProfile != null) {
-      if (userProfile!['display_name'] != null) {
-        currentUserNames.add(userProfile!['display_name']);
-      }
-      if (userProfile!['email'] != null) {
-        currentUserNames.add(userProfile!['email']);
-      }
-    }
+    // 현재 사용자의 ID (가장 정확한 식별자)
+    final currentUserId = userProfile?['id'];
     
     // 친구 이름(displayName)을 기준으로 그룹화하여 카운트 (본인 제외)
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
-          final name = friend.displayName;
-          
-          // 본인은 제외
-          if (currentUserNames.contains(name)) {
+          // 본인은 제외 (connectedUserId로 정확히 식별)
+          if (currentUserId != null && friend.connectedUserId == currentUserId) {
             continue;
           }
           
+          final name = friend.displayName;
           friendCountByName[name] = (friendCountByName[name] ?? 0) + 1;
           
           // 각 이름의 대표 Friend 객체 저장 (첫 번째로 등장한 것)
@@ -90,26 +83,17 @@ class HomeScreen extends StatelessWidget {
     
     // 함께한 친구들의 총 수 계산 (중복 제거, 본인 제외)
     final uniqueFriendNames = <String>{};
-    
-    // 현재 사용자의 이름들 (제외할 대상)
-    final currentUserNames = <String>{};
-    if (userProfile != null) {
-      if (userProfile!['display_name'] != null) {
-        currentUserNames.add(userProfile!['display_name']);
-      }
-      if (userProfile!['email'] != null) {
-        currentUserNames.add(userProfile!['email']);
-      }
-    }
+    final currentUserId = userProfile?['id'];
     
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
-          final name = friend.displayName;
-          // 본인은 제외
-          if (!currentUserNames.contains(name)) {
-            uniqueFriendNames.add(name);
+          // 본인은 제외 (connectedUserId로 정확히 식별)
+          if (currentUserId != null && friend.connectedUserId == currentUserId) {
+            continue;
           }
+          
+          uniqueFriendNames.add(friend.displayName);
         }
       }
     }
@@ -127,8 +111,8 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
                   builder: (context) => SettingsScreen(
@@ -137,6 +121,11 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               );
+              
+              // 프로필이 변경되면 홈 화면 데이터 새로고침
+              if (result == true && onDataRefresh != null) {
+                onDataRefresh!(); // 메인 앱에서 일지 데이터 새로고침
+              }
             },
             icon: CircleAvatar(
               radius: 16,

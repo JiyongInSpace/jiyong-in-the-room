@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jiyong_in_the_room/screens/contact_screen.dart';
+import 'package:jiyong_in_the_room/screens/profile_edit_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'dart:async';
 
@@ -23,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _currentIsLoggedIn = false;
   Map<String, dynamic>? _currentUserProfile;
   StreamSubscription? _authSubscription;
+  bool _profileChanged = false; // 프로필 변경 여부 추적
 
   @override
   void initState() {
@@ -58,13 +60,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('설정'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: ListView(
-        children: [_buildAccountSection(context), _buildInfoSection(context)],
+    return PopScope(
+      canPop: false, // 수동으로 pop 제어
+      onPopInvoked: (bool didPop) async {
+        // 뒤로가기 버튼이나 제스처 시 호출
+        Navigator.of(context).pop(_profileChanged);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('설정'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pop(_profileChanged);
+            },
+          ),
+        ),
+        body: ListView(
+          children: [_buildAccountSection(context), _buildInfoSection(context)],
+        ),
       ),
     );
   }
@@ -102,11 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
             title: Text(_currentUserProfile?['display_name'] ?? '사용자'),
             subtitle: Text(_currentUserProfile?['email'] ?? ''),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('프로필 편집 기능은 준비중입니다')),
-              );
-            },
+            onTap: () => _editProfile(context),
           ),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -233,6 +244,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  // 프로필 편집 화면으로 이동
+  Future<void> _editProfile(BuildContext context) async {
+    if (_currentUserProfile == null) return;
+    
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileEditScreen(
+          userProfile: _currentUserProfile!,
+        ),
+      ),
+    );
+    
+    // 프로필이 업데이트되면 새로고침
+    if (result == true) {
+      final newProfile = await AuthService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _currentUserProfile = newProfile;
+          _profileChanged = true; // 프로필 변경됨으로 표시
+        });
       }
     }
   }
