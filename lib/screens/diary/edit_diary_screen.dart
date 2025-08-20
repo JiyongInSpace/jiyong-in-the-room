@@ -586,7 +586,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                 
                 // 수정 완료 버튼
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (selectedCafe == null ||
                         selectedTheme == null ||
                         selectedDate == null) {
@@ -596,27 +596,40 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       return;
                     }
 
-                    // 수정된 데이터로 새로운 DiaryEntry 객체 생성
-                    final updatedEntry = DiaryEntry(
-                      id: widget.entry.id, // 기존 ID 유지
-                      userId: widget.entry.userId, // 기존 사용자 ID 유지
-                      themeId: widget.entry.themeId, // 기존 테마 ID 유지
-                      theme: widget.entry.theme, // 기존 테마 정보 유지
-                      createdAt: widget.entry.createdAt, // 기존 생성일시 유지
-                      updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
-                      date: selectedDate!,
-                      friends: selectedFriends,
-                      // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
-                      memo: _memoController.text.isEmpty ? null : _memoController.text,
-                      rating: _rating,
-                      escaped: _escaped,
-                      hintUsedCount: _hintUsedCount,
-                      timeTaken: _timeTaken,
-                    );
+                    try {
+                      // 수정된 데이터로 새로운 DiaryEntry 객체 생성
+                      final updatedEntry = DiaryEntry(
+                        id: widget.entry.id, // 기존 ID 유지
+                        userId: widget.entry.userId, // 기존 사용자 ID 유지
+                        themeId: widget.entry.themeId, // 기존 테마 ID 유지
+                        theme: widget.entry.theme, // 기존 테마 정보 유지
+                        createdAt: widget.entry.createdAt, // 기존 생성일시 유지
+                        updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
+                        date: selectedDate!,
+                        friends: selectedFriends,
+                        // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
+                        memo: _memoController.text.isEmpty ? null : _memoController.text,
+                        rating: _rating,
+                        escaped: _escaped,
+                        hintUsedCount: _hintUsedCount,
+                        timeTaken: _timeTaken,
+                      );
 
-                    // Navigator.pop(): 현재 화면을 닫고 이전 화면으로 돌아감
-                    // 두 번째 매개변수로 수정된 데이터를 전달
-                    Navigator.pop(context, updatedEntry);
+                      // 데이터베이스에 수정 사항 저장
+                      final savedEntry = await DatabaseService.updateDiaryEntry(updatedEntry);
+                      
+                      // 수정 성공 시 수정된 데이터와 함께 화면 닫기
+                      if (mounted) {
+                        Navigator.pop(context, savedEntry);
+                      }
+                    } catch (e) {
+                      // 수정 실패 시 스낵바 표시
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('수정 실패: $e')),
+                        );
+                      }
+                    }
                   },
                   child: const Text('수정 완료'),
                 ),
