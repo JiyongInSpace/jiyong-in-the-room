@@ -181,6 +181,17 @@ class DiaryListScreen extends StatelessWidget {
       // 일지 작성 버튼 (화면 우하단의 둥근 버튼)
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          // 로그인 확인
+          if (!AuthService.isLoggedIn) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('일지 작성 기능을 사용하려면 로그인이 필요합니다'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+          
           // 일지 작성 화면으로 이동하고 결과를 기다림
           final result = await Navigator.push(
             context,
@@ -189,7 +200,7 @@ class DiaryListScreen extends StatelessWidget {
 
           // WriteDiaryScreen에서 저장된 DiaryEntry 객체 확인
           if (result != null && result is DiaryEntry) {
-            // 로컬 또는 DB에서 저장된 일지 객체를 받아서 목록에 추가
+            // DB에서 저장된 일지 객체를 받아서 목록에 추가
             onAdd(result);
           }
         },
