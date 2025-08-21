@@ -313,7 +313,7 @@ class _MyAppState extends State<MyApp> {
         onUpdateFriend: updateFriend,
         isLoggedIn: isLoggedIn,
         userProfile: userProfile,
-        onDataRefresh: _loadUserData, // 프로필 변경 시 데이터 새로고침
+        onDataRefresh: _loadUserProfile, // 프로필 변경 시 사용자 프로필만 새로고침
       ),
     );
   }
