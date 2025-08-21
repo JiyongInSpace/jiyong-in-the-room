@@ -1,9 +1,46 @@
 import 'dart:io';
-import 'package:path/path.dart' as path;
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/utils/supabase.dart';
 
 class ProfileService {
+  
+  /// 이미지를 최적화하여 용량을 줄이는 메서드
+  static Future<Uint8List> _optimizeImage(File imageFile) async {
+    // 원본 이미지 읽기
+    final bytes = await imageFile.readAsBytes();
+    final originalImage = img.decodeImage(bytes);
+    
+    if (originalImage == null) {
+      throw Exception('이미지를 읽을 수 없습니다');
+    }
+    
+    // 이미지 최적화 설정
+    const int maxWidth = 512;
+    const int maxHeight = 512;
+    const int jpegQuality = 75; // 품질 75% (용량과 화질의 균형)
+    
+    // 크기 조정 (긴 쪽을 기준으로 비율 유지하여 리사이즈)
+    img.Image resizedImage = originalImage;
+    if (originalImage.width > maxWidth || originalImage.height > maxHeight) {
+      resizedImage = img.copyResize(
+        originalImage,
+        width: originalImage.width > originalImage.height ? maxWidth : null,
+        height: originalImage.height > originalImage.width ? maxHeight : null,
+        interpolation: img.Interpolation.linear, // 고품질 보간법
+      );
+    }
+    
+    // 메타데이터 제거 및 JPEG로 압축
+    // removeExif: true로 EXIF 데이터 제거하여 용량 절약
+    final optimizedBytes = img.encodeJpg(
+      resizedImage,
+      quality: jpegQuality,
+    );
+    
+    return Uint8List.fromList(optimizedBytes);
+  }
   
   /// 프로필 이미지를 Supabase Storage에 업로드
   static Future<String> uploadProfileImage(File imageFile) async {
@@ -13,23 +50,33 @@ class ProfileService {
     }
 
     try {
-      // 파일 확장자 추출
-      final fileExtension = path.extension(imageFile.path).toLowerCase();
-      final fileName = 'profile$fileExtension';
+      // 이미지 최적화
+      final optimizedImageBytes = await _optimizeImage(imageFile);
+      
+      // 최적화된 이미지는 항상 JPEG로 저장
+      const fileName = 'profile.jpg';
       final filePath = '${user.id}/$fileName';
       
-      // 기존 이미지가 있으면 삭제
-      try {
-        await supabase.storage.from('avatars').remove([filePath]);
-      } catch (e) {
-        // 파일이 없으면 무시
-        print('기존 파일 삭제 시도: $e');
+      // 기존 이미지들이 있으면 모두 삭제 (다양한 확장자 대응)
+      final filesToDelete = [
+        '${user.id}/profile.jpg',
+        '${user.id}/profile.jpeg', 
+        '${user.id}/profile.png',
+        '${user.id}/profile.webp',
+      ];
+      
+      for (final deleteFilePath in filesToDelete) {
+        try {
+          await supabase.storage.from('avatars').remove([deleteFilePath]);
+        } catch (e) {
+          // 파일이 없으면 무시
+        }
       }
 
-      // 새 이미지 업로드
-      final response = await supabase.storage
+      // 최적화된 이미지 업로드
+      await supabase.storage
           .from('avatars')
-          .upload(filePath, imageFile);
+          .uploadBinary(filePath, optimizedImageBytes);
 
       // 공개 URL 생성
       final publicUrl = supabase.storage
