@@ -5,8 +5,8 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/diary_data_service.dart';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
 // 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
@@ -403,101 +403,104 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 );
               },
             ),
-            const SizedBox(height: 20),
-            RawAutocomplete<Friend>(
-              textEditingController: friendSearchController,
-              focusNode: FocusNode(),
-              optionsBuilder: (textEditingValue) {
-                // 선택되지 않은 친구들 필터링
-                final availableFriends = widget.friends
-                    .where((f) => !selectedFriends.contains(f))
-                    .toList();
-                
-                // 텍스트가 비어있으면 모든 사용 가능한 친구들 표시
-                if (textEditingValue.text.isEmpty) {
-                  return availableFriends;
-                }
-                
-                // 텍스트가 있으면 필터링된 친구들 표시
-                return availableFriends
-                    .where((f) => f.displayName.contains(textEditingValue.text))
-                    .toList();
-              },
-              onSelected: (Friend selected) {
-                setState(() {
-                  selectedFriends.add(selected);
-                  friendSearchController.clear();
-                });
-                // 포커스 해제로 다른 필드로 포커스가 넘어가는 것을 방지
-                FocusScope.of(context).unfocus();
-              },
-              fieldViewBuilder: (
-                context,
-                controller,
-                focusNode,
-                onFieldSubmitted,
-              ) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: InputDecoration(
-                    labelText: '친구 검색',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: controller.text.isNotEmpty
-                        ? const Icon(Icons.search, color: Colors.orange)
-                        : null,
-                  ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      child: ListView.builder(
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option.displayName),
-                            subtitle: option.isConnected && option.realName != null 
-                                ? Text(option.realName!) 
-                                : null,
-                            leading: Icon(
-                              option.isConnected ? Icons.link : Icons.link_off,
-                              size: 16,
-                              color: option.isConnected ? Colors.green : Colors.grey,
-                            ),
-                            onTap: () => onSelected(option),
-                          );
-                        },
+            // 친구 기능은 회원만 사용 가능
+            if (AuthService.isLoggedIn) ...[
+              const SizedBox(height: 20),
+              RawAutocomplete<Friend>(
+                textEditingController: friendSearchController,
+                focusNode: FocusNode(),
+                optionsBuilder: (textEditingValue) {
+                  // 선택되지 않은 친구들 필터링
+                  final availableFriends = widget.friends
+                      .where((f) => !selectedFriends.contains(f))
+                      .toList();
+                  
+                  // 텍스트가 비어있으면 모든 사용 가능한 친구들 표시
+                  if (textEditingValue.text.isEmpty) {
+                    return availableFriends;
+                  }
+                  
+                  // 텍스트가 있으면 필터링된 친구들 표시
+                  return availableFriends
+                      .where((f) => f.displayName.contains(textEditingValue.text))
+                      .toList();
+                },
+                onSelected: (Friend selected) {
+                  setState(() {
+                    selectedFriends.add(selected);
+                    friendSearchController.clear();
+                  });
+                  // 포커스 해제로 다른 필드로 포커스가 넘어가는 것을 방지
+                  FocusScope.of(context).unfocus();
+                },
+                fieldViewBuilder: (
+                  context,
+                  controller,
+                  focusNode,
+                  onFieldSubmitted,
+                ) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: '친구 검색',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: controller.text.isNotEmpty
+                          ? const Icon(Icons.search, color: Colors.orange)
+                          : null,
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option.displayName),
+                              subtitle: option.isConnected && option.realName != null 
+                                  ? Text(option.realName!) 
+                                  : null,
+                              leading: Icon(
+                                option.isConnected ? Icons.link : Icons.link_off,
+                                size: 16,
+                                color: option.isConnected ? Colors.green : Colors.grey,
+                              ),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-            // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
-            Wrap(
-              spacing: 8, // 아이템들 사이의 간격
-              children:
-                  // map(): 리스트의 각 요소를 다른 형태로 변환
-                  selectedFriends.map((friend) {
-                    // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
-                    return Chip(
-                      label: Text(friend.displayName),
-                      deleteIcon: const Icon(Icons.close),
-                      // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
-                      onDeleted: () {
-                        setState(() {
-                          selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
-                        });
-                      },
-                    );
-                  }).toList(), // map 결과를 List로 변환
-            ),
+                  );
+                },
+              ),
+              // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
+              Wrap(
+                spacing: 8, // 아이템들 사이의 간격
+                children:
+                    // map(): 리스트의 각 요소를 다른 형태로 변환
+                    selectedFriends.map((friend) {
+                      // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
+                      return Chip(
+                        label: Text(friend.displayName),
+                        deleteIcon: const Icon(Icons.close),
+                        // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
+                        onDeleted: () {
+                          setState(() {
+                            selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
+                          });
+                        },
+                      );
+                    }).toList(), // map 결과를 List로 변환
+              ),
+            ],
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: () {
@@ -664,13 +667,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   return;
                 }
                 
-                // 로그인 확인
-                if (!AuthService.isLoggedIn) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('로그인이 필요합니다')),
-                  );
-                  return;
-                }
+                // 비회원도 일지 작성 가능 (로컬 저장)
                 
                 try {
                   // 로딩 표시
@@ -686,7 +683,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   final now = DateTime.now();
                   final newEntry = DiaryEntry(
                     id: 0, // DB에서 자동 생성
-                    userId: AuthService.currentUser!.id,
+                    userId: AuthService.isLoggedIn ? AuthService.currentUser!.id : 'guest',
                     themeId: selectedTheme!.id,
                     theme: selectedTheme,
                     date: selectedDate!,
@@ -701,17 +698,25 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     updatedAt: now,
                   );
                   
-                  // 친구 ID 목록 생성 (모든 선택된 친구)
-                  final friendIds = selectedFriends
-                      .where((friend) => friend.id != null)
-                      .map((friend) => friend.id!)
-                      .toList();
-                  
-                  // DB에 저장 (본인 + 선택된 친구들이 participants에 추가됨)
-                  final savedEntry = await DatabaseService.addDiaryEntry(
-                    newEntry, 
-                    friendIds: friendIds.isNotEmpty ? friendIds : null,
+                  // 최종 일지 객체 생성 (로그인 상태에 따라 친구 정보 포함/제외)
+                  final finalEntry = DiaryEntry(
+                    id: newEntry.id,
+                    userId: newEntry.userId,
+                    themeId: newEntry.themeId,
+                    theme: newEntry.theme,
+                    date: newEntry.date,
+                    friends: AuthService.isLoggedIn ? selectedFriends : null,
+                    memo: newEntry.memo,
+                    rating: newEntry.rating,
+                    escaped: newEntry.escaped,
+                    hintUsedCount: newEntry.hintUsedCount,
+                    timeTaken: newEntry.timeTaken,
+                    createdAt: newEntry.createdAt,
+                    updatedAt: newEntry.updatedAt,
                   );
+                  
+                  // 통합 데이터 서비스로 저장 (로그인 상태에 따라 로컬/DB 자동 선택)
+                  final savedEntry = await DiaryDataService.saveDiary(finalEntry);
                   
                   if (mounted) {
                     // 로딩 다이얼로그 닫기

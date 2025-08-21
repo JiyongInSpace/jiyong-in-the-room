@@ -5,10 +5,10 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 // 카페와 테마 데이터 모델 import
 // 사용자와 친구 데이터 모델 import
 import 'package:jiyong_in_the_room/models/user.dart';
-// 데이터베이스 서비스 import
-import 'package:jiyong_in_the_room/services/database_service.dart';
 // 인증 서비스 import
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+// 통합 데이터 서비스 import
+import 'package:jiyong_in_the_room/services/diary_data_service.dart';
 
 // 일지 수정 화면 - 기존 일지 엔트리를 수정하는 위젯
 class EditDiaryScreen extends StatefulWidget {
@@ -555,8 +555,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
                     if (confirmed == true) {
                       try {
-                        // 데이터베이스에서 삭제
-                        await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                        // 통합 데이터 서비스로 삭제 (로그인 상태에 따라 로컬/DB 자동 선택)
+                        await DiaryDataService.deleteDiary(widget.entry.id.toString());
                         
                         // 삭제 성공 - 'deleted' 신호와 함께 화면 닫기
                         if (mounted) {
@@ -615,8 +615,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         timeTaken: _timeTaken,
                       );
 
-                      // 데이터베이스에 수정 사항 저장
-                      final savedEntry = await DatabaseService.updateDiaryEntry(updatedEntry);
+                      // 통합 데이터 서비스로 수정 사항 저장 (로그인 상태에 따라 로컬/DB 자동 선택)
+                      final savedEntry = await DiaryDataService.updateDiary(updatedEntry);
                       
                       // 수정 성공 시 수정된 데이터와 함께 화면 닫기
                       if (mounted) {

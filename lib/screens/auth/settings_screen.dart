@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:jiyong_in_the_room/screens/misc/contact_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/profile_edit_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/diary_data_service.dart';
 import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
@@ -78,7 +80,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         body: ListView(
-          children: [_buildAccountSection(context), _buildInfoSection(context)],
+          children: [
+            _buildAccountSection(context), 
+            _buildDataSection(context),
+            _buildInfoSection(context)
+          ],
         ),
       ),
     );
@@ -123,6 +129,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.logout),
             title: const Text('로그아웃'),
             onTap: () => _signOut(context),
+          ),
+        ],
+        const Divider(),
+      ],
+    );
+  }
+
+  Widget _buildDataSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Text(
+            '🗂️ 데이터 관리',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.delete_sweep),
+          title: const Text('로컬 일지 데이터 정리'),
+          subtitle: const Text('기기에 저장된 임시 일지 데이터 삭제'),
+          onTap: () => _clearLocalData(context),
+        ),
+        if (_currentIsLoggedIn) ...[
+          ListTile(
+            leading: const Icon(Icons.sync),
+            title: const Text('로컬 데이터 다시 동기화'),
+            subtitle: const Text('비회원 시 저장한 일지를 클라우드로 이전'),
+            onTap: () => _retryMigration(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('마이그레이션 상태 확인'),
+            subtitle: const Text('로컬 데이터와 동기화 상태 확인'),
+            onTap: () => _checkMigrationStatus(context),
           ),
         ],
         const Divider(),
@@ -313,6 +359,235 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('로그아웃 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 로컬 데이터 정리
+  Future<void> _clearLocalData(BuildContext context) async {
+    try {
+      // 현재 로컬 데이터 개수 확인
+      final localCount = await LocalStorageService.getDiaryCount();
+      
+      if (localCount == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('정리할 로컬 데이터가 없습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 확인 다이얼로그
+      final bool? shouldClear = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('로컬 데이터 정리'),
+          content: Text('기기에 저장된 $localCount개의 임시 일지 데이터를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldClear == true) {
+        // 로딩 표시
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        await LocalStorageService.clearAllDiaries();
+        
+        if (context.mounted) {
+          // 로딩 다이얼로그 닫기
+          Navigator.of(context).pop();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$localCount개의 로컬 일지 데이터가 삭제되었습니다'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // 로딩 다이얼로그가 열려있다면 닫기
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데이터 정리 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 마이그레이션 다시 시도
+  Future<void> _retryMigration(BuildContext context) async {
+    try {
+      // 현재 로컬 데이터 개수 확인
+      final localCount = await LocalStorageService.getDiaryCount();
+      
+      if (localCount == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('동기화할 로컬 데이터가 없습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 확인 다이얼로그
+      final bool? shouldMigrate = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('로컬 데이터 동기화'),
+          content: Text('기기에 저장된 $localCount개의 일지를 클라우드로 이전하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('동기화'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldMigrate == true) {
+        // 로딩 표시
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        // 마이그레이션 상태 재설정
+        await DiaryDataService.resetMigrationStatus();
+        
+        // 마이그레이션 실행
+        final migratedCount = await DiaryDataService.migrateLocalDataToDatabase();
+        
+        if (context.mounted) {
+          // 로딩 다이얼로그 닫기
+          Navigator.of(context).pop();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$migratedCount개의 일지가 클라우드로 이전되었습니다'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // 로딩 다이얼로그가 열려있다면 닫기
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('동기화 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 마이그레이션 상태 확인
+  Future<void> _checkMigrationStatus(BuildContext context) async {
+    try {
+      final localCount = await DiaryDataService.getLocalDiaryCount();
+      final migrationCompleted = await LocalStorageService.isMigrationCompleted();
+      final migrationNeeded = await DiaryDataService.isMigrationNeeded();
+      
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('마이그레이션 상태'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('📊 로컬 일지 개수: $localCount개'),
+                const SizedBox(height: 8),
+                Text('✅ 마이그레이션 완료: ${migrationCompleted ? "예" : "아니오"}'),
+                const SizedBox(height: 8),
+                Text('🔄 마이그레이션 필요: ${migrationNeeded ? "예" : "아니오"}'),
+                const SizedBox(height: 16),
+                if (localCount > 0 && !migrationCompleted)
+                  const Text(
+                    '⚠️ 동기화가 필요한 로컬 데이터가 있습니다.',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                else if (localCount == 0)
+                  const Text(
+                    '✅ 동기화할 로컬 데이터가 없습니다.',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                else
+                  const Text(
+                    '✅ 모든 데이터가 동기화되었습니다.',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('상태 확인 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );

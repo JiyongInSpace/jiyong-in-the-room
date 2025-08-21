@@ -73,12 +73,13 @@ class DiaryEntry {
     );
   }
 
-  // JSON 직렬화
+  // JSON 직렬화 (DB 저장용)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'user_id': userId,
       'theme_id': themeId,
+      // 'theme' 컬럼은 DB에 없으므로 제외 (로컬 저장용으로만 사용)
       'date': date.toIso8601String().split('T')[0], // YYYY-MM-DD 형태
       'memo': memo,
       'rating': rating,
@@ -91,6 +92,13 @@ class DiaryEntry {
     };
   }
 
+  // 로컬 저장용 JSON 직렬화 (테마 정보 포함)
+  Map<String, dynamic> toJsonForLocal() {
+    final json = toJson();
+    json['theme'] = theme?.toJson(); // 로컬 저장 시에만 테마 정보 포함
+    return json;
+  }
+
   factory DiaryEntry.fromJson(Map<String, dynamic> json) {
     return DiaryEntry(
       id: json['id'] as int,
@@ -98,7 +106,9 @@ class DiaryEntry {
       themeId: json['theme_id'] as int,
       theme: json['escape_themes'] != null 
           ? EscapeTheme.fromJson(json['escape_themes'] as Map<String, dynamic>)
-          : null,
+          : json['theme'] != null
+              ? EscapeTheme.fromJson(json['theme'] as Map<String, dynamic>)
+              : null,
       date: DateTime.parse(json['date'] as String),
       friends: null, // 별도 메서드로 조회
       memo: json['memo'] as String?,

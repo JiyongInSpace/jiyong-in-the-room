@@ -3,6 +3,8 @@ import '../models/escape_cafe.dart';
 
 class EscapeRoomService {
   static final _client = Supabase.instance.client;
+  
+  // 비회원도 사용 가능한 공개 데이터 조회 서비스
 
   static Future<List<EscapeCafe>> getAllCafes() async {
     try {

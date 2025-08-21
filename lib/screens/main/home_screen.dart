@@ -407,84 +407,130 @@ class HomeScreen extends StatelessWidget {
               
               const SizedBox(height: 24),
               
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '가장 많이 함께한 친구들',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      if (!isLoggedIn) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('친구 기능을 사용하려면 로그인이 필요합니다'),
-                            backgroundColor: Colors.orange,
+              // 친구 섹션은 회원만 표시
+              if (isLoggedIn) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '가장 많이 함께한 친구들',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FriendsScreen(
+                              friends: friends,
+                              onAdd: onAddFriend,
+                              onRemove: onRemoveFriend,
+                              onUpdate: onUpdateFriend,
+                            ),
                           ),
                         );
-                        return;
-                      }
-                      
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FriendsScreen(
-                            friends: friends,
-                            onAdd: onAddFriend,
-                            onRemove: onRemoveFriend,
-                            onUpdate: onUpdateFriend,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('더보기'),
+                      },
+                      child: const Text('더보기'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                if (topFriends.isNotEmpty)
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: topFriends.asMap().entries.map((entry) {
+                          final rank = entry.key + 1;
+                          final friend = entry.value.key;
+                          final count = entry.value.value;
+                          
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: rank == 1 
+                                  ? Colors.amber 
+                                  : rank == 2 
+                                      ? Colors.grey[400] 
+                                      : Colors.brown[300],
+                              child: Text(
+                                rank.toString(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            title: Text(friend.displayName),
+                            trailing: Text('$count회'),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  )
+                else
+                  const Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('아직 친구와 함께한 기록이 없습니다.'),
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              if (topFriends.isNotEmpty)
+              ] else ...[
+                // 비회원용 로그인 안내 섹션
                 Card(
                   margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
-                      children: topFriends.asMap().entries.map((entry) {
-                        final rank = entry.key + 1;
-                        final friend = entry.value.key;
-                        final count = entry.value.value;
-                        
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: rank == 1 
-                                ? Colors.amber 
-                                : rank == 2 
-                                    ? Colors.grey[400] 
-                                    : Colors.brown[300],
-                            child: Text(
-                              rank.toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '친구와 함께한 방탈 기록하기',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey[600],
                           ),
-                          title: Text(friend.displayName),
-                          trailing: Text('$count회'),
-                        );
-                      }).toList(),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '로그인하면 친구들과 함께한 방탈출 경험을\n기록하고 공유할 수 있습니다',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () async {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SettingsScreen(
+                                  isLoggedIn: isLoggedIn,
+                                  userProfile: userProfile,
+                                ),
+                              ),
+                            );
+                            
+                            // 프로필이 변경되면 홈 화면 데이터 새로고침
+                            if (result == true && onDataRefresh != null) {
+                              onDataRefresh!();
+                            }
+                          },
+                          child: const Text('로그인하기'),
+                        ),
+                      ],
                     ),
                   ),
-                )
-              else
-                const Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text('아직 친구와 함께한 기록이 없습니다.'),
-                  ),
                 ),
+              ],
             ],
           ),
         ),

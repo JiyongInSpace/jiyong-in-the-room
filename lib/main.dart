@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jiyong_in_the_room/screens/main/home_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/diary_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,8 @@ void main() async {
   // .env 파일 로드
   await dotenv.load(fileName: ".env");
   
-  await Hive.initFlutter();
+  // 로컬 저장소 초기화
+  await LocalStorageService.init();
   
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -44,22 +46,21 @@ class _MyAppState extends State<MyApp> {
     });
   }
   
-  // DB에서 일지 목록 로드
+  // 일지 목록 로드 (로그인 상태에 따라 로컬/DB 자동 선택)
   Future<void> _loadDiaryEntries() async {
     try {
-      if (AuthService.isLoggedIn) {
-        final entries = await DatabaseService.getMyDiaryEntries();
-        setState(() {
-          diaryList.clear();
-          diaryList.addAll(entries);
-        });
-        if (kDebugMode) {
-          print('📋 일지 목록 로드됨: ${entries.length}개');
-        }
+      final entries = await DiaryDataService.getAllDiaries();
+      setState(() {
+        diaryList.clear();
+        diaryList.addAll(entries);
+      });
+      if (kDebugMode) {
+        final source = AuthService.isLoggedIn ? 'DB' : '로컬';
+        print('📋 일지 목록 로드됨 ($source): ${entries.length}개');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ 일지 목록 로드 실패: $e');
+        print('❌ 일지 로드 실패: $e');
       }
     }
   }
@@ -224,6 +225,9 @@ class _MyAppState extends State<MyApp> {
     if (isLoggedIn) {
       _loadUserProfile();
     }
+    
+    // 로그인 상태와 관계없이 일지 로드 (비회원은 로컬, 회원은 DB)
+    _loadDiaryEntries();
   }
 
   void _listenToAuthChanges() {
@@ -241,9 +245,11 @@ class _MyAppState extends State<MyApp> {
       if (isLoggedIn) {
         _loadUserProfile();
         _loadUserData();
+        _checkAndMigrate(); // 로그인 시 마이그레이션 체크
       } else {
         userProfile = null;
         _clearUserData();
+        _loadDiaryEntries(); // 로그아웃 시 로컬 일지 로드
       }
     });
   }
@@ -274,10 +280,45 @@ class _MyAppState extends State<MyApp> {
   void _clearUserData() {
     setState(() {
       friendsList.clear();
-      diaryList.clear();
+      // 일지는 비회원도 사용할 수 있으므로 clear하지 않음
+      // diaryList.clear(); 
     });
     if (kDebugMode) {
-      print('🧹 로컬 데이터 정리 완료');
+      print('🧹 회원 데이터 정리 완료');
+    }
+  }
+
+  // 로그인 시 로컬 데이터 마이그레이션 체크
+  Future<void> _checkAndMigrate() async {
+    try {
+      final localCount = await DiaryDataService.getLocalDiaryCount();
+      if (kDebugMode) {
+        print('🔍 자동 마이그레이션 체크 - 로컬 일지 수: $localCount');
+      }
+      
+      if (await DiaryDataService.isMigrationNeeded()) {
+        if (kDebugMode) {
+          print('🔄 자동 마이그레이션 필요, 시작...');
+        }
+        
+        final migratedCount = await DiaryDataService.migrateLocalDataToDatabase();
+        
+        if (kDebugMode) {
+          print('✅ 자동 마이그레이션 완료: $migratedCount개 일지');
+        }
+        
+        // 마이그레이션 후 일지 목록 새로고침
+        await _loadDiaryEntries();
+      } else {
+        if (kDebugMode) {
+          print('ℹ️ 자동 마이그레이션 불필요');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 자동 마이그레이션 실패: $e');
+      }
+      // 마이그레이션 실패해도 앱 동작은 계속됨
     }
   }
 
