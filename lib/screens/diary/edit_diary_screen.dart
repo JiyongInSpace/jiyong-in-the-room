@@ -615,8 +615,17 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         timeTaken: _timeTaken,
                       );
 
+                      // 친구 ID 목록 생성 (모든 선택된 친구)
+                      final friendIds = selectedFriends
+                          .where((friend) => friend.id != null)
+                          .map((friend) => friend.id!)
+                          .toList();
+                      
                       // 데이터베이스에 수정 사항 저장
-                      final savedEntry = await DatabaseService.updateDiaryEntry(updatedEntry);
+                      final savedEntry = await DatabaseService.updateDiaryEntry(
+                        updatedEntry,
+                        friendIds: friendIds.isNotEmpty ? friendIds : null,
+                      );
                       
                       // 수정 성공 시 수정된 데이터와 함께 화면 닫기
                       if (mounted) {

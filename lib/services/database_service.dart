@@ -139,7 +139,7 @@ class DatabaseService {
 
       return (response as List).map((json) {
         return Friend(
-          id: json['id'] as String,
+          id: json['id'] as int,
           connectedUserId: json['connected_user_id'],
           user: null, // 일단 null로 처리, 추후 연결된 사용자 정보 로드 가능
           nickname: json['nickname'],
@@ -178,7 +178,7 @@ class DatabaseService {
           .single();
 
       return Friend(
-        id: response['id'] as String,
+        id: response['id'] as int,
         connectedUserId: response['connected_user_id'],
         user: null, // 일단 null로 처리
         nickname: response['nickname'],
@@ -220,7 +220,7 @@ class DatabaseService {
           .single();
 
       return Friend(
-        id: response['id'] as String,
+        id: response['id'] as int,
         connectedUserId: response['connected_user_id'],
         user: null, // 일단 null로 처리
         nickname: response['nickname'],
@@ -373,7 +373,7 @@ class DatabaseService {
         if (json['user_id'] != null) {
           // 연결된 사용자 (실제 프로필 있음) - 실시간 프로필 정보 사용
           participants.add(Friend(
-            id: json['user_id'],
+            id: null, // 연결된 사용자의 경우 Friend.id는 null (friend_id가 없으므로)
             connectedUserId: json['user_id'],
             user: User(
               id: json['user_id'],
@@ -388,7 +388,7 @@ class DatabaseService {
         } else if (json['friend_id'] != null) {
           // 연결되지 않은 친구 (nickname 사용)
           participants.add(Friend(
-            id: json['friend_table_id'],
+            id: json['friend_table_id'] as int?,
             connectedUserId: json['friend_connected_user_id'],
             user: null,
             addedAt: DateTime.now(),
@@ -407,7 +407,7 @@ class DatabaseService {
   }
 
   /// 새 일지 추가
-  static Future<DiaryEntry> addDiaryEntry(DiaryEntry entry, {List<String>? friendIds}) async {
+  static Future<DiaryEntry> addDiaryEntry(DiaryEntry entry, {List<int>? friendIds}) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
@@ -449,7 +449,7 @@ class DatabaseService {
       
       // 2. 선택된 친구들을 참여자로 추가
       if (friendIds != null && friendIds.isNotEmpty) {
-        for (String friendId in friendIds) {
+        for (int friendId in friendIds) {
           // friendId가 실제 user_id인지 friends 테이블의 ID인지 확인
           final friend = await supabase
               .from('friends')
@@ -476,7 +476,7 @@ class DatabaseService {
 
       // 친구 정보를 포함한 완전한 일지 데이터 반환
       final entryWithFriends = savedEntry.copyWith(
-        friends: await getDiaryParticipants(savedEntry.id!),
+        friends: await getDiaryParticipants(savedEntry.id),
       );
       
       return entryWithFriends;
@@ -489,7 +489,7 @@ class DatabaseService {
   }
 
   /// 일지 수정
-  static Future<DiaryEntry> updateDiaryEntry(DiaryEntry entry, {List<String>? friendIds}) async {
+  static Future<DiaryEntry> updateDiaryEntry(DiaryEntry entry, {List<int>? friendIds}) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
@@ -539,7 +539,7 @@ class DatabaseService {
       
       // 2. 선택된 친구들을 참여자로 추가
       if (friendIds != null && friendIds.isNotEmpty) {
-        for (String friendId in friendIds) {
+        for (int friendId in friendIds) {
           final friend = await supabase
               .from('friends')
               .select('id, connected_user_id')
@@ -563,7 +563,12 @@ class DatabaseService {
             .insert(participantRelations);
       }
       
-      return updatedEntry;
+      // 친구 정보를 포함한 완전한 일지 데이터 반환
+      final entryWithFriends = updatedEntry.copyWith(
+        friends: await getDiaryParticipants(updatedEntry.id),
+      );
+      
+      return entryWithFriends;
     } catch (e) {
       if (kDebugMode) {
         print('일지 수정 실패: $e');

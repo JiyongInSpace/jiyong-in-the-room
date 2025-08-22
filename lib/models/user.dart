@@ -38,8 +38,8 @@ class User {
 
 // 친구 정보
 class Friend {
-  final String? id; // 친구 고유 ID (UUID)
-  final String? connectedUserId; // 연결된 유저 ID (없으면 연결되지 않은 상태)
+  final int? id; // 친구 고유 ID (SERIAL INTEGER)
+  final String? connectedUserId; // 연결된 유저 ID (없으면 연결되지 않은 상태) - UUID 유지
   final User? user; // 연결된 경우에만 실제 유저 정보
   final DateTime addedAt;
   final String nickname; // 내가 부르는 이름 (필수)
@@ -83,7 +83,7 @@ class Friend {
 
   factory Friend.fromJson(Map<String, dynamic> json) {
     return Friend(
-      id: json['id'] as String?,
+      id: json['id'] as int?,
       connectedUserId: json['connected_user_id'] as String?,
       user: json['user'] != null 
           ? User.fromJson(json['user'] as Map<String, dynamic>)
