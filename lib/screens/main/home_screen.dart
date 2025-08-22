@@ -277,6 +277,16 @@ class HomeScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {
+                      if (!isLoggedIn) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('일지 목록을 보려면 로그인이 필요합니다'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+                      
                       Navigator.push(
                         context,
                         MaterialPageRoute(
