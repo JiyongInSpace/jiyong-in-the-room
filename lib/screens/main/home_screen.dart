@@ -4,6 +4,7 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friends_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
+import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;
@@ -276,13 +277,30 @@ class HomeScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (!isLoggedIn) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('일지 목록을 보려면 로그인이 필요합니다'),
-                            backgroundColor: Colors.orange,
-                          ),
+                        await LoginDialog.show(
+                          context: context,
+                          title: '일지 목록 보기',
+                          message: '전체 일지 목록을 보려면 로그인이 필요해요.',
+                          onLoginSuccess: () {
+                            // 로그인 성공 후 자동으로 일지 목록으로 이동
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DiaryListScreen(
+                                  diaryList: diaryList,
+                                  onAdd: onAdd,
+                                  onUpdate: onUpdate,
+                                  onDelete: onDelete,
+                                  friends: friends,
+                                  onAddFriend: onAddFriend,
+                                  onRemoveFriend: onRemoveFriend,
+                                  onUpdateFriend: onUpdateFriend,
+                                ),
+                              ),
+                            );
+                          },
                         );
                         return;
                       }
@@ -425,13 +443,26 @@ class HomeScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (!isLoggedIn) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('친구 기능을 사용하려면 로그인이 필요합니다'),
-                            backgroundColor: Colors.orange,
-                          ),
+                        await LoginDialog.show(
+                          context: context,
+                          title: '친구 관리',
+                          message: '친구 기능을 사용하려면 로그인이 필요해요.',
+                          onLoginSuccess: () {
+                            // 로그인 성공 후 자동으로 친구 화면으로 이동
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FriendsScreen(
+                                  friends: friends,
+                                  onAdd: onAddFriend,
+                                  onRemove: onRemoveFriend,
+                                  onUpdate: onUpdateFriend,
+                                ),
+                              ),
+                            );
+                          },
                         );
                         return;
                       }
