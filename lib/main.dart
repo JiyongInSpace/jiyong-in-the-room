@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -40,7 +41,16 @@ class _MyAppState extends State<MyApp> {
   
   void addDiary(DiaryEntry entry) {
     setState(() {
-      diaryList.add(entry);
+      // 새 일지를 날짜 기준 올바른 위치에 삽입 (최신순 유지)
+      int insertIndex = 0;
+      for (int i = 0; i < diaryList.length; i++) {
+        if (diaryList[i].date.isBefore(entry.date)) {
+          insertIndex = i;
+          break;
+        }
+        insertIndex = i + 1;
+      }
+      diaryList.insert(insertIndex, entry);
     });
   }
   
@@ -302,6 +312,17 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
         fontFamily: 'Pretendard',
       ),
+      // 한국어 로케일 설정
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ko', 'KR'), // 한국어
+        Locale('en', 'US'), // 영어 (기본)
+      ],
+      locale: const Locale('ko', 'KR'), // 기본 로케일을 한국어로 설정,
       home: HomeScreen(
         diaryList: diaryList,
         friends: friendsList,

@@ -78,12 +78,16 @@ class ProfileService {
           .from('avatars')
           .uploadBinary(filePath, optimizedImageBytes);
 
-      // 공개 URL 생성
+      // 공개 URL 생성 - timestamp를 추가하여 캐싱 문제 방지
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       final publicUrl = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath);
-
-      return publicUrl;
+          
+      // URL에 timestamp 쿼리 파라미터 추가하여 캐시 무효화
+      final finalUrl = '$publicUrl?t=$timestamp';
+      
+      return finalUrl;
     } catch (e) {
       throw Exception('이미지 업로드 실패: $e');
     }
