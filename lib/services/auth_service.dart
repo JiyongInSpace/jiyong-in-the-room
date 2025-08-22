@@ -127,15 +127,54 @@ class AuthService {
     final userMetaData = user.userMetadata;
     
     try {
-      // UPSERT 사용 (존재하면 업데이트, 없으면 생성)
-      await supabase.from('profiles').upsert({
-        'id': user.id,
-        'email': user.email,
-        'display_name': userMetaData?['full_name'] ?? userMetaData?['name'] ?? user.email?.split('@')[0],
-        'avatar_url': userMetaData?['avatar_url'] ?? userMetaData?['picture'],
-      });
+      // 먼저 기존 프로필이 있는지 확인
+      final existingProfile = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
       
-      print('프로필 생성/업데이트 완료: ${user.email}');
+      if (existingProfile == null) {
+        // 새 프로필 생성
+        await supabase.from('profiles').insert({
+          'id': user.id,
+          'email': user.email,
+          'display_name': userMetaData?['full_name'] ?? userMetaData?['name'] ?? user.email?.split('@')[0],
+          'avatar_url': userMetaData?['avatar_url'] ?? userMetaData?['picture'],
+        });
+        print('새 프로필 생성 완료: ${user.email}');
+      } else {
+        // 기존 프로필이 있으면 기본적으로 이메일만 업데이트
+        // display_name과 avatar_url은 사용자가 직접 변경했을 수 있으므로 보존
+        final updateData = <String, dynamic>{
+          'email': user.email, // 이메일은 항상 최신으로 유지
+        };
+        
+        // avatar_url이 null이고 Google에서 제공하는 이미지가 있다면 업데이트
+        if (existingProfile['avatar_url'] == null && 
+            (userMetaData?['avatar_url'] != null || userMetaData?['picture'] != null)) {
+          updateData['avatar_url'] = userMetaData?['avatar_url'] ?? userMetaData?['picture'];
+        }
+        
+        // display_name이 기본값(이메일 앞부분)과 동일하다면 Google 정보로 업데이트
+        final currentDisplayName = existingProfile['display_name'];
+        final emailPrefix = user.email?.split('@')[0];
+        final googleDisplayName = userMetaData?['full_name'] ?? userMetaData?['name'];
+        
+        if (currentDisplayName == emailPrefix && googleDisplayName != null && googleDisplayName != emailPrefix) {
+          updateData['display_name'] = googleDisplayName;
+        }
+        
+        if (updateData.length > 1) { // 이메일 외에 다른 변경사항이 있을 때만 업데이트
+          await supabase
+              .from('profiles')
+              .update(updateData)
+              .eq('id', user.id);
+          print('기존 프로필 업데이트 완료: ${user.email}');
+        } else {
+          print('기존 프로필 유지 (변경사항 없음): ${user.email}');
+        }
+      }
     } catch (e) {
       print('프로필 생성 중 오류: $e');
       // 중복 키 에러는 무시 (이미 존재한다는 뜻)

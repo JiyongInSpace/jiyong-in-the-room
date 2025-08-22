@@ -136,7 +136,7 @@ class HomeScreen extends StatelessWidget {
     final recentEntries = diaryList
         .toList()
         ..sort((a, b) => b.date.compareTo(a.date))
-        ..take(5)
+        .take(3)
         .toList();
 
     return Scaffold(
