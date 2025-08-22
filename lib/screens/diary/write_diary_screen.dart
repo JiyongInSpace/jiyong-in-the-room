@@ -226,8 +226,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
       // body: 화면의 주요 내용을 담는 영역
       // Padding: 자식 위젯 주변에 여백을 주는 위젯
       body: Padding(
-        // EdgeInsets.all(): 모든 방향에 동일한 여백 적용
-        padding: const EdgeInsets.all(16.0),
+        // 하단 80px + 기본 16px 여백
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
         // SingleChildScrollView: 내용이 화면을 넘을 때 스크롤 가능하게 하는 위젯
         child: SingleChildScrollView(
           // Column: 자식 위젯들을 세로로 배치하는 위젯

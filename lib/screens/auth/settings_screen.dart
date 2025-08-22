@@ -72,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       body: ListView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 80), // 하단 80px 여백
         children: [_buildAccountSection(context), _buildInfoSection(context)],
       ),
     );

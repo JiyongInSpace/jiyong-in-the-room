@@ -70,7 +70,7 @@ class DiaryListScreen extends StatelessWidget {
               ? const Center(child: Text('작성된 일지가 없습니다.'))
               // ListView.builder: 효율적인 리스트 위젯 (필요한 아이템만 렌더링)
               : ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), // 하단 80px + 기본 16px 여백
                 itemCount: diaryList.length, // 리스트 아이템 개수
                 // itemBuilder: 각 인덱스에 대한 위젯을 생성하는 함수
                 itemBuilder: (context, index) {

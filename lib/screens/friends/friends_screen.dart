@@ -293,7 +293,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             )
           // 친구가 있을 때 목록으로 표시
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), // 하단 80px + 기본 16px 여백
               itemCount: sortedFriends.length, // 리스트 아이템 개수
               // itemBuilder: 각 아이템의 모양을 정의하는 함수
               itemBuilder: (context, index) {

@@ -75,7 +75,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         title: Text(widget.entry.theme?.name ?? '알 수 없는 테마'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0), // 하단 80px + 기본 16px 여백
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

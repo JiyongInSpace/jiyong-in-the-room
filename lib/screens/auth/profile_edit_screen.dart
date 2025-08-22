@@ -198,7 +198,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), // 하단 80px + 기본 16px 여백
           children: [
             const SizedBox(height: 20),
             
