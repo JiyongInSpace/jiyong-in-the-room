@@ -456,6 +456,7 @@ class HomeScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => FriendsScreen(
                                   friends: friends,
+                                  diaryList: diaryList,
                                   onAdd: onAddFriend,
                                   onRemove: onRemoveFriend,
                                   onUpdate: onUpdateFriend,
@@ -472,6 +473,7 @@ class HomeScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (context) => FriendsScreen(
                             friends: friends,
+                            diaryList: diaryList,
                             onAdd: onAddFriend,
                             onRemove: onRemoveFriend,
                             onUpdate: onUpdateFriend,

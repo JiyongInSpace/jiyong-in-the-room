@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 // Friend 모델 클래스를 사용하기 위한 import
 import 'package:jiyong_in_the_room/models/user.dart';
+// DiaryEntry 모델 import
+import 'package:jiyong_in_the_room/models/diary.dart';
 // 인증 서비스를 사용하기 위한 import
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 
@@ -9,6 +11,8 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 class FriendsScreen extends StatefulWidget {
   // 표시할 친구 목록
   final List<Friend> friends;
+  // 일지 목록 (친구별 참여 횟수 계산용)
+  final List diaryList;
   // 친구 추가 시 호출될 콜백 함수
   final void Function(Friend) onAdd;
   // 친구 삭제 시 호출될 콜백 함수
@@ -20,6 +24,7 @@ class FriendsScreen extends StatefulWidget {
   const FriendsScreen({
     super.key,
     required this.friends,
+    required this.diaryList,
     required this.onAdd,
     required this.onRemove,
     required this.onUpdate,
@@ -215,9 +220,38 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
+  // 친구별 참여 횟수를 계산하는 메서드
+  int _getFriendParticipationCount(Friend friend) {
+    if (widget.diaryList.isEmpty) return 0;
+    
+    int count = 0;
+    for (var diary in widget.diaryList) {
+      if (diary is DiaryEntry && diary.friends != null) {
+        // 친구 ID 또는 별명으로 매칭 확인
+        bool isParticipant = diary.friends!.any((diaryFriend) {
+          if (friend.id != null && diaryFriend.id != null) {
+            return friend.id == diaryFriend.id;
+          } else {
+            // ID가 없는 경우 별명으로 비교
+            return friend.nickname == diaryFriend.nickname;
+          }
+        });
+        if (isParticipant) count++;
+      }
+    }
+    return count;
+  }
+
   // 친구 화면의 UI를 구성하는 메서드
   @override
   Widget build(BuildContext context) {
+    // 친구 목록을 참여 횟수 순으로 정렬 (많이 함께한 순서)
+    final sortedFriends = List<Friend>.from(widget.friends)
+      ..sort((a, b) {
+        final countA = _getFriendParticipationCount(a);
+        final countB = _getFriendParticipationCount(b);
+        return countB.compareTo(countA); // 내림차순 정렬
+      });
     return Scaffold(
       appBar: AppBar(
         title: const Text('친구 관리'),
@@ -225,7 +259,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       // body: 친구 목록이 비어있는지에 따라 다른 UI 표시
-      body: widget.friends.isEmpty
+      body: sortedFriends.isEmpty
           // 친구가 없을 때 표시할 안내 메시지
           ? const Center(
               child: Column(
@@ -260,10 +294,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
           // 친구가 있을 때 목록으로 표시
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: widget.friends.length, // 리스트 아이템 개수
+              itemCount: sortedFriends.length, // 리스트 아이템 개수
               // itemBuilder: 각 아이템의 모양을 정의하는 함수
               itemBuilder: (context, index) {
-                final friend = widget.friends[index];
+                final friend = sortedFriends[index];
+                final participationCount = _getFriendParticipationCount(friend);
                 
                 // Card: 그림자가 있는 사각형 컨테이너
                 return Card(
@@ -322,10 +357,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         if (friend.memo != null)
                           Text('메모: ${friend.memo}'),
                         Text(
-                          '추가일: ${friend.addedAt.year}.${friend.addedAt.month.toString().padLeft(2, '0')}.${friend.addedAt.day.toString().padLeft(2, '0')}',
+                          '함께한 횟수: $participationCount회',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
