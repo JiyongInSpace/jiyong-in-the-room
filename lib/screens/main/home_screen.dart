@@ -133,11 +133,9 @@ class HomeScreen extends StatelessWidget {
     }
     final totalFriendsCount = uniqueFriendNames.length;
     
-    final recentEntries = diaryList
-        .toList()
-        ..sort((a, b) => b.date.compareTo(a.date))
-        .take(3)
-        .toList();
+    final sortedDiaryList = diaryList.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final recentEntries = sortedDiaryList.take(3).toList();
 
     return Scaffold(
       appBar: AppBar(
