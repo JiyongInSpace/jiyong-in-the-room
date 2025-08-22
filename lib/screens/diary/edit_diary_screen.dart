@@ -55,7 +55,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   final TextEditingController _timeController = TextEditingController();
   
   // 게임 관련 데이터를 저장하는 변수들
-  double _rating = 3.0;        // 별점 평가
+  double? _rating;             // 별점 평가 (nullable, 기본값 null)
   bool? _escaped;              // 탈출 성공 여부
   int? _hintUsedCount;         // 힌트 사용 횟수
   Duration? _timeTaken;        // 게임 소요 시간
@@ -410,8 +410,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                 color: Colors.grey[400],
                                 size: 32,
                               ),
-                              if (_rating > index) ...[
-                                if (_rating >= index + 1)
+                              if (_rating != null && _rating! > index) ...[
+                                if (_rating! >= index + 1)
                                   const Icon(
                                     Icons.star,
                                     color: Colors.amber,
@@ -437,7 +437,21 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(_rating.toStringAsFixed(1)),
+                  Text(_rating?.toStringAsFixed(1) ?? '미평가'),
+                  if (_rating != null) ...[
+                    const SizedBox(width: 10),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _rating = null;
+                        });
+                      },
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: '평점 제거',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 20),

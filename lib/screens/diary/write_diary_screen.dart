@@ -29,6 +29,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   
   // 테마 필드의 포커스 노드
   final FocusNode _themeFocusNode = FocusNode();
+  // 친구 검색 필드의 포커스 노드
+  final FocusNode _friendSearchFocusNode = FocusNode();
 
   // 사용자가 선택한 카페를 저장하는 변수
   EscapeCafe? selectedCafe;
@@ -113,9 +115,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         isLoadingThemes = false;
       });
       
-      // 테마 로딩 완료 후 포커스 주고 optionsBuilder 트리거 (테마가 아직 선택되지 않은 경우에만)
+      // 테마 로딩 완료 후 포커스 주고 optionsBuilder 트리거 (테마가 아직 선택되지 않고, 테마 텍스트가 비어있는 경우에만)
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && selectedTheme == null) {
+        if (mounted && selectedTheme == null && _themeController.text.isEmpty) {
           _themeFocusNode.requestFocus();
           // 빈 스페이스를 추가했다가 바로 제거하여 optionsBuilder 트리거
           _themeController.text = ' ';
@@ -150,8 +152,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     _memoController.dispose();
     _hintController.dispose();
     _timeController.dispose();
-    // 포커스 노드도 해제
+    // 포커스 노드들도 해제
     _themeFocusNode.dispose();
+    _friendSearchFocusNode.dispose();
     // 부모 클래스의 dispose() 메서드도 호출해야 함
     super.dispose();
   }
@@ -350,8 +353,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   });
                   // 컨트롤러 텍스트를 테마 이름으로 설정
                   _themeController.text = theme.name;
-                  // 포커스 해제로 옵션 박스를 즉시 닫음
-                  FocusScope.of(context).unfocus();
+                  // 테마 포커스 해제로 옵션 박스를 즉시 닫음
+                  _themeFocusNode.unfocus();
                 },
               fieldViewBuilder: (
                 context,
@@ -406,7 +409,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             const SizedBox(height: 20),
             RawAutocomplete<Friend>(
               textEditingController: friendSearchController,
-              focusNode: FocusNode(),
+              focusNode: _friendSearchFocusNode,
               optionsBuilder: (textEditingValue) {
                 // 선택되지 않은 친구들 필터링
                 final availableFriends = widget.friends
@@ -428,8 +431,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   selectedFriends.add(selected);
                   friendSearchController.clear();
                 });
-                // 포커스 해제로 다른 필드로 포커스가 넘어가는 것을 방지
-                FocusScope.of(context).unfocus();
+                // 친구 검색 필드 포커스만 해제
+                _friendSearchFocusNode.unfocus();
               },
               fieldViewBuilder: (
                 context,
