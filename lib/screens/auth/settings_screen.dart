@@ -60,26 +60,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false, // 수동으로 pop 제어
-      onPopInvoked: (bool didPop) async {
-        // 뒤로가기 버튼이나 제스처 시 호출
-        Navigator.of(context).pop(_profileChanged);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('설정'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.of(context).pop(_profileChanged);
-            },
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('설정'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop(_profileChanged);
+          },
         ),
-        body: ListView(
-          children: [_buildAccountSection(context), _buildInfoSection(context)],
-        ),
+      ),
+      body: ListView(
+        children: [_buildAccountSection(context), _buildInfoSection(context)],
       ),
     );
   }
