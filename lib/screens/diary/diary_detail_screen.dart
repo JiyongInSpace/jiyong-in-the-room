@@ -79,88 +79,68 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 카페 및 테마 정보 카드
+            // 메인 정보 카드 - 메인/목록 페이지 스타일로 통일
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 메인 헤더 - 테마/카페 정보만 간단히 표시
                     Row(
                       children: [
                         const Icon(Icons.lock_clock, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.entry.cafe?.name ?? '알 수 없음',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.entry.theme?.name ?? '알 수 없는 테마',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                '${widget.entry.cafe?.name ?? '알 수 없음'} • ${formatDate(widget.entry.date)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.entry.theme?.name ?? '알 수 없는 테마',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    
+                    // 친구 정보 표시 - 메인/목록 페이지와 동일한 스타일
+                    if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 2,
+                        children: widget.entry.friends!
+                            .map((friend) => Chip(
+                                  label: Text(
+                                    friend.displayName,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                  backgroundColor: Colors.blue[50],
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ))
+                            .toList(),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatDate(widget.entry.date),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
             
-            // 함께한 사람들 정보 카드 (친구가 있는 경우에만 표시)
-            if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.people, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            '함께한 사람들',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: widget.entry.friends!
-                            .map((friend) => Chip(
-                                  label: Text(friend.displayName),
-                                  backgroundColor: Colors.blue[50],
-                                ))
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            
-            // 게임 결과 정보 카드
+            // 게임 상세 정보 카드 (항상 표시)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -172,7 +152,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                         Icon(Icons.assessment, size: 20),
                         SizedBox(width: 8),
                         Text(
-                          '게임 결과',
+                          '상세 정보',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -182,105 +162,138 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     
-                    if (widget.entry.rating != null) ...[
-                      Row(
-                        children: [
-                          const Text('평점: '),
+                    // 평점 정보 (별표 포함)
+                    Row(
+                      children: [
+                        const Text('평점: '),
+                        if (widget.entry.rating != null) ...[
                           _buildStarRating(widget.entry.rating!),
                           const SizedBox(width: 8),
                           Text(
                             widget.entry.rating!.toStringAsFixed(1),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    
-                    if (widget.entry.escaped != null) ...[
-                      Row(
-                        children: [
-                          const Text('탈출 결과: '),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: widget.entry.escaped! ? Colors.green[100] : Colors.red[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              widget.entry.escaped! ? '성공' : '실패',
-                              style: TextStyle(
-                                color: widget.entry.escaped! ? Colors.green[800] : Colors.red[800],
-                                fontWeight: FontWeight.bold,
-                              ),
+                        ] else
+                          Text(
+                            '미평가',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     
-                    if (widget.entry.timeTaken != null) ...[
-                      Row(
-                        children: [
-                          const Text('소요시간: '),
+                    // 탈출 결과 정보 (글자색으로 표시)
+                    Row(
+                      children: [
+                        const Text('탈출 결과: '),
+                        if (widget.entry.escaped != null)
+                          Text(
+                            widget.entry.escaped! ? '성공' : '실패',
+                            style: TextStyle(
+                              color: widget.entry.escaped! ? Colors.green[800] : Colors.red[800],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        else
+                          Text(
+                            '미입력',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // 소요시간 정보
+                    Row(
+                      children: [
+                        const Text('소요시간: '),
+                        if (widget.entry.timeTaken != null)
                           Text(
                             '${widget.entry.timeTaken!.inMinutes}분',
                             style: const TextStyle(fontWeight: FontWeight.bold),
+                          )
+                        else
+                          Text(
+                            '미입력',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     
-                    if (widget.entry.hintUsedCount != null) ...[
-                      Row(
-                        children: [
-                          const Text('힌트 사용: '),
+                    // 힌트 사용 정보
+                    Row(
+                      children: [
+                        const Text('힌트 사용: '),
+                        if (widget.entry.hintUsedCount != null)
                           Text(
                             '${widget.entry.hintUsedCount}회',
                             style: const TextStyle(fontWeight: FontWeight.bold),
+                          )
+                        else
+                          Text(
+                            '미입력',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 16),
             
-            // 메모 카드 (메모가 있는 경우에만 표시)
-            if (widget.entry.memo != null && widget.entry.memo!.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.note, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            '메모',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+            // 메모 카드 (항상 표시)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.note, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          '메모',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget.entry.memo != null && widget.entry.memo!.isNotEmpty)
                       Text(
                         widget.entry.memo!,
                         style: const TextStyle(fontSize: 14),
+                      )
+                    else
+                      Text(
+                        '메모가 없습니다',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                          fontSize: 14,
+                        ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),
