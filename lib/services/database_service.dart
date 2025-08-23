@@ -354,6 +354,106 @@ class DatabaseService {
     }
   }
 
+  /// 내가 참여한 일지 목록 페이징 조회 
+  static Future<List<DiaryEntry>> getMyDiaryEntriesPaginated({
+    int page = 0,
+    int limit = 10,
+  }) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 먼저 조회
+      final participantResponse = await supabase
+          .from('diary_entry_participants')
+          .select('diary_entry_id')
+          .eq('user_id', currentUserId);
+          
+      if (participantResponse.isEmpty) {
+        return [];
+      }
+      
+      // 참여한 일지 ID 목록 추출
+      final diaryIds = participantResponse
+          .map((row) => row['diary_entry_id'] as int)
+          .toSet() // 중복 제거
+          .toList();
+      
+      // 해당 ID들의 일지 정보 조회 (테마, 카페 정보 포함) + 페이징
+      final response = await supabase
+          .from('diary_entries')
+          .select('''
+            *,
+            escape_themes!inner(
+              id, name, difficulty, time_limit_minutes, genre, theme_image_url, cafe_id,
+              escape_cafes!inner(id, name, address, contact, logo_url)
+            )
+          ''')
+          .inFilter('id', diaryIds)
+          .order('date', ascending: false)
+          .range(page * limit, (page + 1) * limit - 1);
+
+      // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
+      List<DiaryEntry> diaryEntries = [];
+      
+      for (var json in response as List) {
+        final entryData = Map<String, dynamic>.from(json);
+        final themeData = entryData['escape_themes'] as Map<String, dynamic>;
+        
+        // EscapeTheme 생성
+        final theme = EscapeTheme(
+          id: themeData['id'],
+          name: themeData['name'],
+          cafeId: themeData['cafe_id'],
+          cafe: EscapeCafe.fromJson(themeData['escape_cafes'] as Map<String, dynamic>),
+          difficulty: themeData['difficulty'],
+          timeLimit: themeData['time_limit_minutes'] != null 
+              ? Duration(minutes: themeData['time_limit_minutes'])
+              : null,
+          genre: themeData['genre'] != null 
+              ? List<String>.from(themeData['genre'])
+              : null,
+          themeImageUrl: themeData['theme_image_url'],
+        );
+
+        // 해당 일지의 참여자 정보 조회
+        final participants = await getDiaryParticipants(entryData['id']);
+
+        // DiaryEntry 생성 (theme과 friends 포함)
+        diaryEntries.add(DiaryEntry(
+          id: entryData['id'],
+          userId: entryData['user_id'],
+          themeId: entryData['theme_id'],
+          theme: theme,
+          date: DateTime.parse(entryData['date']),
+          friends: participants.isNotEmpty ? participants : null,
+          memo: entryData['memo'],
+          rating: entryData['rating'] != null ? (entryData['rating'] as num).toDouble() : null,
+          escaped: entryData['escaped'],
+          hintUsedCount: entryData['hint_used_count'],
+          timeTaken: entryData['time_taken_minutes'] != null 
+              ? Duration(minutes: entryData['time_taken_minutes'])
+              : null,
+          photos: entryData['photos'] != null 
+              ? List<String>.from(entryData['photos'])
+              : null,
+          createdAt: DateTime.parse(entryData['created_at']),
+          updatedAt: DateTime.parse(entryData['updated_at']),
+        ));
+      }
+      
+      return diaryEntries;
+    } catch (e) {
+      if (kDebugMode) {
+        print('페이징된 일지 목록 조회 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
   /// 일지의 참여자 목록 가져오기 (실시간 프로필 정보 반영)
   static Future<List<Friend>> getDiaryParticipants(int diaryEntryId) async {
     if (!AuthService.isLoggedIn) {

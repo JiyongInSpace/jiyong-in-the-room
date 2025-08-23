@@ -93,12 +93,11 @@ class DiaryListScreen extends StatelessWidget {
                                 entry: entry,
                                 friends: friends,
                                 // onUpdate: 일지가 수정됐 때 호출될 콜백
-                                onUpdate: (updatedEntry) {
-                                  if (onUpdate != null) {
-                                    // !: null이 아님을 확신할 때 사용하는 연산자
-                                    onUpdate!(entry, updatedEntry);
-                                  }
-                                },
+                                onUpdate: onUpdate,
+                                onDelete: onDelete,
+                                onAddFriend: onAddFriend,
+                                onRemoveFriend: onRemoveFriend,
+                                onUpdateFriend: onUpdateFriend,
                               ),
                             ),
                           );

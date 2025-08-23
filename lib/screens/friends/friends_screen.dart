@@ -321,22 +321,40 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         ),
                       ),
                     ),
-                    title: Row(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(friend.displayName),
-                        const SizedBox(width: 8),
-                        if (friend.isConnected)
-                          const Icon(
-                            Icons.link,
-                            size: 16,
-                            color: Colors.green,
-                          )
-                        else
-                          const Icon(
-                            Icons.link_off,
-                            size: 16,
-                            color: Colors.grey,
+                        Row(
+                          children: [
+                            Text(friend.displayName),
+                            const SizedBox(width: 8),
+                            if (friend.isConnected)
+                              const Icon(
+                                Icons.link,
+                                size: 16,
+                                color: Colors.green,
+                              )
+                            else
+                              const Icon(
+                                Icons.link_off,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                          ],
+                        ),
+                        if (friend.memo != null && friend.memo!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            friend.memo!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ],
                       ],
                     ),
                     subtitle: Column(
@@ -346,8 +364,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           Text('실명: ${friend.realName}'),
                         if (friend.isConnected && friend.displayEmail != null)
                           Text('이메일: ${friend.displayEmail}'),
-                        if (friend.memo != null)
-                          Text('메모: ${friend.memo}'),
                         Text(
                           '함께한 횟수: $participationCount회',
                           style: TextStyle(

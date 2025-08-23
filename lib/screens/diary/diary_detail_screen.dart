@@ -6,13 +6,21 @@ import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;
   final List<Friend> friends;
-  final void Function(DiaryEntry)? onUpdate;
+  final void Function(DiaryEntry, DiaryEntry)? onUpdate;
+  final void Function(DiaryEntry)? onDelete;
+  final void Function(Friend)? onAddFriend;
+  final void Function(Friend)? onRemoveFriend;
+  final void Function(Friend, Friend)? onUpdateFriend;
 
   const DiaryDetailScreen({
     super.key,
     required this.entry,
     required this.friends,
     this.onUpdate,
+    this.onDelete,
+    this.onAddFriend,
+    this.onRemoveFriend,
+    this.onUpdateFriend,
   });
 
   @override
@@ -312,12 +320,15 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
           if (result != null && mounted) {
             if (result == 'deleted') {
-              // 일지가 삭제된 경우 - 메인 화면으로 돌아가면서 삭제 신호 전달
+              // 일지가 삭제된 경우 - 콜백 호출 후 메인 화면으로 돌아가면서 삭제 신호 전달
+              if (widget.onDelete != null) {
+                widget.onDelete!(widget.entry);
+              }
               Navigator.pop(context, 'deleted');
             } else if (result is DiaryEntry) {
               // 일지가 수정된 경우 - 수정된 내용 반영
               if (widget.onUpdate != null) {
-                widget.onUpdate!(result);
+                widget.onUpdate!(widget.entry, result);
               }
               Navigator.pop(context, result);
             }
