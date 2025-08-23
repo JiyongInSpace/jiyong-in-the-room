@@ -358,6 +358,8 @@ class DatabaseService {
   static Future<List<DiaryEntry>> getMyDiaryEntriesPaginated({
     int page = 0,
     int limit = 10,
+    String? searchQuery,
+    int? filterFriendId,
   }) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -366,7 +368,47 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 먼저 조회
+      // 친구 필터가 있는 경우, 해당 친구와 함께한 일지만 조회
+      Set<int> filteredDiaryIds = {};
+      if (filterFriendId != null) {
+        // filterFriendId는 friends 테이블의 ID이므로, 먼저 해당 친구의 정보를 조회
+        final friendInfo = await supabase
+            .from('friends')
+            .select('connected_user_id')
+            .eq('id', filterFriendId)
+            .maybeSingle();
+            
+        if (friendInfo != null) {
+          // connected_user_id가 있으면 실제 사용자, 없으면 friend_id로 참여자 조회
+          if (friendInfo['connected_user_id'] != null) {
+            // 실제 연결된 사용자의 참여 일지 조회
+            final friendParticipantResponse = await supabase
+                .from('diary_entry_participants')
+                .select('diary_entry_id')
+                .eq('user_id', friendInfo['connected_user_id']);
+            
+            if (friendParticipantResponse.isNotEmpty) {
+              filteredDiaryIds = friendParticipantResponse
+                  .map((row) => row['diary_entry_id'] as int)
+                  .toSet();
+            }
+          } else {
+            // 연결되지 않은 친구의 경우 friend_id로 참여 일지 조회
+            final friendParticipantResponse = await supabase
+                .from('diary_entry_participants')
+                .select('diary_entry_id')
+                .eq('friend_id', filterFriendId);
+            
+            if (friendParticipantResponse.isNotEmpty) {
+              filteredDiaryIds = friendParticipantResponse
+                  .map((row) => row['diary_entry_id'] as int)
+                  .toSet();
+            }
+          }
+        }
+      }
+      
+      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 조회
       final participantResponse = await supabase
           .from('diary_entry_participants')
           .select('diary_entry_id')
@@ -377,13 +419,20 @@ class DatabaseService {
       }
       
       // 참여한 일지 ID 목록 추출
-      final diaryIds = participantResponse
+      Set<int> diaryIds = participantResponse
           .map((row) => row['diary_entry_id'] as int)
-          .toSet() // 중복 제거
-          .toList();
+          .toSet(); // 중복 제거
       
-      // 해당 ID들의 일지 정보 조회 (테마, 카페 정보 포함) + 페이징
-      final response = await supabase
+      // 친구 필터 적용 (교집합)
+      if (filterFriendId != null) {
+        diaryIds = diaryIds.intersection(filteredDiaryIds);
+        if (diaryIds.isEmpty) {
+          return [];
+        }
+      }
+      
+      // 검색어가 있는 경우를 위해 먼저 모든 일지를 조회한 후 필터링
+      var query = supabase
           .from('diary_entries')
           .select('''
             *,
@@ -392,9 +441,36 @@ class DatabaseService {
               escape_cafes!inner(id, name, address, contact, logo_url)
             )
           ''')
-          .inFilter('id', diaryIds)
-          .order('date', ascending: false)
-          .range(page * limit, (page + 1) * limit - 1);
+          .inFilter('id', diaryIds.toList())
+          .order('date', ascending: false);
+      
+      // 검색어와 페이징 적용
+      final List<dynamic> response;
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        // 검색어가 있는 경우: 모든 데이터를 가져온 후 필터링
+        final allResponse = await query;
+        final searchLower = searchQuery.toLowerCase();
+        final filteredResponse = (allResponse as List).where((item) {
+          final themeData = item['escape_themes'] as Map<String, dynamic>;
+          final cafeData = themeData['escape_cafes'] as Map<String, dynamic>;
+          
+          final themeName = (themeData['name'] as String).toLowerCase();
+          final cafeName = (cafeData['name'] as String).toLowerCase();
+          
+          return themeName.contains(searchLower) || cafeName.contains(searchLower);
+        }).toList();
+        
+        // 페이징 적용
+        final startIndex = page * limit;
+        final endIndex = (startIndex + limit).clamp(0, filteredResponse.length);
+        response = filteredResponse.sublist(
+          startIndex.clamp(0, filteredResponse.length), 
+          endIndex
+        );
+      } else {
+        // 검색어가 없는 경우: DB 레벨에서 페이징
+        response = await query.range(page * limit, (page + 1) * limit - 1);
+      }
 
       // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
       List<DiaryEntry> diaryEntries = [];
