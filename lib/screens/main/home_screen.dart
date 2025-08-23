@@ -400,33 +400,92 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               
               if (topFriends.isNotEmpty)
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: topFriends.asMap().entries.map((entry) {
-                        final rank = entry.key + 1;
-                        final friend = entry.value.key;
-                        final count = entry.value.value;
-                        
-                        return ListTile(
-                          leading: Image.asset(
-                            rank == 1 
-                                ? 'assets/images/medal_gold.png'
-                                : rank == 2 
-                                    ? 'assets/images/medal_silver.png' 
-                                    : 'assets/images/medal_bronze.png',
-                            width: 32,
-                            height: 32,
-                          ),
-                          title: Text(friend.displayName),
-                          trailing: Text('$count회'),
-                        );
-                      }).toList(),
+                ...topFriends.asMap().entries.expand((entry) {
+                  final index = entry.key;
+                  final rank = index + 1;
+                  final friend = entry.value.key;
+                  final count = entry.value.value;
+                  
+                  return [
+                    if (index > 0) const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            // 메달 이미지
+                            Image.asset(
+                              rank == 1 
+                                  ? 'assets/images/medal_gold.png'
+                                  : rank == 2 
+                                      ? 'assets/images/medal_silver.png' 
+                                      : 'assets/images/medal_bronze.png',
+                              width: 32,
+                              height: 32,
+                            ),
+                            const SizedBox(width: 12),
+                            // 친구 아이콘 (친구 목록과 동일한 스타일)
+                            CircleAvatar(
+                              backgroundColor: friend.isConnected 
+                                  ? Theme.of(context).colorScheme.primary 
+                                  : Colors.grey,
+                              child: Text(
+                                friend.displayName[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // 친구 이름
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        friend.displayName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (friend.isConnected)
+                                        const Icon(
+                                          Icons.link,
+                                          size: 14,
+                                          color: Colors.green,
+                                        )
+                                      else
+                                        const Icon(
+                                          Icons.link_off,
+                                          size: 14,
+                                          color: Colors.grey,
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // 횟수 (오른쪽 정렬)
+                            Text(
+                              '$count회',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                )
+                  ];
+                })
               else
                 const Card(
                   margin: EdgeInsets.zero,
