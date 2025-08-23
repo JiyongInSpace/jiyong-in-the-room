@@ -346,14 +346,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           Text('실명: ${friend.realName}'),
                         if (friend.isConnected && friend.displayEmail != null)
                           Text('이메일: ${friend.displayEmail}'),
-                        if (!friend.isConnected)
-                          Text(
-                            '연결되지 않음',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
                         if (friend.memo != null)
                           Text('메모: ${friend.memo}'),
                         Text(

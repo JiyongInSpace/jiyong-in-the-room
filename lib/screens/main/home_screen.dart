@@ -497,19 +497,14 @@ class HomeScreen extends StatelessWidget {
                         final count = entry.value.value;
                         
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: rank == 1 
-                                ? Colors.amber 
+                          leading: Image.asset(
+                            rank == 1 
+                                ? 'assets/images/medal_gold.png'
                                 : rank == 2 
-                                    ? Colors.grey[400] 
-                                    : Colors.brown[300],
-                            child: Text(
-                              rank.toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                                    ? 'assets/images/medal_silver.png' 
+                                    : 'assets/images/medal_bronze.png',
+                            width: 32,
+                            height: 32,
                           ),
                           title: Text(friend.displayName),
                           trailing: Text('$count회'),

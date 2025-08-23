@@ -237,7 +237,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
             Row(
               children: [
                 // Expanded: 남은 공간을 채우도록 확장하는 위젯
-                Expanded(child: Text('선택한 날짜: $selectedDateStr')),
+                Expanded(child: Text('탈출 날짜: $selectedDateStr')),
                 // ElevatedButton: 입체감 있는 버튼 위젯
                 // onPressed: 버튼이 눌렸을 때 실행할 함수
                 ElevatedButton(
@@ -257,8 +257,15 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 textEditingController: _cafeController,
                 focusNode: FocusNode(),
                 optionsBuilder: (text) {
+                  // 검색어를 소문자로 변환하고 공백 제거
+                  final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
+                  
                   return cafes
-                      .where((cafe) => cafe.name.contains(text.text))
+                      .where((cafe) {
+                        // 카페명을 소문자로 변환하고 공백 제거하여 비교
+                        final cafeName = cafe.name.toLowerCase().replaceAll(' ', '');
+                        return cafeName.contains(searchQuery);
+                      })
                       .toList();
                 },
                 onSelected: (cafe) {
@@ -343,7 +350,13 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   return currentThemes;
                 }
                 
-                final filtered = currentThemes.where((theme) => theme.name.contains(text.text)).toList();
+                // 검색어를 소문자로 변환하고 공백 제거
+                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
+                final filtered = currentThemes.where((theme) {
+                  // 테마명을 소문자로 변환하고 공백 제거하여 비교
+                  final themeName = theme.name.toLowerCase().replaceAll(' ', '');
+                  return themeName.contains(searchQuery);
+                }).toList();
                 print('Returning ${filtered.length} filtered themes');
                 return filtered;
               },
@@ -422,8 +435,14 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 }
                 
                 // 텍스트가 있으면 필터링된 친구들 표시
+                // 검색어를 소문자로 변환하고 공백 제거
+                final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
                 return availableFriends
-                    .where((f) => f.displayName.contains(textEditingValue.text))
+                    .where((f) {
+                      // 친구 이름을 소문자로 변환하고 공백 제거하여 비교
+                      final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
+                      return friendName.contains(searchQuery);
+                    })
                     .toList();
               },
               onSelected: (Friend selected) {

@@ -177,7 +177,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
             children: [
             Row(
               children: [
-                Expanded(child: Text('선택한 날짜: $selectedDateStr')),
+                Expanded(child: Text('탈출 날짜: $selectedDateStr')),
                 ElevatedButton(
                   onPressed: _pickDate,
                   child: const Text('날짜 선택'),
@@ -189,8 +189,15 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               textEditingController: _cafeController,
               focusNode: FocusNode(),
               optionsBuilder: (text) {
+                // 검색어를 소문자로 변환하고 공백 제거
+                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
+                
                 return cafeThemes.keys
-                    .where((cafe) => cafe.contains(text.text))
+                    .where((cafe) {
+                      // 카페명을 소문자로 변환하고 공백 제거하여 비교
+                      final cafeName = cafe.toLowerCase().replaceAll(' ', '');
+                      return cafeName.contains(searchQuery);
+                    })
                     .toList();
               },
               onSelected: (value) {
@@ -244,7 +251,13 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               optionsBuilder: (text) {
                 if (selectedCafe == null) return const Iterable<String>.empty();
                 final themes = cafeThemes[selectedCafe]!;
-                return themes.where((t) => t.contains(text.text)).toList();
+                // 검색어를 소문자로 변환하고 공백 제거
+                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
+                return themes.where((t) {
+                  // 테마명을 소문자로 변환하고 공백 제거하여 비교
+                  final themeName = t.toLowerCase().replaceAll(' ', '');
+                  return themeName.contains(searchQuery);
+                }).toList();
               },
               onSelected: (value) {
                 setState(() {
@@ -297,11 +310,16 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                 if (textEditingValue.text == '') {
                   return const Iterable<Friend>.empty();
                 }
+                // 검색어를 소문자로 변환하고 공백 제거
+                final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
                 return widget.friends
                     .where(
-                      (f) =>
-                          f.displayName.contains(textEditingValue.text) &&
-                          !selectedFriends.contains(f),
+                      (f) {
+                        // 친구 이름을 소문자로 변환하고 공백 제거하여 비교
+                        final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
+                        return friendName.contains(searchQuery) &&
+                            !selectedFriends.contains(f);
+                      },
                     )
                     .toList();
               },
