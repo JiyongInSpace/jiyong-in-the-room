@@ -143,19 +143,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           leading: const Icon(Icons.help_outline),
           title: const Text('앱 사용 가이드'),
           onTap: () async {
-            // TODO: 노션 링크로 연결
-            const url =
-                'https://www.notion.so/24747766bdcc808590bff52a289077fe?source=copy_link';
-            if (await canLaunchUrl(Uri.parse(url))) {
-              await launchUrl(
-                Uri.parse(url),
-                mode: LaunchMode.externalApplication,
-              );
-            } else {
+            const url = 'https://www.notion.so/24747766bdcc808590bff52a289077fe?source=copy_link';
+            try {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                );
+              } else {
+                throw 'Could not launch $url';
+              }
+            } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('링크를 열 수 없습니다')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('링크를 열 수 없습니다: $e')),
+                );
               }
             }
           },
@@ -174,19 +177,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           leading: const Icon(Icons.privacy_tip_outlined),
           title: const Text('개인정보처리방침'),
           onTap: () async {
-            // TODO: 노션 링크로 연결
-            const url =
-                'https://www.notion.so/24747766bdcc80b4aa06c0200b58aa26?source=copy_link';
-            if (await canLaunchUrl(Uri.parse(url))) {
-              await launchUrl(
-                Uri.parse(url),
-                mode: LaunchMode.externalApplication,
-              );
-            } else {
+            const url = 'https://www.notion.so/24747766bdcc80b4aa06c0200b58aa26?source=copy_link';
+            try {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                );
+              } else {
+                throw 'Could not launch $url';
+              }
+            } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('링크를 열 수 없습니다')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('링크를 열 수 없습니다: $e')),
+                );
               }
             }
           },
