@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('설정'),
+        title: const Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -82,17 +82,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            '👤 계정',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-        ),
+        // const Padding(
+        //   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+        //   child: Text(
+        //     '👤 계정',
+        //     style: TextStyle(
+        //       fontSize: 18,
+        //       fontWeight: FontWeight.bold,
+        //       color: Colors.grey,
+        //     ),
+        //   ),
+        // ),
         if (!_currentIsLoggedIn) ...[
           ListTile(
             leading: const Icon(Icons.person_add),
@@ -128,17 +128,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Text(
-            'ℹ️ 정보',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-        ),
+        // const Padding(
+        //   padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+        //   child: Text(
+        //     'ℹ️ 정보',
+        //     style: TextStyle(
+        //       fontSize: 18,
+        //       fontWeight: FontWeight.bold,
+        //       color: Colors.grey,
+        //     ),
+        //   ),
+        // ),
         ListTile(
           leading: const Icon(Icons.help_outline),
           title: const Text('앱 사용 가이드'),

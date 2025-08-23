@@ -254,7 +254,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       });
     return Scaffold(
       appBar: AppBar(
-        title: const Text('친구 관리'),
+        title: const Text(''),
         // Theme.of(context): 현재 테마의 색상 정보를 가져옴
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),

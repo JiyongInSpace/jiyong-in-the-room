@@ -56,7 +56,7 @@ class DiaryListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('탈출일지'),
+        title: const Text(''),
         // actions: AppBar 오른쪽에 표시될 액션 버튼들
         actions: [
           // IconButton: 아이콘만 있는 버튼

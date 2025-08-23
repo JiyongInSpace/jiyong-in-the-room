@@ -140,7 +140,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('탈출일지'),
+        title: const Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -468,6 +468,20 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                     ],
                                   ),
+                                  // 친구 메모 표시
+                                  if (friend.memo != null && friend.memo!.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      friend.memo!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
