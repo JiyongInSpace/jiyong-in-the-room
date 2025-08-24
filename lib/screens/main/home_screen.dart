@@ -428,15 +428,20 @@ class HomeScreen extends StatelessWidget {
                             // 친구 아이콘 (친구 목록과 동일한 스타일)
                             CircleAvatar(
                               backgroundColor: friend.isConnected 
-                                  ? Theme.of(context).colorScheme.primary 
+                                  ? null
                                   : Colors.grey,
-                              child: Text(
-                                friend.displayName[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
+                                  ? NetworkImage(friend.user!.avatarUrl!)
+                                  : null,
+                              child: (!friend.isConnected || friend.user?.avatarUrl == null)
+                                  ? Text(
+                                      friend.displayName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
                             ),
                             const SizedBox(width: 12),
                             // 친구 이름
@@ -454,13 +459,7 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      if (friend.isConnected)
-                                        const Icon(
-                                          Icons.link,
-                                          size: 14,
-                                          color: Colors.green,
-                                        )
-                                      else
+                                      if (!friend.isConnected)
                                         const Icon(
                                           Icons.link_off,
                                           size: 14,

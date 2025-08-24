@@ -888,4 +888,51 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  /// 기존 친구를 사용자 코드로 연동
+  static Future<Friend> linkFriendWithCode(Friend friend, String userCode) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // 사용자 코드로 사용자 검색
+      final targetUser = await findUserByCode(userCode);
+      if (targetUser == null) {
+        throw Exception('해당 코드의 사용자를 찾을 수 없습니다');
+      }
+      
+      final targetUserId = targetUser['id'] as String;
+      
+      // 자기 자신을 연동하려는 경우 방지
+      if (targetUserId == currentUserId) {
+        throw Exception('자기 자신을 친구로 연동할 수 없습니다');
+      }
+      
+      // connected_user_id 업데이트
+      final response = await supabase
+          .from('friends')
+          .update({'connected_user_id': targetUserId})
+          .eq('user_id', currentUserId)
+          .eq('id', friend.id!)
+          .select('id, connected_user_id, nickname, memo, added_at')
+          .single();
+
+      return Friend(
+        id: response['id'] as int,
+        connectedUserId: response['connected_user_id'],
+        user: null,
+        nickname: response['nickname'],
+        memo: response['memo'],
+        addedAt: DateTime.parse(response['added_at']),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('친구 코드 연동 실패: $e');
+      }
+      rethrow;
+    }
+  }
 }

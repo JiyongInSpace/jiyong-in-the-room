@@ -272,6 +272,91 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
+  // 기존 친구에게 코드 등록 다이얼로그
+  void _showLinkCodeDialog(Friend friend) {
+    _userCodeController.clear();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${friend.displayName}의 코드 등록'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${friend.displayName}님의 6자리 친구 코드를 입력하면\n실제 사용자와 연동됩니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _userCodeController,
+                decoration: const InputDecoration(
+                  labelText: '친구 코드',
+                  border: OutlineInputBorder(),
+                  helperText: '6자리 영숫자 코드',
+                ),
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final userCode = _userCodeController.text.trim();
+              
+              if (userCode.length != 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('6자리 코드를 입력해주세요')),
+                );
+                return;
+              }
+              
+              try {
+                final updatedFriend = await DatabaseService.linkFriendWithCode(friend, userCode);
+                
+                // UI 업데이트를 위해 콜백 호출
+                widget.onUpdate(friend, updatedFriend);
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${friend.displayName}님과 연동되었습니다')),
+                );
+              } catch (e) {
+                Navigator.pop(context);
+                
+                String userFriendlyMessage;
+                final errorMessage = e.toString();
+                
+                if (errorMessage.contains('해당 코드의 사용자를 찾을 수 없습니다')) {
+                  userFriendlyMessage = '입력한 코드가 올바르지 않아요.\n코드를 다시 확인해주세요.';
+                } else if (errorMessage.contains('자기 자신을 친구로 연동할 수 없습니다')) {
+                  userFriendlyMessage = '자신의 코드는 사용할 수 없어요.';
+                } else {
+                  userFriendlyMessage = '코드 등록에 실패했어요.\n잠시 후 다시 시도해주세요.';
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(userFriendlyMessage)),
+                );
+              }
+            },
+            child: const Text('등록'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditFriendDialog(Friend friend) {
     _nicknameController.text = friend.nickname;
     _memoController.text = friend.memo ?? '';
@@ -449,18 +534,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     // leading: 리스트 아이템의 맨 앞에 표시될 위젯
                     // CircleAvatar: 원형 아바타 위젯
                     leading: CircleAvatar(
-                      // 친구 연결 상태에 따라 다른 색상 사용
+                      // 연동된 친구는 프로필 이미지, 미연동 친구는 기본 아바타
                       backgroundColor: friend.isConnected 
-                          ? Theme.of(context).colorScheme.primary 
+                          ? null
                           : Colors.grey,
-                      child: Text(
-                        // 친구 이름의 첫 글자를 대문자로 표시
-                        friend.displayName[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold, // 굵은 글씨
-                        ),
-                      ),
+                      backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
+                          ? NetworkImage(friend.user!.avatarUrl!)
+                          : null,
+                      child: (!friend.isConnected || friend.user?.avatarUrl == null)
+                          ? Text(
+                              // 친구 이름의 첫 글자를 대문자로 표시
+                              friend.displayName[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold, // 굵은 글씨
+                              ),
+                            )
+                          : null,
                     ),
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,16 +559,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           children: [
                             Text(friend.displayName),
                             const SizedBox(width: 8),
-                            if (friend.isConnected)
-                              const Icon(
-                                Icons.link,
-                                size: 16,
-                                color: Colors.green,
-                              )
-                            else
+                            if (!friend.isConnected)
                               const Icon(
                                 Icons.link_off,
-                                size: 16,
+                                size: 14,
                                 color: Colors.grey,
                               ),
                           ],
@@ -524,6 +608,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           _showEditFriendDialog(friend);
                         } else if (value == 'delete') {
                           _showDeleteConfirmDialog(friend);
+                        } else if (value == 'link_code') {
+                          _showLinkCodeDialog(friend);
                         }
                       },
                       // itemBuilder: 팝업 메뉴에 표시될 아이템들을 정의
@@ -539,6 +625,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             ],
                           ),
                         ),
+                        // 연동되지 않은 친구의 경우에만 "코드 등록" 메뉴 표시
+                        if (!friend.isConnected)
+                          const PopupMenuItem(
+                            value: 'link_code',
+                            child: Row(
+                              children: [
+                                Icon(Icons.link, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Text('코드 등록'),
+                              ],
+                            ),
+                          ),
                         const PopupMenuItem(
                           value: 'delete',
                           child: Row(
