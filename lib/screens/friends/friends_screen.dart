@@ -78,7 +78,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('친구 추가'),
-        content: const Text('어떤 방식으로 친구를 추가하시겠습니까?'),
+        content: const Text('친구 코드를 알고 있나요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -89,14 +89,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
               Navigator.pop(context);
               _showAddFriendByCodeDialog();
             },
-            child: const Text('코드로 추가'),
+            child: const Text('네'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _showAddFriendManuallyDialog();
             },
-            child: const Text('직접 입력'),
+            child: const Text('아니요'),
           ),
         ],
       ),
@@ -178,8 +178,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   const SnackBar(content: Text('친구가 추가되었습니다')),
                 );
               } catch (e) {
+                Navigator.pop(context);
+                
+                String userFriendlyMessage;
+                final errorMessage = e.toString();
+                
+                if (errorMessage.contains('해당 코드의 사용자를 찾을 수 없습니다')) {
+                  userFriendlyMessage = '입력한 코드가 올바르지 않아요.\n코드를 다시 확인해주세요.';
+                } else if (errorMessage.contains('자기 자신을 친구로 추가할 수 없습니다')) {
+                  userFriendlyMessage = '자신의 코드는 사용할 수 없어요.';
+                } else if (errorMessage.contains('이미 친구로 등록된 사용자입니다')) {
+                  userFriendlyMessage = '이미 친구로 등록된 사용자예요.';
+                } else {
+                  userFriendlyMessage = '친구 추가에 실패했어요.\n잠시 후 다시 시도해주세요.';
+                }
+                
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('친구 추가 실패: $e')),
+                  SnackBar(content: Text(userFriendlyMessage)),
                 );
               }
             },
