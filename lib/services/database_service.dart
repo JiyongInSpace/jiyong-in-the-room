@@ -760,4 +760,132 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  // 사용자 코드 관련 메서드들
+
+  /// 내 사용자 코드 조회
+  static Future<String?> getMyUserCode() async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      final response = await supabase
+          .from('profiles')
+          .select('user_code')
+          .eq('id', currentUserId)
+          .maybeSingle();
+
+      return response?['user_code'] as String?;
+    } catch (e) {
+      if (kDebugMode) {
+        print('사용자 코드 조회 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 내 사용자 코드 갱신 (새로운 코드 생성)
+  static Future<String> refreshMyUserCode() async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // 새로운 코드 생성
+      final response = await supabase
+          .rpc('generate_unique_user_code');
+      
+      final newCode = response as String;
+      
+      // 프로필에 새 코드 저장
+      await supabase
+          .from('profiles')
+          .update({'user_code': newCode})
+          .eq('id', currentUserId);
+
+      return newCode;
+    } catch (e) {
+      if (kDebugMode) {
+        print('사용자 코드 갱신 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자 코드로 사용자 검색
+  static Future<Map<String, dynamic>?> findUserByCode(String userCode) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final response = await supabase
+          .from('profiles')
+          .select('id, display_name, email, avatar_url, user_code')
+          .eq('user_code', userCode.toUpperCase())
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      if (kDebugMode) {
+        print('사용자 코드 검색 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자 코드로 친구 추가
+  static Future<Friend> addFriendByCode(String userCode, {String? nickname, String? memo}) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // 사용자 코드로 사용자 검색
+      final targetUser = await findUserByCode(userCode);
+      if (targetUser == null) {
+        throw Exception('해당 코드의 사용자를 찾을 수 없습니다');
+      }
+      
+      final targetUserId = targetUser['id'] as String;
+      
+      // 자기 자신을 친구로 추가하려는 경우 방지
+      if (targetUserId == currentUserId) {
+        throw Exception('자기 자신을 친구로 추가할 수 없습니다');
+      }
+      
+      // 이미 친구로 등록되어 있는지 확인
+      final existingFriend = await supabase
+          .from('friends')
+          .select('id')
+          .eq('user_id', currentUserId)
+          .eq('connected_user_id', targetUserId)
+          .maybeSingle();
+          
+      if (existingFriend != null) {
+        throw Exception('이미 친구로 등록된 사용자입니다');
+      }
+      
+      // 친구 추가
+      final friend = Friend(
+        connectedUserId: targetUserId,
+        nickname: nickname ?? targetUser['display_name'],
+        memo: memo,
+        addedAt: DateTime.now(),
+      );
+      
+      return await addFriend(friend);
+    } catch (e) {
+      if (kDebugMode) {
+        print('코드로 친구 추가 실패: $e');
+      }
+      rethrow;
+    }
+  }
 }

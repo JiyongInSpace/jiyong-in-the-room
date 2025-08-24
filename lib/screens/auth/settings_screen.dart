@@ -113,11 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(_currentUserProfile?['email'] ?? ''),
             onTap: () => _editProfile(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('로그아웃'),
-            onTap: () => _signOut(context),
-          ),
         ],
         const Divider(),
       ],
@@ -273,50 +268,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // 로그아웃 처리
-  Future<void> _signOut(BuildContext context) async {
-    try {
-      // 확인 다이얼로그
-      final bool? shouldSignOut = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('로그아웃'),
-          content: const Text('로그아웃 하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('로그아웃'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldSignOut == true) {
-        await AuthService.signOut();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('로그아웃되었습니다'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          // 설정 화면 닫기
-          Navigator.of(context).pop();
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('로그아웃 실패: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 }

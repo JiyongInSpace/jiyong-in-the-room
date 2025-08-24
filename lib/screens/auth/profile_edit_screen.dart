@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jiyong_in_the_room/services/profile_service.dart';
+import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'dart:io';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -22,12 +25,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   String? _avatarUrl;
   File? _selectedImage;
   bool _isLoading = false;
+  String? _myUserCode;
 
   @override
   void initState() {
     super.initState();
     _displayNameController.text = widget.userProfile['display_name'] ?? '';
     _avatarUrl = widget.userProfile['avatar_url'];
+    _loadMyUserCode();
   }
 
   @override
@@ -82,6 +87,79 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('이미지 선택 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 내 사용자 코드 로드
+  Future<void> _loadMyUserCode() async {
+    try {
+      final code = await DatabaseService.getMyUserCode();
+      if (mounted) {
+        setState(() {
+          _myUserCode = code;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('사용자 코드 로드 실패: $e')),
+        );
+      }
+    }
+  }
+
+
+  // 코드를 클립보드에 복사
+  void _copyCodeToClipboard(String code) {
+    Clipboard.setData(ClipboardData(text: code));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('코드가 복사되었습니다')),
+    );
+  }
+
+  // 로그아웃 처리
+  Future<void> _signOut() async {
+    try {
+      // 확인 다이얼로그
+      final bool? shouldSignOut = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('로그아웃'),
+          content: const Text('로그아웃 하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('로그아웃'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldSignOut == true) {
+        await AuthService.signOut();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('로그아웃되었습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.of(context).pop(true); // 로그아웃 시 true 반환하여 홈 화면 새로고침
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('로그아웃 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -177,7 +255,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('프로필 편집'),
+        title: const Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           TextButton(
@@ -271,6 +349,93 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 친구 코드 카드
+            if (_myUserCode != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.qr_code,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '친구 코드',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Text(
+                                _myUserCode!,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => _copyCodeToClipboard(_myUserCode!),
+                            icon: const Icon(Icons.copy),
+                            tooltip: '코드 복사',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '이 코드를 친구에게 공유하여 친구 추가를 할 수 있어요',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 32),
+
+            // 로그아웃 버튼 (오른쪽 정렬, 빨간색, 작은 글씨)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _signOut,
+                child: const Text(
+                  '로그아웃',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
