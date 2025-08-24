@@ -258,7 +258,7 @@ class DatabaseService {
 
   // 일지 관련 메서드들
   
-  /// 내가 참여한 모든 일지 목록 조회 (작성한 일지 + 참여한 일지)
+  /// 내 일지 목록 조회 (개인 일지만)
   static Future<List<DiaryEntry>> getMyDiaryEntries() async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -267,23 +267,7 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 먼저 조회
-      final participantResponse = await supabase
-          .from('diary_entry_participants')
-          .select('diary_entry_id')
-          .eq('user_id', currentUserId);
-          
-      if (participantResponse.isEmpty) {
-        return [];
-      }
-      
-      // 참여한 일지 ID 목록 추출
-      final diaryIds = participantResponse
-          .map((row) => row['diary_entry_id'] as int)
-          .toSet() // 중복 제거
-          .toList();
-      
-      // 해당 ID들의 일지 정보 조회 (테마, 카페 정보 포함)
+      // 내가 작성한 일지만 조회 (단순화)
       final response = await supabase
           .from('diary_entries')
           .select('''
@@ -293,10 +277,9 @@ class DatabaseService {
               escape_cafes!inner(id, name, address, contact, logo_url)
             )
           ''')
-          .inFilter('id', diaryIds)
+          .eq('user_id', currentUserId)
           .order('date', ascending: false);
 
-      // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
       List<DiaryEntry> diaryEntries = [];
       
       for (var json in response as List) {
@@ -322,7 +305,7 @@ class DatabaseService {
         // 해당 일지의 참여자 정보 조회
         final participants = await getDiaryParticipants(entryData['id']);
 
-        // DiaryEntry 생성 (theme과 friends 포함)
+        // DiaryEntry 생성
         diaryEntries.add(DiaryEntry(
           id: entryData['id'],
           userId: entryData['user_id'],
@@ -354,7 +337,7 @@ class DatabaseService {
     }
   }
 
-  /// 내가 참여한 일지 목록 페이징 조회 
+  /// 내 일지 목록 페이징 조회 (개인 일지만)
   static Future<List<DiaryEntry>> getMyDiaryEntriesPaginated({
     int page = 0,
     int limit = 10,
@@ -368,86 +351,37 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // 친구 필터가 있는 경우, 선택된 모든 친구와 함께한 일지만 조회
-      Set<int> filteredDiaryIds = {};
+      // 친구 필터가 있는 경우, 해당 친구와 함께한 일지 ID 조회
+      Set<int>? filteredDiaryIds;
       if (filterFriendIds != null && filterFriendIds.isNotEmpty) {
         Set<int> allFilteredIds = {};
         
         for (int friendId in filterFriendIds) {
-          // 각 친구의 정보를 조회
-          final friendInfo = await supabase
-              .from('friends')
-              .select('connected_user_id')
-              .eq('id', friendId)
-              .maybeSingle();
-              
-          if (friendInfo != null) {
-            Set<int> friendDiaryIds = {};
-            
-            // connected_user_id가 있으면 실제 사용자, 없으면 friend_id로 참여자 조회
-            if (friendInfo['connected_user_id'] != null) {
-              // 실제 연결된 사용자의 참여 일지 조회
-              final friendParticipantResponse = await supabase
-                  .from('diary_entry_participants')
-                  .select('diary_entry_id')
-                  .eq('user_id', friendInfo['connected_user_id']);
-              
-              if (friendParticipantResponse.isNotEmpty) {
-                friendDiaryIds = friendParticipantResponse
-                    .map((row) => row['diary_entry_id'] as int)
-                    .toSet();
-              }
-            } else {
-              // 연결되지 않은 친구의 경우 friend_id로 참여 일지 조회
-              final friendParticipantResponse = await supabase
-                  .from('diary_entry_participants')
-                  .select('diary_entry_id')
-                  .eq('friend_id', friendId);
-              
-              if (friendParticipantResponse.isNotEmpty) {
-                friendDiaryIds = friendParticipantResponse
-                    .map((row) => row['diary_entry_id'] as int)
-                    .toSet();
-              }
-            }
-            
-            // 첫 번째 친구면 전체 집합으로 초기화, 이후는 교집합
-            if (allFilteredIds.isEmpty) {
-              allFilteredIds = friendDiaryIds;
-            } else {
-              allFilteredIds = allFilteredIds.intersection(friendDiaryIds);
-            }
+          final friendParticipantResponse = await supabase
+              .from('diary_entry_participants')
+              .select('diary_entry_id')
+              .eq('friend_id', friendId);
+          
+          final friendDiaryIds = friendParticipantResponse
+              .map((row) => row['diary_entry_id'] as int)
+              .toSet();
+          
+          // 첫 번째 친구면 전체 집합으로 초기화, 이후는 교집합
+          if (allFilteredIds.isEmpty) {
+            allFilteredIds = friendDiaryIds;
+          } else {
+            allFilteredIds = allFilteredIds.intersection(friendDiaryIds);
           }
         }
         
         filteredDiaryIds = allFilteredIds;
-      }
-      
-      // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 조회
-      final participantResponse = await supabase
-          .from('diary_entry_participants')
-          .select('diary_entry_id')
-          .eq('user_id', currentUserId);
-          
-      if (participantResponse.isEmpty) {
-        return [];
-      }
-      
-      // 참여한 일지 ID 목록 추출
-      Set<int> diaryIds = participantResponse
-          .map((row) => row['diary_entry_id'] as int)
-          .toSet(); // 중복 제거
-      
-      // 친구 필터 적용 (교집합)
-      if (filterFriendIds != null && filterFriendIds.isNotEmpty) {
-        diaryIds = diaryIds.intersection(filteredDiaryIds);
-        if (diaryIds.isEmpty) {
+        if (filteredDiaryIds.isEmpty) {
           return [];
         }
       }
       
-      // 검색어가 있는 경우를 위해 먼저 모든 일지를 조회한 후 필터링
-      var query = supabase
+      // 내가 작성한 일지 조회 쿼리 구성
+      var queryBuilder = supabase
           .from('diary_entries')
           .select('''
             *,
@@ -456,8 +390,14 @@ class DatabaseService {
               escape_cafes!inner(id, name, address, contact, logo_url)
             )
           ''')
-          .inFilter('id', diaryIds.toList())
-          .order('date', ascending: false);
+          .eq('user_id', currentUserId);
+      
+      // 친구 필터 적용
+      if (filteredDiaryIds != null) {
+        queryBuilder = queryBuilder.inFilter('id', filteredDiaryIds.toList());
+      }
+      
+      final query = queryBuilder.order('date', ascending: false);
       
       // 검색어와 페이징 적용
       final List<dynamic> response;
@@ -487,7 +427,6 @@ class DatabaseService {
         response = await query.range(page * limit, (page + 1) * limit - 1);
       }
 
-      // 일지 목록을 먼저 가져온 후, 각 일지의 참여자 정보를 별도로 조회
       List<DiaryEntry> diaryEntries = [];
       
       for (var json in response as List) {
@@ -513,7 +452,7 @@ class DatabaseService {
         // 해당 일지의 참여자 정보 조회
         final participants = await getDiaryParticipants(entryData['id']);
 
-        // DiaryEntry 생성 (theme과 friends 포함)
+        // DiaryEntry 생성
         diaryEntries.add(DiaryEntry(
           id: entryData['id'],
           userId: entryData['user_id'],
@@ -544,6 +483,7 @@ class DatabaseService {
       rethrow;
     }
   }
+
 
   /// 일지의 참여자 목록 가져오기 (실시간 프로필 정보 반영)
   static Future<List<Friend>> getDiaryParticipants(int diaryEntryId) async {
