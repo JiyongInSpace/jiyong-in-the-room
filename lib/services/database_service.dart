@@ -359,7 +359,7 @@ class DatabaseService {
     int page = 0,
     int limit = 10,
     String? searchQuery,
-    int? filterFriendId,
+    List<int>? filterFriendIds,
   }) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -368,44 +368,59 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // 친구 필터가 있는 경우, 해당 친구와 함께한 일지만 조회
+      // 친구 필터가 있는 경우, 선택된 모든 친구와 함께한 일지만 조회
       Set<int> filteredDiaryIds = {};
-      if (filterFriendId != null) {
-        // filterFriendId는 friends 테이블의 ID이므로, 먼저 해당 친구의 정보를 조회
-        final friendInfo = await supabase
-            .from('friends')
-            .select('connected_user_id')
-            .eq('id', filterFriendId)
-            .maybeSingle();
+      if (filterFriendIds != null && filterFriendIds.isNotEmpty) {
+        Set<int> allFilteredIds = {};
+        
+        for (int friendId in filterFriendIds) {
+          // 각 친구의 정보를 조회
+          final friendInfo = await supabase
+              .from('friends')
+              .select('connected_user_id')
+              .eq('id', friendId)
+              .maybeSingle();
+              
+          if (friendInfo != null) {
+            Set<int> friendDiaryIds = {};
             
-        if (friendInfo != null) {
-          // connected_user_id가 있으면 실제 사용자, 없으면 friend_id로 참여자 조회
-          if (friendInfo['connected_user_id'] != null) {
-            // 실제 연결된 사용자의 참여 일지 조회
-            final friendParticipantResponse = await supabase
-                .from('diary_entry_participants')
-                .select('diary_entry_id')
-                .eq('user_id', friendInfo['connected_user_id']);
-            
-            if (friendParticipantResponse.isNotEmpty) {
-              filteredDiaryIds = friendParticipantResponse
-                  .map((row) => row['diary_entry_id'] as int)
-                  .toSet();
+            // connected_user_id가 있으면 실제 사용자, 없으면 friend_id로 참여자 조회
+            if (friendInfo['connected_user_id'] != null) {
+              // 실제 연결된 사용자의 참여 일지 조회
+              final friendParticipantResponse = await supabase
+                  .from('diary_entry_participants')
+                  .select('diary_entry_id')
+                  .eq('user_id', friendInfo['connected_user_id']);
+              
+              if (friendParticipantResponse.isNotEmpty) {
+                friendDiaryIds = friendParticipantResponse
+                    .map((row) => row['diary_entry_id'] as int)
+                    .toSet();
+              }
+            } else {
+              // 연결되지 않은 친구의 경우 friend_id로 참여 일지 조회
+              final friendParticipantResponse = await supabase
+                  .from('diary_entry_participants')
+                  .select('diary_entry_id')
+                  .eq('friend_id', friendId);
+              
+              if (friendParticipantResponse.isNotEmpty) {
+                friendDiaryIds = friendParticipantResponse
+                    .map((row) => row['diary_entry_id'] as int)
+                    .toSet();
+              }
             }
-          } else {
-            // 연결되지 않은 친구의 경우 friend_id로 참여 일지 조회
-            final friendParticipantResponse = await supabase
-                .from('diary_entry_participants')
-                .select('diary_entry_id')
-                .eq('friend_id', filterFriendId);
             
-            if (friendParticipantResponse.isNotEmpty) {
-              filteredDiaryIds = friendParticipantResponse
-                  .map((row) => row['diary_entry_id'] as int)
-                  .toSet();
+            // 첫 번째 친구면 전체 집합으로 초기화, 이후는 교집합
+            if (allFilteredIds.isEmpty) {
+              allFilteredIds = friendDiaryIds;
+            } else {
+              allFilteredIds = allFilteredIds.intersection(friendDiaryIds);
             }
           }
         }
+        
+        filteredDiaryIds = allFilteredIds;
       }
       
       // diary_entry_participants를 통해 내가 참여한 모든 일지 ID를 조회
@@ -424,7 +439,7 @@ class DatabaseService {
           .toSet(); // 중복 제거
       
       // 친구 필터 적용 (교집합)
-      if (filterFriendId != null) {
+      if (filterFriendIds != null && filterFriendIds.isNotEmpty) {
         diaryIds = diaryIds.intersection(filteredDiaryIds);
         if (diaryIds.isEmpty) {
           return [];
