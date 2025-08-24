@@ -46,13 +46,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _memoController = TextEditingController();
   // 사용자 코드 입력을 위한 컨트롤러
   final TextEditingController _userCodeController = TextEditingController();
-  // 내 사용자 코드
-  String? _myUserCode;
-
   @override
   void initState() {
     super.initState();
-    _loadMyUserCode();
   }
 
   // 메모리 누수 방지를 위해 컨트롤러들을 정리
@@ -64,34 +60,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
-  // 내 사용자 코드 로드
-  Future<void> _loadMyUserCode() async {
-    if (!AuthService.isLoggedIn) return;
-    
-    try {
-      final code = await DatabaseService.getMyUserCode();
-      if (mounted) {
-        setState(() {
-          _myUserCode = code;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('사용자 코드 로드 실패: $e')),
-        );
-      }
-    }
-  }
-
-
-  // 코드를 클립보드에 복사
-  void _copyCodeToClipboard(String code) {
-    Clipboard.setData(ClipboardData(text: code));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('코드가 복사되었습니다')),
-    );
-  }
 
   // 친구 추가 방식 선택 다이얼로그
   void _showAddFriendDialog() {
@@ -417,77 +385,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         // Theme.of(context): 현재 테마의 색상 정보를 가져옴
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Column(
-        children: [
-          // 내 사용자 코드 표시 영역 (로그인된 경우만)
-          if (AuthService.isLoggedIn && _myUserCode != null)
-            Container(
-              margin: const EdgeInsets.all(16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.qr_code, size: 20),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '내 친구 코드',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Text(
-                                _myUserCode!,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => _copyCodeToClipboard(_myUserCode!),
-                            icon: const Icon(Icons.copy),
-                            tooltip: '코드 복사',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '이 코드를 친구에게 공유하여 친구 추가를 할 수 있어요',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          // 친구 목록 영역
-          Expanded(
-            child: sortedFriends.isEmpty
+      body: sortedFriends.isEmpty
           // 친구가 없을 때 표시할 안내 메시지
           ? const Center(
               child: Column(
@@ -642,9 +540,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 );
               },
             ),
-          ),
-        ],
-      ),
       // FloatingActionButton: 화면 우하단에 떠 있는 둥근 버튼
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddFriendDialog, // 친구 추가 다이얼로그 표시
