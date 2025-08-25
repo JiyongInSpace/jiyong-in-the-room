@@ -117,7 +117,7 @@ dependencies:
   path: ^1.9.0               # 파일 경로 처리 유틸리티
 ```
 
-### 현재 작동하는 기능 (업데이트: 2025-08-24)
+### 현재 작동하는 기능 (업데이트: 2025-08-25)
 1. **Google Sign-In 네이티브 로그인** - 모바일 최적화된 UX ✅
 2. **실시간 인증 상태 관리** - 설정화면 즉시 업데이트 ✅  
 3. **프로필 이미지 업로드** - 갤러리/카메라 → Supabase Storage ✅
@@ -136,8 +136,20 @@ dependencies:
 16. **인피니트 스크롤** - 일지 목록 10개 단위 페이징 ✅
 17. **검색 및 필터링** - 테마/카페명 검색, 친구 다중 선택 필터 ✅
 18. **개인 일지 시스템** - 참여자 기반에서 개인 일지로 단순화 ✅
+19. **테마 검색 UX 완성** - 실시간 옵션 표시, 선택 상태 완벽 동작 ✅
 
 ### 최근 구현 완료
+
+#### 🚀 2025-08-25 최신 업데이트 (테마 검색 UX 개선)
+- **🔍 테마 검색 옵션 리스트 표시 개선**:
+  - **실시간 옵션 표시**: 검색 완료 시 드롭다운이 즉시 표시되도록 수정
+  - **UI 갱신 보장**: `List.from()` + 텍스트 컨트롤러 미세 조정으로 강제 UI 업데이트
+  - **검색 결과 반영**: "ea" 검색 시 19개 결과가 바로 표시되도록 개선
+- **🎯 테마 선택 완료 상태 수정**:
+  - **선택 상태 유지**: 테마 검색 후 선택 시 `selectedTheme` 상태가 올바르게 유지
+  - **카페 자동 선택**: 테마 선택 시 해당 카페 자동 설정 + 체크 아이콘 표시
+  - **스마트 테마 로딩**: `_loadThemesForCafeWithoutClearingSelection()` 메서드로 선택된 테마를 초기화하지 않고 카페 테마 목록만 업데이트
+  - **저장 기능 정상화**: "모든 항목을 선택해주세요" 에러 해결
 
 #### 🚀 2025-08-24 주요 업데이트 (사용자 코드 시스템)
 - **🔢 6자리 사용자 코드**: 각 사용자에게 고유한 영숫자 코드 자동 생성
@@ -249,25 +261,34 @@ dependencies:
 - `lib/models/escape_cafe.dart` - EscapeCafe, EscapeTheme 모델 
 - `lib/models/user.dart` - User, Friend 모델
 
-### 핵심 로직 (업데이트: 2025-08-19)
+### 핵심 로직 (업데이트: 2025-08-24)
 - `lib/services/auth_service.dart` - **Google Sign-In 플러그인 인증** (네이티브 + 웹 하이브리드)
   - 모바일: google_sign_in 플러그인 → ID토큰 → Supabase 인증
   - 웹: 기존 Supabase OAuth 유지 
   - 개선된 로그아웃 (단계별 에러 핸들링)
-- `lib/services/profile_service.dart` - **프로필 이미지 업로드** (신규)
+- `lib/services/database_service.dart` - **사용자 코드 시스템** + 친구 연동 로직
+  - **사용자 코드 관리**: `getMyUserCode()`, `findUserByCode()`, `addFriendByCode()`
+  - **친구 연동**: `linkFriendWithCode()` - 기존 친구를 실제 사용자와 연결
+  - **개인 일지 조회**: `getMyDiaryEntries()` - 단순화된 쿼리
+- `lib/services/profile_service.dart` - **프로필 이미지 업로드**
   - Supabase Storage 연동 (avatars 버킷)
   - 이미지 업로드/삭제, 프로필 정보 업데이트
-- `lib/services/database_service.dart` - **완전한 CRUD 시스템** (일지, 친구, 참여자 관리)
 - `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
 - `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적
-- `lib/screens/settings_screen.dart` - **실시간 StatefulWidget** 설정 페이지
-  - 인증 상태 스트림 리스닝으로 즉시 UI 업데이트
-  - 프로필 편집 화면 연동
-- `lib/screens/profile_edit_screen.dart` - **프로필 편집 화면** (신규)
+- `lib/screens/auth/settings_screen.dart` - **단순화된 설정 페이지**
+  - 친구 코드/로그아웃 기능 → 프로필 편집으로 이동
+- `lib/screens/auth/profile_edit_screen.dart` - **프로필 편집** + 친구 코드 관리 + 로그아웃
   - 갤러리/카메라 이미지 선택, 표시 이름 변경
-- `lib/screens/write_diary_screen.dart` - **DB 기반 일지 작성** (지연 로딩)
-- `lib/screens/edit_diary_screen.dart` - **스마트 삭제 시스템** (작성자/참여자별 분기)
-- `lib/screens/home_screen.dart` - **본인 제외 통계 표시** (정확한 친구 수 + 랭킹)
+  - **친구 코드 카드**: 6자리 코드 표시 및 복사 기능
+  - **로그아웃 버튼**: 오른쪽 정렬, 빨간색 작은 글씨
+- `lib/screens/friends/friends_screen.dart` - **친구 관리** + 코드 기반 연동
+  - **코드 기반 친구 추가**: 선택지 제공 (코드 vs 직접입력)
+  - **기존 친구 연동**: 팝업 메뉴에 "코드 등록" 옵션
+  - **연동 상태 UI**: 프로필 이미지 vs 미연동 아이콘
+- `lib/screens/main/home_screen.dart` - **홈 화면** (연동 친구 프로필 이미지 표시)
+- `lib/screens/diary/diary_list_infinite_screen.dart` - **인피니트 스크롤** + 검색/필터
+- `lib/screens/diary/write_diary_screen.dart` - **일지 작성** + 개선된 테마 검색 UX
+- `lib/widgets/diary_entry_card.dart` - **재사용 일지 카드 컴포넌트**
 
 ### 환경변수 및 설정
 - `.env` - Supabase 환경변수 (URL, API 키 등)

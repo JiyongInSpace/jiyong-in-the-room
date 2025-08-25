@@ -1,52 +1,47 @@
-// 플러터의 기본 Material Design 위젯들을 사용하기 위한 import
 import 'package:flutter/material.dart';
-// 다이어리 엔트리 데이터 모델 import
 import 'package:jiyong_in_the_room/models/diary.dart';
-// 카페와 테마 데이터 모델 import
-// 사용자와 친구 데이터 모델 import
+import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-// 데이터베이스 서비스 import
+import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
-// 인증 서비스 import
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 
-// 일지 수정 화면 - 기존 일지 엔트리를 수정하는 위젯
 class EditDiaryScreen extends StatefulWidget {
-  // 수정할 기존 일지 엔트리 데이터
   final DiaryEntry entry;
-  // 선택 가능한 친구 목록
   final List<Friend> friends;
 
-  // const 생성자: 컴파일 타임에 값이 결정되는 생성자
-  // required: 필수 매개변수임을 표시
   const EditDiaryScreen({
     super.key,
     required this.entry,
     required this.friends,
   });
 
-  // createState(): StatefulWidget의 상태 객체를 생성하는 메서드
   @override
   State<EditDiaryScreen> createState() => _EditDiaryScreenState();
 }
 
-// 수정 화면의 상태를 관리하는 State 클래스
 class _EditDiaryScreenState extends State<EditDiaryScreen> {
-  // 카페별 테마 목록을 저장하는 Map
-  final Map<String, List<String>> cafeThemes = {
-    '비밀의화원': ['유령의집', '황금마차'],
-    '키이스': ['타임머신', '사라진 도시'],
-    '넥스트에디션': ['미궁의탑', '어둠의 마법서'],
-  };
+  // 카페와 테마 데이터
+  List<EscapeCafe> cafes = [];
+  List<EscapeTheme> currentThemes = [];
+  List<EscapeTheme> searchedThemes = [];
+  bool isLoadingCafes = true;
+  bool isLoadingThemes = false;
+  bool isSearchingThemes = false;
+  
+  // 테마 필드의 포커스 노드
+  final FocusNode _themeFocusNode = FocusNode();
+  final FocusNode _friendSearchFocusNode = FocusNode();
 
-  // 수정 중인 데이터를 저장하는 변수들
-  String? selectedCafe;
-  String? selectedTheme;
+  // 선택된 데이터
+  EscapeCafe? selectedCafe;
+  EscapeTheme? selectedTheme;
   DateTime? selectedDate;
 
-  // 선택된 친구들을 저장하는 리스트
+  // 선택된 친구들
   final List<Friend> selectedFriends = [];
-  // 각 입력 필드를 제어하는 컨트롤러들
+  
+  // 컨트롤러들
   final TextEditingController _cafeController = TextEditingController();
   final TextEditingController _themeController = TextEditingController();
   final TextEditingController friendSearchController = TextEditingController();
@@ -54,79 +49,180 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   final TextEditingController _hintController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   
-  // 게임 관련 데이터를 저장하는 변수들
-  double? _rating;             // 별점 평가 (nullable, 기본값 null)
-  bool? _escaped;              // 탈출 성공 여부
-  int? _hintUsedCount;         // 힌트 사용 횟수
-  Duration? _timeTaken;        // 게임 소요 시간
-  bool _showDetails = false;   // 상세 정보 표시 여부
+  // 게임 관련 데이터
+  double? _rating;
+  bool? _escaped;
+  int? _hintUsedCount;
+  Duration? _timeTaken;
+  bool _showDetails = false;
 
-  // initState(): 위젯이 처음 생성될 때 한 번만 호출되는 메서드
-  // 기존 데이터로 필드들을 초기화하기 위해 사용
   @override
   void initState() {
     super.initState();
-    _initializeFields(); // 기존 데이터로 필드 초기화
-  }
-
-  // 기존 일지 데이터로 모든 필드를 초기화하는 메서드
-  void _initializeFields() {
-    // widget.entry: 부모 위젯에서 전달받은 기존 일지 데이터
-    selectedCafe = widget.entry.cafe?.name ?? '알 수 없음';
-    selectedTheme = widget.entry.theme?.name ?? '알 수 없는 테마';
-    selectedDate = widget.entry.date;
-    
-    // TextEditingController에 기존 값을 설정
-    _cafeController.text = selectedCafe!;
-    _themeController.text = selectedTheme!;
-    
-    // 기존에 선택된 친구들이 있다면 추가
-    if (widget.entry.friends != null) {
-      selectedFriends.addAll(widget.entry.friends!);
-    }
-    
-    // 기존 메모가 있다면 설정
-    if (widget.entry.memo != null) {
-      _memoController.text = widget.entry.memo!;
-    }
-    
-    // 기존 별점이 있다면 설정
-    if (widget.entry.rating != null) {
-      _rating = widget.entry.rating!;
-    }
-    
-    // 게임 결과 데이터 설정
-    _escaped = widget.entry.escaped;
-    _hintUsedCount = widget.entry.hintUsedCount;
-    _timeTaken = widget.entry.timeTaken;
-    
-    // 힌트 사용 횟수를 텍스트로 변환하여 설정
-    if (widget.entry.hintUsedCount != null) {
-      _hintController.text = widget.entry.hintUsedCount.toString();
-    }
-    
-    // 소요 시간을 분 단위로 변환하여 설정
-    if (widget.entry.timeTaken != null) {
-      _timeController.text = widget.entry.timeTaken!.inMinutes.toString();
-    }
-    
-    // 추가 정보가 있다면 상세 정보 영역을 기본적으로 표시
-    // ||(OR) 연산자: 하나라도 참이면 참
-    _showDetails = widget.entry.memo != null || 
-                   widget.entry.rating != null || 
-                   widget.entry.escaped != null || 
-                   widget.entry.hintUsedCount != null || 
-                   widget.entry.timeTaken != null;
+    _loadCafes();
+    _initializeFields();
   }
 
   @override
   void dispose() {
     _cafeController.dispose();
     _themeController.dispose();
+    friendSearchController.dispose();
     _memoController.dispose();
     _hintController.dispose();
     _timeController.dispose();
+    _themeFocusNode.dispose();
+    _friendSearchFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCafes() async {
+    try {
+      final loadedCafes = await EscapeRoomService.getAllCafes();
+      
+      setState(() {
+        cafes = loadedCafes;
+        isLoadingCafes = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingCafes = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('카페 목록을 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  // 테마 검색 메서드 (2글자 이상 입력시에만 서버 검색)
+  String? _lastSearchQuery; // 마지막 검색 쿼리를 저장하여 중복 검색 방지
+  
+  Future<void> _searchThemes(String query) async {
+    final trimmedQuery = query.trim();
+    print('_searchThemes called with: "$trimmedQuery"');
+    
+    if (trimmedQuery.length < 2) {
+      print('Query too short, clearing results');
+      setState(() {
+        searchedThemes = [];
+        isSearchingThemes = false;
+        _lastSearchQuery = null;
+      });
+      return;
+    }
+
+    // 이미 같은 검색 결과가 있으면 스킵
+    if (_lastSearchQuery == trimmedQuery && searchedThemes.isNotEmpty) {
+      print('Already have results for "$trimmedQuery", skipping');
+      return;
+    }
+
+    print('Starting search for: "$trimmedQuery"');
+    setState(() {
+      isSearchingThemes = true;
+      _lastSearchQuery = trimmedQuery;
+    });
+
+    try {
+      final results = await DatabaseService.searchThemes(trimmedQuery);
+      print('Search completed, found ${results.length} results');
+      if (mounted) {
+        setState(() {
+          searchedThemes = results;
+          isSearchingThemes = false;
+        });
+        print('Updated searchedThemes: ${searchedThemes.map((t) => t.name).toList()}');
+      }
+    } catch (e) {
+      print('Search failed: $e');
+      if (mounted) {
+        setState(() {
+          searchedThemes = [];
+          isSearchingThemes = false;
+          _lastSearchQuery = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('테마 검색에 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadThemesForCafe(int cafeId) async {
+    print('Loading themes for cafe ID: $cafeId');
+    setState(() {
+      isLoadingThemes = true;
+      currentThemes = [];
+    });
+
+    try {
+      final loadedThemes = await EscapeRoomService.getThemesByCafe(cafeId);
+      print('Loaded ${loadedThemes.length} themes');
+      
+      setState(() {
+        currentThemes = loadedThemes;
+        isLoadingThemes = false;
+      });
+    } catch (e) {
+      print('Error loading themes: $e');
+      setState(() {
+        isLoadingThemes = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('테마 목록을 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  void _initializeFields() {
+    // 기존 데이터로 필드 초기화
+    selectedCafe = widget.entry.theme?.cafe;
+    selectedTheme = widget.entry.theme;
+    selectedDate = widget.entry.date;
+    
+    // 컨트롤러 설정
+    _cafeController.text = selectedCafe?.name ?? '';
+    _themeController.text = selectedTheme?.name ?? '';
+    
+    // 기존 친구들 추가
+    if (widget.entry.friends != null) {
+      selectedFriends.addAll(widget.entry.friends!);
+    }
+    
+    // 기존 메모
+    if (widget.entry.memo != null) {
+      _memoController.text = widget.entry.memo!;
+    }
+    
+    // 게임 데이터
+    _rating = widget.entry.rating;
+    _escaped = widget.entry.escaped;
+    _hintUsedCount = widget.entry.hintUsedCount;
+    _timeTaken = widget.entry.timeTaken;
+    
+    if (widget.entry.hintUsedCount != null) {
+      _hintController.text = widget.entry.hintUsedCount.toString();
+    }
+    
+    if (widget.entry.timeTaken != null) {
+      _timeController.text = widget.entry.timeTaken!.inMinutes.toString();
+    }
+    
+    // 추가 정보가 있다면 상세 정보 영역을 기본적으로 표시
+    _showDetails = widget.entry.memo != null || 
+                   widget.entry.rating != null || 
+                   widget.entry.escaped != null || 
+                   widget.entry.hintUsedCount != null || 
+                   widget.entry.timeTaken != null;
+
+    // 카페가 선택되어 있으면 테마 목록 로드
+    if (selectedCafe != null) {
+      _loadThemesForCafe(selectedCafe!.id);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -147,7 +243,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
   void _updateRating(double position) {
     setState(() {
-      const starWidth = 36.0; // 32 (icon size) + 4 (padding)
+      const starWidth = 36.0;
       final starIndex = (position / starWidth).floor();
       final positionInStar = position % starWidth;
       
@@ -163,519 +259,629 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedDateStr =
-        selectedDate != null
-            ? selectedDate!.toLocal().toString().split(' ')[0]
-            : '날짜를 선택하세요';
+    final selectedDateStr = selectedDate != null
+        ? selectedDate!.toLocal().toString().split(' ')[0]
+        : '날짜를 선택하세요';
 
     return Scaffold(
       appBar: AppBar(title: const Text('일지 수정')),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0), // 하단 80px + 기본 16px 여백
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-            Row(
-              children: [
-                Expanded(child: Text('탈출 날짜: $selectedDateStr')),
-                ElevatedButton(
-                  onPressed: _pickDate,
-                  child: const Text('날짜 선택'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            RawAutocomplete<String>(
-              textEditingController: _cafeController,
-              focusNode: FocusNode(),
-              optionsBuilder: (text) {
-                // 검색어를 소문자로 변환하고 공백 제거
-                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
-                
-                return cafeThemes.keys
-                    .where((cafe) {
-                      // 카페명을 소문자로 변환하고 공백 제거하여 비교
-                      final cafeName = cafe.toLowerCase().replaceAll(' ', '');
-                      return cafeName.contains(searchQuery);
-                    })
-                    .toList();
-              },
-              onSelected: (value) {
-                setState(() {
-                  selectedCafe = value;
-                  selectedTheme = null;
-                  _themeController.clear();
-                });
-              },
-              fieldViewBuilder: (
-                context,
-                controller,
-                focusNode,
-                onFieldSubmitted,
-              ) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: '방탈출 카페',
-                    border: OutlineInputBorder(),
-                  ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      child: ListView.builder(
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option),
-                            onTap: () => onSelected(option),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            RawAutocomplete<String>(
-              textEditingController: _themeController,
-              focusNode: FocusNode(),
-              optionsBuilder: (text) {
-                if (selectedCafe == null) return const Iterable<String>.empty();
-                final themes = cafeThemes[selectedCafe]!;
-                // 검색어를 소문자로 변환하고 공백 제거
-                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
-                return themes.where((t) {
-                  // 테마명을 소문자로 변환하고 공백 제거하여 비교
-                  final themeName = t.toLowerCase().replaceAll(' ', '');
-                  return themeName.contains(searchQuery);
-                }).toList();
-              },
-              onSelected: (value) {
-                setState(() {
-                  selectedTheme = value;
-                });
-              },
-              fieldViewBuilder: (
-                context,
-                controller,
-                focusNode,
-                onFieldSubmitted,
-              ) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  enabled: selectedCafe != null,
-                  decoration: InputDecoration(
-                    labelText: selectedCafe != null ? '테마 선택' : '먼저 카페를 선택해주세요',
-                    border: const OutlineInputBorder(),
-                  ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      child: ListView.builder(
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option),
-                            onTap: () => onSelected(option),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            RawAutocomplete<Friend>(
-              textEditingController: friendSearchController,
-              focusNode: FocusNode(),
-              optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text == '') {
-                  return const Iterable<Friend>.empty();
-                }
-                // 검색어를 소문자로 변환하고 공백 제거
-                final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
-                return widget.friends
-                    .where(
-                      (f) {
-                        // 친구 이름을 소문자로 변환하고 공백 제거하여 비교
-                        final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
-                        return friendName.contains(searchQuery) &&
-                            !selectedFriends.contains(f);
-                      },
-                    )
-                    .toList();
-              },
-              onSelected: (Friend selected) {
-                setState(() {
-                  selectedFriends.add(selected);
-                  friendSearchController.clear();
-                });
-              },
-              fieldViewBuilder: (
-                context,
-                controller,
-                focusNode,
-                onFieldSubmitted,
-              ) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: '친구 검색',
-                    border: OutlineInputBorder(),
-                  ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      child: ListView.builder(
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option.displayName),
-                            subtitle: option.isConnected && option.realName != null 
-                                ? Text(option.realName!) 
-                                : null,
-                            leading: Icon(
-                              option.isConnected ? Icons.link : Icons.link_off,
-                              size: 16,
-                              color: option.isConnected ? Colors.green : Colors.grey,
-                            ),
-                            onTap: () => onSelected(option),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            Wrap(
-              spacing: 8,
-              children:
-                  selectedFriends.map((friend) {
-                    return Chip(
-                      label: Text(friend.displayName),
-                      deleteIcon: const Icon(Icons.close),
-                      onDeleted: () {
-                        setState(() {
-                          selectedFriends.remove(friend);
-                        });
-                      },
-                    );
-                  }).toList(),
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _showDetails = !_showDetails;
-                });
-              },
-              icon: Icon(_showDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
-              label: Text(_showDetails ? '간단히' : '자세히'),
-            ),
-            if (_showDetails) ...[
-              const SizedBox(height: 20),
-              TextField(
-                controller: _memoController,
-                decoration: const InputDecoration(
-                  labelText: '메모',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 20),
               Row(
                 children: [
-                  const Text('평점: '),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTapDown: (details) => _updateRating(details.localPosition.dx),
-                    onPanUpdate: (details) => _updateRating(details.localPosition.dx),
-                    child: Row(
-                      children: List.generate(5, (index) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Stack(
-                            children: [
-                              Icon(
-                                Icons.star_border,
-                                color: Colors.grey[400],
-                                size: 32,
+                  Expanded(child: Text('탈출 날짜: $selectedDateStr')),
+                  ElevatedButton(
+                    onPressed: _pickDate,
+                    child: const Text('날짜 선택'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // 카페 선택
+              if (isLoadingCafes)
+                const Center(child: CircularProgressIndicator())
+              else
+                RawAutocomplete<EscapeCafe>(
+                  textEditingController: _cafeController,
+                  focusNode: FocusNode(),
+                  optionsBuilder: (text) {
+                    final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
+                    
+                    return cafes
+                        .where((cafe) {
+                          final cafeName = cafe.name.toLowerCase().replaceAll(' ', '');
+                          return cafeName.contains(searchQuery);
+                        })
+                        .toList();
+                  },
+                  onSelected: (cafe) {
+                    print('Cafe selected: ${cafe.name} (ID: ${cafe.id})');
+                    setState(() {
+                      selectedCafe = cafe;
+                      // 카페가 바뀌면 테마 선택 초기화 (기존 테마가 다른 카페 것이면)
+                      if (selectedTheme?.cafe?.id != cafe.id) {
+                        selectedTheme = null;
+                        _themeController.clear();
+                      }
+                    });
+                    _cafeController.text = cafe.name;
+                    FocusScope.of(context).unfocus();
+                    _loadThemesForCafe(cafe.id);
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        labelText: '방탈출 카페',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: selectedCafe != null 
+                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            : controller.text.isNotEmpty
+                                ? const Icon(Icons.edit, color: Colors.orange)
+                                : null,
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4.0,
+                        child: SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final option = options.elementAt(index);
+                              return ListTile(
+                                title: Text(option.name),
+                                onTap: () => onSelected(option),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(height: 20),
+              
+              // 테마 선택
+              RawAutocomplete<EscapeTheme>(
+                textEditingController: _themeController,
+                focusNode: _themeFocusNode,
+                optionsBuilder: (text) {
+                  print('optionsBuilder called - text: "${text.text}", selectedCafe: ${selectedCafe?.name}, currentThemes: ${currentThemes.length}, searchedThemes: ${searchedThemes.length}, selectedTheme: ${selectedTheme?.name}');
+                  
+                  // 테마가 이미 선택된 경우 빈 목록 반환 (수정하려는 경우 제외)
+                  if (selectedTheme != null) {
+                    // 현재 입력된 텍스트가 선택된 테마 이름과 다르면 수정 중인 것으로 간주
+                    if (text.text == selectedTheme!.name) {
+                      print('Returning empty - theme selected and text matches');
+                      return const Iterable<EscapeTheme>.empty();
+                    } else {
+                      // 선택된 테마와 다른 텍스트가 입력되면 선택 해제
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {
+                            selectedTheme = null;
+                          });
+                        }
+                      });
+                    }
+                  }
+                  
+                  final query = text.text.trim();
+                  print('Search query: "$query", length: ${query.length}');
+                  
+                  // 검색어가 2글자 이상이면 서버 검색 트리거
+                  if (query.length >= 2) {
+                    print('Query >= 2, checking existing results');
+                    // 이미 같은 검색 결과가 있는지 확인
+                    if (_lastSearchQuery != query || searchedThemes.isEmpty) {
+                      print('Triggering search for: "$query"');
+                      // 비동기 검색 시작
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _searchThemes(query);
+                      });
+                      // 검색 중일 때 로딩 상태를 표시하기 위해 더미 결과 반환
+                      if (searchedThemes.isEmpty) {
+                        return [EscapeTheme(
+                          id: -1, 
+                          name: '검색 중...', 
+                          cafeId: -1,
+                        )];
+                      }
+                    }
+                    // 현재 검색된 결과 반환
+                    print('Returning ${searchedThemes.length} searched themes');
+                    return searchedThemes;
+                  }
+                  
+                  // 카페가 선택되어 있고 검색어가 짧으면 해당 카페의 테마들
+                  if (selectedCafe != null && !isLoadingThemes && currentThemes.isNotEmpty && query.length < 2) {
+                    if (query.isEmpty) {
+                      print('Returning ${currentThemes.length} current themes');
+                      return currentThemes;
+                    } else {
+                      // 1글자 검색은 로컬에서 필터링
+                      final filtered = currentThemes.where((theme) {
+                        final themeName = theme.name.toLowerCase();
+                        return themeName.contains(query.toLowerCase());
+                      }).toList();
+                      print('Returning ${filtered.length} locally filtered themes');
+                      return filtered;
+                    }
+                  }
+                  
+                  print('Returning empty list');
+                  return const Iterable<EscapeTheme>.empty();
+                },
+                onSelected: (theme) {
+                  // 더미 로딩 항목 무시
+                  if (theme.id == -1) {
+                    return;
+                  }
+                  setState(() {
+                    selectedTheme = theme;
+                    // 테마가 선택되면 해당 카페도 자동으로 설정
+                    if (selectedCafe?.id != theme.cafe?.id) {
+                      selectedCafe = theme.cafe;
+                      _cafeController.text = theme.cafe?.name ?? '';
+                      if (theme.cafe != null) {
+                        _loadThemesForCafe(theme.cafe!.id);
+                      }
+                    }
+                  });
+                  _themeController.text = theme.name;
+                  _themeFocusNode.unfocus();
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: '테마 선택',
+                      hintText: selectedCafe != null 
+                          ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
+                          : '테마를 검색하세요 (2글자 이상 입력)',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: selectedTheme != null 
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : isSearchingThemes
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : controller.text.isNotEmpty
+                                  ? const Icon(Icons.search, color: Colors.orange)
+                                  : null,
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option.name),
+                              subtitle: Text(option.cafe?.name ?? ''),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              
+              // 친구 선택
+              RawAutocomplete<Friend>(
+                textEditingController: friendSearchController,
+                focusNode: _friendSearchFocusNode,
+                optionsBuilder: (textEditingValue) {
+                  final availableFriends = widget.friends
+                      .where((f) => !selectedFriends.contains(f))
+                      .toList();
+                  
+                  if (textEditingValue.text.isEmpty) {
+                    return availableFriends;
+                  }
+                  
+                  final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
+                  return availableFriends
+                      .where((f) {
+                        final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
+                        return friendName.contains(searchQuery);
+                      })
+                      .toList();
+                },
+                onSelected: (Friend selected) {
+                  setState(() {
+                    selectedFriends.add(selected);
+                    friendSearchController.clear();
+                  });
+                  _friendSearchFocusNode.unfocus();
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: '친구 검색',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: controller.text.isNotEmpty
+                          ? const Icon(Icons.search, color: Colors.orange)
+                          : null,
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option.displayName),
+                              subtitle: option.isConnected && option.realName != null 
+                                  ? Text(option.realName!) 
+                                  : null,
+                              leading: Icon(
+                                option.isConnected ? Icons.link : Icons.link_off,
+                                size: 16,
+                                color: option.isConnected ? Colors.green : Colors.grey,
                               ),
-                              if (_rating != null && _rating! > index) ...[
-                                if (_rating! >= index + 1)
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 32,
-                                  )
-                                else
-                                  ClipRect(
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      widthFactor: 0.5,
-                                      child: const Icon(
-                                        Icons.star,
-                                        color: Colors.amber,
-                                        size: 32,
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              // 선택된 친구들
+              Wrap(
+                spacing: 8,
+                children: selectedFriends.map((friend) {
+                  return Chip(
+                    label: Text(friend.displayName),
+                    deleteIcon: const Icon(Icons.close),
+                    onDeleted: () {
+                      setState(() {
+                        selectedFriends.remove(friend);
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              
+              // 상세 정보 토글
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showDetails = !_showDetails;
+                  });
+                },
+                icon: Icon(_showDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+                label: Text(_showDetails ? '간단히' : '자세히'),
+              ),
+              
+              if (_showDetails) ...[
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _memoController,
+                  decoration: const InputDecoration(
+                    labelText: '메모',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Text('평점: '),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTapDown: (details) => _updateRating(details.localPosition.dx),
+                      onPanUpdate: (details) => _updateRating(details.localPosition.dx),
+                      child: Row(
+                        children: List.generate(5, (index) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: Stack(
+                              children: [
+                                Icon(
+                                  Icons.star_border,
+                                  color: Colors.grey[400],
+                                  size: 32,
+                                ),
+                                if (_rating != null && _rating! > index) ...[
+                                  if (_rating! >= index + 1)
+                                    const Icon(
+                                      Icons.star,
+                                      color: Colors.amber,
+                                      size: 32,
+                                    )
+                                  else
+                                    ClipRect(
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: 0.5,
+                                        child: const Icon(
+                                          Icons.star,
+                                          color: Colors.amber,
+                                          size: 32,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                        );
-                      }),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(_rating?.toStringAsFixed(1) ?? '미평가'),
-                  if (_rating != null) ...[
                     const SizedBox(width: 10),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _rating = null;
-                        });
-                      },
-                      icon: const Icon(Icons.close, size: 16),
-                      tooltip: '평점 제거',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(4),
+                    Text(_rating?.toStringAsFixed(1) ?? '미평가'),
+                    if (_rating != null) ...[
+                      const SizedBox(width: 10),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _rating = null;
+                          });
+                        },
+                        icon: const Icon(Icons.close, size: 16),
+                        tooltip: '평점 제거',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(4),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Text('탈출 결과: '),
+                    const SizedBox(width: 10),
+                    Row(
+                      children: [
+                        Radio<bool>(
+                          value: true,
+                          groupValue: _escaped,
+                          onChanged: (value) {
+                            setState(() {
+                              _escaped = value;
+                            });
+                          },
+                        ),
+                        const Text('성공'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Radio<bool>(
+                          value: false,
+                          groupValue: _escaped,
+                          onChanged: (value) {
+                            setState(() {
+                              _escaped = value;
+                            });
+                          },
+                        ),
+                        const Text('실패'),
+                      ],
                     ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  const Text('탈출 결과: '),
-                  const SizedBox(width: 10),
-                  Row(
-                    children: [
-                      Radio<bool>(
-                        value: true,
-                        groupValue: _escaped,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _hintController,
+                        decoration: const InputDecoration(
+                          labelText: '힌트 사용 횟수',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          setState(() {
-                            _escaped = value;
-                          });
+                          _hintUsedCount = int.tryParse(value);
                         },
                       ),
-                      const Text('성공'),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Radio<bool>(
-                        value: false,
-                        groupValue: _escaped,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _timeController,
+                        decoration: const InputDecoration(
+                          labelText: '소요시간 (분)',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          setState(() {
-                            _escaped = value;
-                          });
+                          final minutes = int.tryParse(value);
+                          if (minutes != null) {
+                            _timeTaken = Duration(minutes: minutes);
+                          }
                         },
                       ),
-                      const Text('실패'),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
+              
+              // 버튼들
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _hintController,
-                      decoration: const InputDecoration(
-                        labelText: '힌트 사용 횟수',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        _hintUsedCount = int.tryParse(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _timeController,
-                      decoration: const InputDecoration(
-                        labelText: '소요시간 (분)',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        final minutes = int.tryParse(value);
-                        if (minutes != null) {
-                          _timeTaken = Duration(minutes: minutes);
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 20),
-            // 버튼들을 가로로 배치
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // 삭제 버튼
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    // 현재 사용자가 작성자인지 확인
-                    final currentUserId = AuthService.currentUser?.id;
-                    final isAuthor = widget.entry.userId == currentUserId;
-                    
-                    // 사용자 역할에 따른 메시지
-                    final String title = isAuthor ? '일지 삭제' : '참여 해제';
-                    final String content = isAuthor 
-                        ? '정말로 이 일지를 삭제하시겠습니까?\n일지가 완전히 삭제되며 복구할 수 없습니다.'
-                        : '이 일지에서 나가시겠습니까?\n다른 참여자들은 계속 볼 수 있습니다.';
-                    final String buttonText = isAuthor ? '삭제' : '나가기';
-                    
-                    // 삭제 확인 다이얼로그
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text(title),
-                        content: Text(content),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('취소'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
+                  // 삭제 버튼
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final currentUserId = AuthService.currentUser?.id;
+                      final isAuthor = widget.entry.userId == currentUserId;
+                      
+                      final String title = isAuthor ? '일지 삭제' : '참여 해제';
+                      final String content = isAuthor 
+                          ? '정말로 이 일지를 삭제하시겠습니까?\n일지가 완전히 삭제되며 복구할 수 없습니다.'
+                          : '이 일지에서 나가시겠습니까?\n다른 참여자들은 계속 볼 수 있습니다.';
+                      final String buttonText = isAuthor ? '삭제' : '나가기';
+                      
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(title),
+                          content: Text(content),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('취소'),
                             ),
-                            child: Text(buttonText),
-                          ),
-                        ],
-                      ),
-                    );
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: Text(buttonText),
+                            ),
+                          ],
+                        ),
+                      );
 
-                    if (confirmed == true) {
+                      if (confirmed == true) {
+                        try {
+                          await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                          
+                          if (mounted) {
+                            Navigator.pop(context, 'deleted');
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('삭제 실패: $e')),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    icon: Icon(AuthService.currentUser?.id == widget.entry.userId 
+                        ? Icons.delete 
+                        : Icons.exit_to_app),
+                    label: Text(AuthService.currentUser?.id == widget.entry.userId 
+                        ? '삭제' 
+                        : '나가기'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[100],
+                      foregroundColor: Colors.red[800],
+                    ),
+                  ),
+                  
+                  // 수정 완료 버튼
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (selectedCafe == null ||
+                          selectedTheme == null ||
+                          selectedDate == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('모든 항목을 선택해주세요')),
+                        );
+                        return;
+                      }
+
                       try {
-                        // 데이터베이스에서 삭제
-                        await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                        // 로딩 표시
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+
+                        // 수정된 데이터로 DiaryEntry 생성
+                        final updatedEntry = DiaryEntry(
+                          id: widget.entry.id,
+                          userId: widget.entry.userId,
+                          themeId: selectedTheme!.id,
+                          theme: selectedTheme,
+                          date: selectedDate!,
+                          friends: null, // 별도 테이블로 관리
+                          memo: _memoController.text.isEmpty ? null : _memoController.text,
+                          rating: _rating,
+                          escaped: _escaped,
+                          hintUsedCount: _hintUsedCount,
+                          timeTaken: _timeTaken,
+                          photos: widget.entry.photos,
+                          createdAt: widget.entry.createdAt,
+                          updatedAt: DateTime.now(),
+                        );
+
+                        // 친구 ID 목록 생성
+                        final friendIds = selectedFriends
+                            .where((friend) => friend.id != null)
+                            .map((friend) => friend.id!)
+                            .toList();
                         
-                        // 삭제 성공 - 'deleted' 신호와 함께 화면 닫기
+                        // 데이터베이스에 수정 사항 저장
+                        final savedEntry = await DatabaseService.updateDiaryEntry(
+                          updatedEntry,
+                          friendIds: friendIds.isNotEmpty ? friendIds : null,
+                        );
+                        
                         if (mounted) {
-                          Navigator.pop(context, 'deleted');
+                          // 로딩 다이얼로그 닫기
+                          Navigator.of(context).pop();
+                          
+                          // 성공 메시지
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('일지가 수정되었습니다!')),
+                          );
+                          
+                          // 수정된 데이터와 함께 화면 닫기
+                          Navigator.pop(context, savedEntry);
                         }
                       } catch (e) {
-                        // 삭제 실패 시 스낵바 표시
                         if (mounted) {
+                          // 로딩 다이얼로그 닫기
+                          Navigator.of(context).pop();
+                          
+                          // 에러 메시지
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('삭제 실패: $e')),
+                            SnackBar(content: Text('수정 실패: $e')),
                           );
                         }
                       }
-                    }
-                  },
-                  icon: Icon(AuthService.currentUser?.id == widget.entry.userId 
-                      ? Icons.delete 
-                      : Icons.exit_to_app),
-                  label: Text(AuthService.currentUser?.id == widget.entry.userId 
-                      ? '삭제' 
-                      : '나가기'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[100],
-                    foregroundColor: Colors.red[800],
+                    },
+                    child: const Text('수정 완료'),
                   ),
-                ),
-                
-                // 수정 완료 버튼
-                ElevatedButton(
-                  onPressed: () async {
-                    if (selectedCafe == null ||
-                        selectedTheme == null ||
-                        selectedDate == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('모든 항목을 선택해주세요')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      // 수정된 데이터로 새로운 DiaryEntry 객체 생성
-                      final updatedEntry = DiaryEntry(
-                        id: widget.entry.id, // 기존 ID 유지
-                        userId: widget.entry.userId, // 기존 사용자 ID 유지
-                        themeId: widget.entry.themeId, // 기존 테마 ID 유지
-                        theme: widget.entry.theme, // 기존 테마 정보 유지
-                        createdAt: widget.entry.createdAt, // 기존 생성일시 유지
-                        updatedAt: DateTime.now(), // 수정일시는 현재 시간으로
-                        date: selectedDate!,
-                        friends: selectedFriends,
-                        // 삼항연산자: 빈 텍스트면 null, 아니면 텍스트 값 사용
-                        memo: _memoController.text.isEmpty ? null : _memoController.text,
-                        rating: _rating,
-                        escaped: _escaped,
-                        hintUsedCount: _hintUsedCount,
-                        timeTaken: _timeTaken,
-                      );
-
-                      // 친구 ID 목록 생성 (모든 선택된 친구)
-                      final friendIds = selectedFriends
-                          .where((friend) => friend.id != null)
-                          .map((friend) => friend.id!)
-                          .toList();
-                      
-                      // 데이터베이스에 수정 사항 저장
-                      final savedEntry = await DatabaseService.updateDiaryEntry(
-                        updatedEntry,
-                        friendIds: friendIds.isNotEmpty ? friendIds : null,
-                      );
-                      
-                      // 수정 성공 시 수정된 데이터와 함께 화면 닫기
-                      if (mounted) {
-                        Navigator.pop(context, savedEntry);
-                      }
-                    } catch (e) {
-                      // 수정 실패 시 스낵바 표시
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('수정 실패: $e')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('수정 완료'),
-                ),
-              ],
-            ),
+                ],
+              ),
             ],
           ),
         ),

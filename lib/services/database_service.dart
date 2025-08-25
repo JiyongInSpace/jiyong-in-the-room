@@ -8,15 +8,16 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 class DatabaseService {
   // 테마 관련 메서드들
   
-  /// 모든 테마 목록 가져오기
-  static Future<List<EscapeTheme>> getAllThemes() async {
+  /// 모든 테마 목록 가져오기 (최대 개수 제한)
+  static Future<List<EscapeTheme>> getAllThemes({int limit = 50}) async {
     try {
       final response = await supabase
           .from('escape_themes')
           .select('''
-            id, name, difficulty, time_limit_minutes, genre, theme_image_url,
+            id, name, cafe_id, difficulty, time_limit_minutes, genre, theme_image_url,
             escape_cafes!inner(id, name, address, contact, logo_url)
-          ''');
+          ''')
+          .limit(limit);
 
       return (response as List).map((json) {
         final themeData = Map<String, dynamic>.from(json);
@@ -25,7 +26,7 @@ class DatabaseService {
         return EscapeTheme(
           id: themeData['id'],
           name: themeData['name'],
-          cafeId: themeData['cafe_id'],
+          cafeId: themeData['cafe_id'], // 명시적으로 포함
           cafe: EscapeCafe.fromJson(cafeData),
           difficulty: themeData['difficulty'],
           timeLimit: themeData['time_limit_minutes'] != null 
@@ -40,6 +41,50 @@ class DatabaseService {
     } catch (e) {
       if (kDebugMode) {
         print('테마 조회 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 검색어로 테마 검색하기
+  static Future<List<EscapeTheme>> searchThemes(String searchQuery, {int limit = 30}) async {
+    if (searchQuery.trim().length < 2) {
+      return []; // 검색어가 너무 짧으면 빈 목록 반환
+    }
+
+    try {
+      // PostgreSQL ILIKE를 사용한 대소문자 구분 없는 검색
+      final response = await supabase
+          .from('escape_themes')
+          .select('''
+            id, name, cafe_id, difficulty, time_limit_minutes, genre, theme_image_url,
+            escape_cafes!inner(id, name, address, contact, logo_url)
+          ''')
+          .ilike('name', '%${searchQuery.trim()}%')
+          .limit(limit);
+
+      return (response as List).map((json) {
+        final themeData = Map<String, dynamic>.from(json);
+        final cafeData = themeData['escape_cafes'] as Map<String, dynamic>;
+        
+        return EscapeTheme(
+          id: themeData['id'],
+          name: themeData['name'],
+          cafeId: themeData['cafe_id'], // 이제 명시적으로 포함됨
+          cafe: EscapeCafe.fromJson(cafeData),
+          difficulty: themeData['difficulty'],
+          timeLimit: themeData['time_limit_minutes'] != null 
+              ? Duration(minutes: themeData['time_limit_minutes'])
+              : null,
+          genre: themeData['genre'] != null 
+              ? List<String>.from(themeData['genre'])
+              : null,
+          themeImageUrl: themeData['theme_image_url'],
+        );
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('테마 검색 실패: $e');
       }
       rethrow;
     }

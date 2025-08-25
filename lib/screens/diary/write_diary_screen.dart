@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'dart:async';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
 // 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
@@ -24,8 +25,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // 카페와 테마 데이터
   List<EscapeCafe> cafes = [];
   List<EscapeTheme> currentThemes = []; // 현재 선택된 카페의 테마들
+  List<EscapeTheme> searchedThemes = []; // 검색된 테마들 (테마 직접 검색용)
   bool isLoadingCafes = true;
   bool isLoadingThemes = false;
+  bool isSearchingThemes = false; // 테마 검색 중인지 표시
   
   // 테마 필드의 포커스 노드
   final FocusNode _themeFocusNode = FocusNode();
@@ -97,6 +100,80 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     }
   }
 
+  // 테마 검색 메서드 (2글자 이상 입력시에만 서버 검색)
+  String? _lastSearchQuery; // 마지막 검색 쿼리를 저장하여 중복 검색 방지
+  Timer? _searchTimer; // 디바운싱을 위한 타이머
+  
+  void _searchThemesWithDebounce(String query) {
+    // 이전 타이머 취소
+    _searchTimer?.cancel();
+    
+    // 300ms 후에 검색 실행
+    _searchTimer = Timer(const Duration(milliseconds: 300), () {
+      _searchThemes(query);
+    });
+  }
+
+  Future<void> _searchThemes(String query) async {
+    final trimmedQuery = query.trim();
+    print('_searchThemes called with: "$trimmedQuery"');
+    
+    if (trimmedQuery.length < 2) {
+      print('Query too short, clearing results');
+      setState(() {
+        searchedThemes = [];
+        isSearchingThemes = false;
+        _lastSearchQuery = null;
+      });
+      return;
+    }
+
+    // 이미 같은 검색 결과가 있으면 스킵
+    if (_lastSearchQuery == trimmedQuery && searchedThemes.isNotEmpty) {
+      print('Already have results for "$trimmedQuery", skipping');
+      return;
+    }
+
+    print('Starting search for: "$trimmedQuery"');
+    setState(() {
+      isSearchingThemes = true;
+      _lastSearchQuery = trimmedQuery;
+    });
+
+    try {
+      final results = await DatabaseService.searchThemes(trimmedQuery);
+      print('Search completed, found ${results.length} results');
+      if (mounted) {
+        setState(() {
+          searchedThemes = results;
+          isSearchingThemes = false;
+        });
+        print('Updated searchedThemes: ${searchedThemes.map((t) => t.name).toList()}');
+        
+        // optionsBuilder를 다시 호출하도록 텍스트를 미세하게 변경했다가 복원
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _themeController.text.trim() == trimmedQuery) {
+            final currentText = _themeController.text;
+            _themeController.text = currentText + ' ';
+            _themeController.text = currentText;
+          }
+        });
+      }
+    } catch (e) {
+      print('Search failed: $e');
+      if (mounted) {
+        setState(() {
+          searchedThemes = [];
+          isSearchingThemes = false;
+          _lastSearchQuery = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('테마 검색에 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _loadThemesForCafe(int cafeId) async {
     print('Loading themes for cafe ID: $cafeId');
     setState(() {
@@ -141,11 +218,43 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     }
   }
 
+  // 테마 선택 후 카페의 테마 목록을 업데이트하는 메서드 (선택된 테마는 유지)
+  Future<void> _loadThemesForCafeWithoutClearingSelection(int cafeId, EscapeTheme selectedThemeToKeep) async {
+    print('Loading themes for cafe ID: $cafeId (keeping selected theme: ${selectedThemeToKeep.name})');
+    setState(() {
+      isLoadingThemes = true;
+      // selectedTheme과 컨트롤러 텍스트는 유지
+    });
+
+    try {
+      final loadedThemes = await EscapeRoomService.getThemesByCafe(cafeId);
+      print('Loaded ${loadedThemes.length} themes');
+      
+      setState(() {
+        currentThemes = loadedThemes;
+        isLoadingThemes = false;
+        // selectedTheme은 이미 설정되어 있으므로 건드리지 않음
+      });
+    } catch (e) {
+      print('Error loading themes: $e');
+      setState(() {
+        isLoadingThemes = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('테마 목록을 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
   // @override: 부모 클래스의 메서드를 재정의한다는 표시
   // dispose(): 위젯이 메모리에서 제거될 때 호출되는 메서드
   // TextEditingController 같은 리소스를 정리해야 메모리 누수 방지
   @override
   void dispose() {
+    // 타이머 취소
+    _searchTimer?.cancel();
     // 각 TextEditingController를 메모리에서 해제
     _cafeController.dispose();
     _themeController.dispose();
@@ -210,7 +319,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // BuildContext: 위젯 트리에서 현재 위젯의 위치 정보를 담고 있는 객체
   @override
   Widget build(BuildContext context) {
-    print('Build - selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}');
+    print('Build - selectedCafe: ${selectedCafe?.name}, selectedTheme: ${selectedTheme?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}');
     
     // 삼항연산자 (조건 ? 참일때값 : 거짓일때값)
     // selectedDate!: null이 아님을 확신할 때 사용하는 연산자
@@ -323,49 +432,106 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               },
             ),
             const SizedBox(height: 20),
-            // 테마 선택 영역 - 항상 텍스트 필드를 표시하되 상태에 따라 비활성화
+            // 테마 선택 영역 - 카페를 먼저 선택하거나 모든 테마에서 직접 검색 가능
             RawAutocomplete<EscapeTheme>(
               textEditingController: _themeController,
               focusNode: _themeFocusNode,
               optionsBuilder: (text) {
-                print('optionsBuilder called - text: "${text.text}", selectedCafe: ${selectedCafe?.name}, isLoadingThemes: $isLoadingThemes, currentThemes: ${currentThemes.length}, selectedTheme: ${selectedTheme?.name}');
-                
-                if (selectedCafe == null || isLoadingThemes) {
-                  print('Returning empty - no cafe or loading');
-                  return const Iterable<EscapeTheme>.empty();
-                }
+                final query = text.text.trim();
                 
                 // 테마가 이미 선택된 경우 빈 목록 반환 (수정하려는 경우 제외)
                 if (selectedTheme != null) {
-                  // 현재 입력된 텍스트가 선택된 테마 이름과 다르면 수정 중인 것으로 간주
                   if (text.text == selectedTheme!.name) {
-                    print('Returning empty - theme selected and text matches');
                     return const Iterable<EscapeTheme>.empty();
+                  } else {
+                    // 선택된 테마와 다른 텍스트가 입력되면 선택 해제
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          selectedTheme = null;
+                          _lastSearchQuery = null; // 검색 쿼리도 초기화
+                        });
+                      }
+                    });
                   }
                 }
                 
-                // 텍스트가 비어있으면 모든 테마 표시
-                if (text.text.isEmpty) {
-                  print('Returning all ${currentThemes.length} themes');
-                  return currentThemes;
+                // 검색어가 2글자 이상이면 서버 검색 트리거
+                if (query.length >= 2) {
+                  print('Query >= 2, checking existing results');
+                  // 이미 같은 검색 결과가 있는지 확인
+                  if (_lastSearchQuery != query || searchedThemes.isEmpty) {
+                    print('Triggering search for: "$query"');
+                    // 비동기 검색 시작
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _searchThemesWithDebounce(query);
+                    });
+                    // 검색 중일 때도 기존 결과가 있으면 보여주기
+                    if (searchedThemes.isEmpty) {
+                      return [EscapeTheme(
+                        id: -1, 
+                        name: '검색 중...', 
+                        cafeId: -1,
+                      )];
+                    }
+                  }
+                  // 현재 검색된 결과 반환 - 항상 최신 검색 결과 반환
+                  print('Returning ${searchedThemes.length} searched themes');
+                  return List<EscapeTheme>.from(searchedThemes); // 새로운 리스트로 반환하여 UI 갱신 보장
                 }
                 
-                // 검색어를 소문자로 변환하고 공백 제거
-                final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
-                final filtered = currentThemes.where((theme) {
-                  // 테마명을 소문자로 변환하고 공백 제거하여 비교
-                  final themeName = theme.name.toLowerCase().replaceAll(' ', '');
-                  return themeName.contains(searchQuery);
-                }).toList();
-                print('Returning ${filtered.length} filtered themes');
-                return filtered;
+                // 텍스트 길이가 2 미만인 경우
+                if (query.length < 2) {
+                  // 카페가 선택되어 있으면 해당 카페의 테마들 표시
+                  if (selectedCafe != null && !isLoadingThemes && currentThemes.isNotEmpty) {
+                    if (query.isEmpty) {
+                      return currentThemes;
+                    } else {
+                      // 1글자 검색은 로컬에서 필터링
+                      final filtered = currentThemes.where((theme) {
+                        final themeName = theme.name.toLowerCase();
+                        return themeName.contains(query.toLowerCase());
+                      }).toList();
+                      return filtered;
+                    }
+                  }
+                  
+                  // 검색어도 짧고 카페도 선택되지 않았으면 최근 검색 결과라도 보여주자
+                  if (searchedThemes.isNotEmpty && query.length == 1) {
+                    final filtered = searchedThemes.where((theme) {
+                      final themeName = theme.name.toLowerCase();
+                      return themeName.contains(query.toLowerCase());
+                    }).toList();
+                    return filtered;
+                  }
+                }
+                
+                return const Iterable<EscapeTheme>.empty();
               },
                 onSelected: (theme) {
+                  print('Theme onSelected called: ${theme.name} (ID: ${theme.id})');
+                  // 더미 로딩 항목 무시
+                  if (theme.id == -1) {
+                    print('Ignoring dummy loading item');
+                    return;
+                  }
                   setState(() {
                     selectedTheme = theme;
+                    print('Set selectedTheme: ${selectedTheme?.name}');
+                    // 테마가 선택되면 해당 카페도 자동으로 설정
+                    if (selectedCafe?.id != theme.cafe?.id) {
+                      selectedCafe = theme.cafe;
+                      _cafeController.text = theme.cafe?.name ?? '';
+                      print('Auto-selected cafe: ${selectedCafe?.name}');
+                      // 카페가 바뀌었지만 테마는 이미 선택되었으므로 테마 목록만 조용히 업데이트
+                      if (theme.cafe != null) {
+                        _loadThemesForCafeWithoutClearingSelection(theme.cafe!.id, theme);
+                      }
+                    }
                   });
                   // 컨트롤러 텍스트를 테마 이름으로 설정
                   _themeController.text = theme.name;
+                  print('Set theme controller text: ${_themeController.text}');
                   // 테마 포커스 해제로 옵션 박스를 즉시 닫음
                   _themeFocusNode.unfocus();
                 },
@@ -378,22 +544,23 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
-                  enabled: selectedCafe != null && !isLoadingThemes,
                   decoration: InputDecoration(
-                    labelText: selectedCafe == null 
-                        ? '먼저 카페를 선택해주세요'
-                        : isLoadingThemes 
-                            ? '테마 로딩 중...'
-                            : '테마 선택',
-                    hintText: selectedCafe != null && !isLoadingThemes 
-                        ? '테마를 입력하거나 선택하세요' 
-                        : null,
+                    labelText: '테마 선택',
+                    hintText: selectedCafe != null 
+                        ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
+                        : '테마를 검색하세요 (2글자 이상 입력)',
                     border: const OutlineInputBorder(),
                     suffixIcon: selectedTheme != null 
                         ? const Icon(Icons.check_circle, color: Colors.green)
-                        : controller.text.isNotEmpty
-                            ? const Icon(Icons.edit, color: Colors.orange)
-                            : null,
+                        : isSearchingThemes
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : controller.text.isNotEmpty
+                                ? const Icon(Icons.search, color: Colors.orange)
+                                : null,
                   ),
                 );
               },
@@ -410,6 +577,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           final option = options.elementAt(index);
                           return ListTile(
                             title: Text(option.name),
+                            subtitle: Text(option.cafe?.name ?? ''),
                             onTap: () => onSelected(option),
                           );
                         },
