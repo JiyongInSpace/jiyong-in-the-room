@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friends_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
@@ -331,7 +332,20 @@ class HomeScreen extends StatelessWidget {
                       entry: entry,
                       showPadding: false,
                       onTap: () {
-                        // TODO: 일지 상세 페이지로 이동 기능 추가 필요시
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DiaryDetailScreen(
+                              entry: entry,
+                              friends: friends,
+                              onUpdate: onUpdate,
+                              onDelete: onDelete,
+                              onAddFriend: onAddFriend,
+                              onRemoveFriend: onRemoveFriend,
+                              onUpdateFriend: onUpdateFriend,
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ];

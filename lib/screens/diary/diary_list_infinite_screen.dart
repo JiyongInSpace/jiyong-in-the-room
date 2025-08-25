@@ -273,7 +273,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: '테마명이나 카페명을 검색하세요',
+                              hintText: '테마명, 카페명',
                               suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty
                                   ? IconButton(
                                       icon: const Icon(Icons.clear),
