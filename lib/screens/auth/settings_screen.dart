@@ -192,6 +192,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           },
         ),
+        ListTile(
+          leading: const Icon(Icons.description_outlined),
+          title: const Text('오픈소스 라이선스'),
+          onTap: () {
+            showLicensePage(
+              context: context,
+              applicationName: '탈출일지',
+              applicationVersion: '1.0.0',
+              applicationIcon: const Icon(
+                Icons.exit_to_app,
+                size: 64,
+                color: Colors.blue,
+              ),
+            );
+          },
+        ),
       ],
     );
   }
