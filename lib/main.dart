@@ -59,12 +59,16 @@ class _MyAppState extends State<MyApp> {
     try {
       if (AuthService.isLoggedIn) {
         final entries = await DatabaseService.getMyDiaryEntries();
-        setState(() {
-          diaryList.clear();
-          diaryList.addAll(entries);
-        });
-        if (kDebugMode) {
-          print('📋 일지 목록 로드됨: ${entries.length}개');
+        if (mounted) {
+          setState(() {
+            diaryList.clear();
+            if (entries != null) {
+              diaryList.addAll(entries);
+            }
+          });
+          if (kDebugMode) {
+            print('📋 일지 목록 로드됨: ${entries?.length ?? 0}개');
+          }
         }
       }
     } catch (e) {
@@ -238,22 +242,27 @@ class _MyAppState extends State<MyApp> {
 
   void _listenToAuthChanges() {
     AuthService.authStateChanges.listen((data) {
+      final session = data.session;
       if (kDebugMode) {
-        print('🔐 Auth state changed: ${data.session != null ? "로그인됨" : "로그아웃됨"}');
-        if (data.session != null) {
-          print('👤 User: ${data.session!.user.email}');
-          print('🔑 Provider: ${data.session!.user.appMetadata['provider'] ?? 'unknown'}');
+        print('🔐 Auth state changed: ${session != null ? "로그인됨" : "로그아웃됨"}');
+        if (session != null) {
+          print('👤 User: ${session.user.email}');
+          print('🔑 Provider: ${session.user.appMetadata['provider'] ?? 'unknown'}');
         }
       }
-      setState(() {
-        isLoggedIn = data.session != null;
-      });
-      if (isLoggedIn) {
-        _loadUserProfile();
-        _loadUserData();
-      } else {
-        userProfile = null;
-        _clearUserData();
+      if (mounted) {
+        setState(() {
+          isLoggedIn = session != null;
+        });
+        if (isLoggedIn) {
+          _loadUserProfile();
+          _loadUserData();
+        } else {
+          setState(() {
+            userProfile = null;
+          });
+          _clearUserData();
+        }
       }
     });
   }
@@ -263,12 +272,16 @@ class _MyAppState extends State<MyApp> {
     try {
       // 친구 목록 로드
       final friends = await DatabaseService.getMyFriends();
-      setState(() {
-        friendsList.clear();
-        friendsList.addAll(friends);
-      });
-      if (kDebugMode) {
-        print('📋 친구 목록 로드됨: ${friends.length}명');
+      if (mounted) {
+        setState(() {
+          friendsList.clear();
+          if (friends != null) {
+            friendsList.addAll(friends);
+          }
+        });
+        if (kDebugMode) {
+          print('📋 친구 목록 로드됨: ${friends?.length ?? 0}명');
+        }
       }
       
       // 일지 목록 로드
@@ -282,24 +295,35 @@ class _MyAppState extends State<MyApp> {
 
   // 로그아웃 시 로컬 데이터 정리
   void _clearUserData() {
-    setState(() {
-      friendsList.clear();
-      diaryList.clear();
-    });
-    if (kDebugMode) {
-      print('🧹 로컬 데이터 정리 완료');
+    if (mounted) {
+      setState(() {
+        friendsList.clear();
+        diaryList.clear();
+      });
+      if (kDebugMode) {
+        print('🧹 로컬 데이터 정리 완료');
+      }
     }
   }
 
   Future<void> _loadUserProfile() async {
     try {
       final profile = await AuthService.getCurrentUserProfile();
-      setState(() {
-        userProfile = profile;
-      });
+      if (mounted) {
+        setState(() {
+          userProfile = profile;
+        });
+      }
     } catch (e) {
-      // TODO: 로깅 프레임워크로 교체
-      // print('프로필 로드 실패: $e');
+      if (kDebugMode) {
+        print('❌ 프로필 로드 실패: $e');
+      }
+      // 프로필 로드 실패 시 null로 설정
+      if (mounted) {
+        setState(() {
+          userProfile = null;
+        });
+      }
     }
   }
 

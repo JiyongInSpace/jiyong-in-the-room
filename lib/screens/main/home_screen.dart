@@ -3,7 +3,9 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/write_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friends_screen.dart';
+import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
@@ -66,7 +68,10 @@ class HomeScreen extends StatelessWidget {
     // 결과를 Map<Friend, int> 형태로 변환
     Map<Friend, int> friendStats = {};
     friendCountByName.forEach((name, count) {
-      friendStats[friendByName[name]!] = count;
+      final friend = friendByName[name];
+      if (friend != null) {
+        friendStats[friend] = count;
+      }
     });
     
     return friendStats;
@@ -124,6 +129,9 @@ class HomeScreen extends StatelessWidget {
     for (var entry in diaryList) {
       if (entry.friends != null) {
         for (var friend in entry.friends!) {
+          // null 체크 추가
+          if (friend.displayName.isEmpty) continue;
+          
           // 본인은 제외 (connectedUserId로 정확히 식별)
           if (currentUserId != null && friend.connectedUserId == currentUserId) {
             continue;
@@ -144,6 +152,31 @@ class HomeScreen extends StatelessWidget {
         title: const Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // 로그인 상태에서만 일지 작성 버튼 표시
+          if (isLoggedIn) ...[
+            IconButton(
+              onPressed: () async {
+                final result = await Navigator.push<DiaryEntry>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WriteDiaryScreen(friends: friends),
+                  ),
+                );
+                
+                // 새로운 일지가 작성되면 홈 화면 데이터 새로고침
+                if (result != null) {
+                  onAdd(result);
+                  if (onDataRefresh != null) {
+                    onDataRefresh!();
+                  }
+                }
+              },
+              icon: const Icon(Icons.edit_outlined),
+              iconSize: 28,
+              tooltip: '일지 작성',
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             onPressed: () async {
               final result = await Navigator.push<bool>(
@@ -424,11 +457,29 @@ class HomeScreen extends StatelessWidget {
                     if (index > 0) const SizedBox(height: 8),
                     Card(
                       margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FriendDetailScreen(
+                                friend: friend,
+                                diaryList: diaryList,
+                                allFriends: friends,
+                                onUpdate: onUpdate,
+                                onDelete: onDelete,
+                                onAddFriend: onAddFriend,
+                                onRemoveFriend: onRemoveFriend,
+                                onUpdateFriend: onUpdateFriend,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
                           children: [
-                            // 메달 이미지
+                            // 메달 이미지 (에러 방지)
                             Image.asset(
                               rank == 1 
                                   ? 'assets/images/medal_gold.png'
@@ -437,6 +488,29 @@ class HomeScreen extends StatelessWidget {
                                       : 'assets/images/medal_bronze.png',
                               width: 32,
                               height: 32,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: rank == 1 
+                                        ? Colors.amber 
+                                        : rank == 2 
+                                            ? Colors.grey[400] 
+                                            : Colors.orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$rank',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(width: 12),
                             // 친구 아이콘 (친구 목록과 동일한 스타일)
@@ -449,7 +523,9 @@ class HomeScreen extends StatelessWidget {
                                   : null,
                               child: (!friend.isConnected || friend.user?.avatarUrl == null)
                                   ? Text(
-                                      friend.displayName[0].toUpperCase(),
+                                      friend.displayName.isNotEmpty 
+                                          ? friend.displayName[0].toUpperCase()
+                                          : '?',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -508,6 +584,7 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
                         ),
                       ),
                     ),

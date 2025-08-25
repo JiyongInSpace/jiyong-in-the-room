@@ -10,6 +10,8 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 // 클립보드 사용을 위한 import
 import 'package:flutter/services.dart';
+// 친구 상세 화면 import
+import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 
 // 친구 관리 화면 - 친구 추가, 수정, 삭제 기능을 제공
 class FriendsScreen extends StatefulWidget {
@@ -531,6 +533,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   margin: const EdgeInsets.only(bottom: 8),
                   // ListTile: 리스트 아이템을 표시하는 데 특화된 위젯
                   child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FriendDetailScreen(
+                            friend: friend,
+                            diaryList: widget.diaryList.cast<DiaryEntry>(),
+                            allFriends: widget.friends,
+                            onUpdate: null, // 친구 상세에서는 일지 수정 불가
+                            onDelete: null, // 친구 상세에서는 일지 삭제 불가
+                            onAddFriend: null, // 친구 상세에서는 친구 추가 불가
+                            onRemoveFriend: null, // 친구 상세에서는 친구 삭제 불가
+                            onUpdateFriend: widget.onUpdate,
+                          ),
+                        ),
+                      );
+                    },
                     // leading: 리스트 아이템의 맨 앞에 표시될 위젯
                     // CircleAvatar: 원형 아바타 위젯
                     leading: CircleAvatar(
