@@ -8,8 +8,6 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 // 데이터베이스 서비스를 사용하기 위한 import
 import 'package:jiyong_in_the_room/services/database_service.dart';
-// 클립보드 사용을 위한 import
-import 'package:flutter/services.dart';
 // 친구 상세 화면 import
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 
@@ -48,9 +46,33 @@ class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _memoController = TextEditingController();
   // 사용자 코드 입력을 위한 컨트롤러
   final TextEditingController _userCodeController = TextEditingController();
+  // 검색을 위한 컨트롤러
+  final TextEditingController _searchController = TextEditingController();
+  
+  // 필터링된 친구 목록
+  List<Friend> filteredFriends = [];
+  
+  // 검색어
+  String searchQuery = '';
   @override
   void initState() {
     super.initState();
+    // 초기에는 모든 친구를 표시
+    filteredFriends = List.from(widget.friends);
+    
+    // 검색 컨트롤러에 리스너 추가
+    _searchController.addListener(() {
+      _filterFriends(_searchController.text);
+    });
+  }
+
+  // 위젯이 업데이트될 때 친구 목록도 업데이트
+  @override
+  void didUpdateWidget(FriendsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.friends != widget.friends) {
+      _filterFriends(searchQuery); // 현재 검색어로 다시 필터링
+    }
   }
 
   // 메모리 누수 방지를 위해 컨트롤러들을 정리
@@ -59,7 +81,32 @@ class _FriendsScreenState extends State<FriendsScreen> {
     _nicknameController.dispose();
     _memoController.dispose();
     _userCodeController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  // 친구 목록 필터링 메서드
+  void _filterFriends(String query) {
+    setState(() {
+      searchQuery = query;
+      if (query.isEmpty) {
+        filteredFriends = List.from(widget.friends);
+      } else {
+        // 검색어를 소문자로 변환하고 공백 제거
+        final searchTerm = query.toLowerCase().replaceAll(' ', '');
+        
+        filteredFriends = widget.friends.where((friend) {
+          // 친구 이름을 소문자로 변환하고 공백 제거하여 비교
+          final friendName = friend.displayName.toLowerCase().replaceAll(' ', '');
+          
+          // 메모도 소문자로 변환하고 공백 제거하여 비교 (메모가 있는 경우)
+          final friendMemo = (friend.memo ?? '').toLowerCase().replaceAll(' ', '');
+          
+          // 이름 또는 메모에 검색어가 포함되어 있으면 포함
+          return friendName.contains(searchTerm) || friendMemo.contains(searchTerm);
+        }).toList();
+      }
+    });
   }
 
 
@@ -474,44 +521,78 @@ class _FriendsScreenState extends State<FriendsScreen> {
   // 친구 화면의 UI를 구성하는 메서드
   @override
   Widget build(BuildContext context) {
-    // 친구 목록을 참여 횟수 순으로 정렬 (많이 함께한 순서)
-    final sortedFriends = List<Friend>.from(widget.friends)
+    // 필터링된 친구 목록을 참여 횟수 순으로 정렬 (많이 함께한 순서)
+    final sortedFilteredFriends = List<Friend>.from(filteredFriends)
       ..sort((a, b) {
         final countA = _getFriendParticipationCount(a);
         final countB = _getFriendParticipationCount(b);
         return countB.compareTo(countA); // 내림차순 정렬
       });
+      
     return Scaffold(
       appBar: AppBar(
         title: const Text(''),
         // Theme.of(context): 현재 테마의 색상 정보를 가져옴
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: sortedFriends.isEmpty
-          // 친구가 없을 때 표시할 안내 메시지
-          ? const Center(
+      body: Column(
+        children: [
+          // 검색 바
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: '친구 이름이나 메모로 검색...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+              ),
+            ),
+          ),
+          
+          // 친구 목록
+          Expanded(
+            child: sortedFilteredFriends.isEmpty
+          // 친구가 없을 때 또는 검색 결과가 없을 때 표시할 안내 메시지
+          ? Center(
               child: Column(
                 // mainAxisAlignment: 세로 방향 정렬 방식
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 사람 모양의 아이콘
+                  // 사람 모양의 아이콘 또는 검색 아이콘
                   Icon(
-                    Icons.people_outline,
+                    searchQuery.isNotEmpty ? Icons.search_off : Icons.people_outline,
                     size: 64,
                     color: Colors.grey,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    '등록된 친구가 없습니다',
-                    style: TextStyle(
+                    searchQuery.isNotEmpty 
+                        ? '검색 결과가 없습니다'
+                        : '등록된 친구가 없습니다',
+                    style: const TextStyle(
                       fontSize: 18,
                       color: Colors.grey,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    '친구를 추가해보세요!',
-                    style: TextStyle(
+                    searchQuery.isNotEmpty 
+                        ? '다른 검색어를 시도해보세요'
+                        : '친구를 추가해보세요!',
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
                     ),
@@ -522,10 +603,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
           // 친구가 있을 때 목록으로 표시
           : ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), // 하단 80px + 기본 16px 여백
-              itemCount: sortedFriends.length, // 리스트 아이템 개수
+              itemCount: sortedFilteredFriends.length, // 리스트 아이템 개수
               // itemBuilder: 각 아이템의 모양을 정의하는 함수
               itemBuilder: (context, index) {
-                final friend = sortedFriends[index];
+                final friend = sortedFilteredFriends[index];
                 final participationCount = _getFriendParticipationCount(friend);
                 
                 // Card: 그림자가 있는 사각형 컨테이너
@@ -672,6 +753,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 );
               },
             ),
+          ),
+        ],
+      ),
       // FloatingActionButton: 화면 우하단에 떠 있는 둥근 버튼
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddFriendDialog, // 친구 추가 다이얼로그 표시
