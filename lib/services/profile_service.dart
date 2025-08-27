@@ -6,8 +6,8 @@ import 'package:jiyong_in_the_room/utils/supabase.dart';
 
 class ProfileService {
   
-  /// 이미지를 최적화하여 용량을 줄이는 메서드
-  static Future<Uint8List> _optimizeImage(File imageFile) async {
+  /// 프로필 이미지를 원형에 최적화하여 용량을 줄이는 메서드
+  static Future<Uint8List> _optimizeProfileImage(File imageFile) async {
     // 원본 이미지 읽기
     final bytes = await imageFile.readAsBytes();
     final originalImage = img.decodeImage(bytes);
@@ -16,27 +16,39 @@ class ProfileService {
       throw Exception('이미지를 읽을 수 없습니다');
     }
     
-    // 이미지 최적화 설정
-    const int maxWidth = 512;
-    const int maxHeight = 512;
-    const int jpegQuality = 75; // 품질 75% (용량과 화질의 균형)
+    // 프로필 이미지 최적화 설정 (원형 프로필에 최적화)
+    const int profileSize = 150; // 프로필 이미지는 150x150으로 충분 (더 작게)
+    const int quality = 85; // 품질 85% (품질과 용량의 최적 균형)
     
-    // 크기 조정 (긴 쪽을 기준으로 비율 유지하여 리사이즈)
-    img.Image resizedImage = originalImage;
-    if (originalImage.width > maxWidth || originalImage.height > maxHeight) {
-      resizedImage = img.copyResize(
-        originalImage,
-        width: originalImage.width > originalImage.height ? maxWidth : null,
-        height: originalImage.height > originalImage.width ? maxHeight : null,
+    // 정사각형 크롭 (중앙 기준)
+    int cropSize = originalImage.width < originalImage.height 
+        ? originalImage.width 
+        : originalImage.height;
+    
+    int offsetX = (originalImage.width - cropSize) ~/ 2;
+    int offsetY = (originalImage.height - cropSize) ~/ 2;
+    
+    img.Image croppedImage = img.copyCrop(
+      originalImage,
+      x: offsetX,
+      y: offsetY,
+      width: cropSize,
+      height: cropSize,
+    );
+    
+    // 프로필 크기로 리사이즈
+    img.Image resizedImage = img.copyResize(
+      croppedImage,
+      width: profileSize,
+      height: profileSize,
         interpolation: img.Interpolation.linear, // 고품질 보간법
       );
-    }
     
-    // 메타데이터 제거 및 JPEG로 압축
-    // removeExif: true로 EXIF 데이터 제거하여 용량 절약
-    final optimizedBytes = img.encodeJpg(
+    // 메타데이터 제거 및 WebP로 압축 (JPEG보다 30-50% 용량 절약)
+    // EXIF 데이터도 자동 제거되어 추가 용량 절약
+    final optimizedBytes = img.encodeWebP(
       resizedImage,
-      quality: jpegQuality,
+      quality: quality,
     );
     
     return Uint8List.fromList(optimizedBytes);
@@ -50,11 +62,11 @@ class ProfileService {
     }
 
     try {
-      // 이미지 최적화
-      final optimizedImageBytes = await _optimizeImage(imageFile);
+      // 프로필 이미지 최적화 (원형 크롭 + 용량 절약)
+      final optimizedImageBytes = await _optimizeProfileImage(imageFile);
       
-      // 최적화된 이미지는 항상 JPEG로 저장
-      const fileName = 'profile.jpg';
+      // 최적화된 이미지는 WebP 형식으로 저장 (더 나은 압축)
+      const fileName = 'profile.webp';
       final filePath = '${user.id}/$fileName';
       
       // 기존 이미지들이 있으면 모두 삭제 (다양한 확장자 대응)

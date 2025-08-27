@@ -16,19 +16,12 @@ class ContactScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.email,
-                size: 64,
-                color: Colors.blue,
-              ),
+              Icon(Icons.email, size: 64, color: Colors.blue),
               SizedBox(height: 32),
               Text(
-                '문의사항이 있으시면\n아래 이메일로 연락해주세요',
+                '문의사항은\n아래 이메일로 연락해주세요',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 18, height: 1.5),
               ),
               SizedBox(height: 24),
               SelectableText(
@@ -37,14 +30,6 @@ class ContactScreen extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                '빠른 시일 내에 답변드리겠습니다.',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
                 ),
               ),
             ],
