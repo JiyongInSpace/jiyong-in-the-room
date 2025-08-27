@@ -80,7 +80,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.entry.theme?.name ?? '알 수 없는 테마'),
+        title: Text(''),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0), // 하단 80px + 기본 16px 여백

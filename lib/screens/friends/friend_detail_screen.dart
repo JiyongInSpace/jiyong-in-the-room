@@ -32,11 +32,11 @@ class FriendDetailScreen extends StatefulWidget {
 class _FriendDetailScreenState extends State<FriendDetailScreen> {
   List<DiaryEntry> _getSharedDiaryEntries() {
     return widget.diaryList.where((entry) {
-      if (entry.friends == null) return false;
-      return entry.friends!.any((friend) => 
-        friend.displayName == widget.friend.displayName
-      );
-    }).toList()
+        if (entry.friends == null) return false;
+        return entry.friends!.any(
+          (friend) => friend.displayName == widget.friend.displayName,
+        );
+      }).toList()
       ..sort((a, b) => b.date.compareTo(a.date)); // 최신순 정렬
   }
 
@@ -69,9 +69,9 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
             const SizedBox(height: 4),
             Text(
               title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -84,12 +84,14 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
   Widget build(BuildContext context) {
     final sharedEntries = _getSharedDiaryEntries();
     final totalThemes = sharedEntries.length;
-    final successfulEscapes = sharedEntries.where((entry) => entry.escaped == true).length;
-    final successRate = totalThemes > 0 ? (successfulEscapes / totalThemes * 100).round() : 0;
+    final successfulEscapes =
+        sharedEntries.where((entry) => entry.escaped == true).length;
+    final successRate =
+        totalThemes > 0 ? (successfulEscapes / totalThemes * 100).round() : 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.friend.displayName),
+        title: Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: SingleChildScrollView(
@@ -108,24 +110,28 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                       // 친구 아바타
                       CircleAvatar(
                         radius: 32,
-                        backgroundColor: widget.friend.isConnected 
-                            ? null
-                            : Colors.grey,
-                        backgroundImage: widget.friend.isConnected && widget.friend.user?.avatarUrl != null
-                            ? NetworkImage(widget.friend.user!.avatarUrl!)
-                            : null,
-                        child: (!widget.friend.isConnected || widget.friend.user?.avatarUrl == null)
-                            ? Text(
-                                widget.friend.displayName.isNotEmpty 
-                                    ? widget.friend.displayName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                ),
-                              )
-                            : null,
+                        backgroundColor:
+                            widget.friend.isConnected ? null : Colors.grey,
+                        backgroundImage:
+                            widget.friend.isConnected &&
+                                    widget.friend.user?.avatarUrl != null
+                                ? NetworkImage(widget.friend.user!.avatarUrl!)
+                                : null,
+                        child:
+                            (!widget.friend.isConnected ||
+                                    widget.friend.user?.avatarUrl == null)
+                                ? Text(
+                                  widget.friend.displayName.isNotEmpty
+                                      ? widget.friend.displayName[0]
+                                          .toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
+                                  ),
+                                )
+                                : null,
                       ),
                       const SizedBox(width: 16),
                       // 친구 정보
@@ -152,7 +158,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            if (widget.friend.isConnected && widget.friend.realName != null) ...[
+                            if (widget.friend.isConnected &&
+                                widget.friend.realName != null) ...[
                               Text(
                                 widget.friend.realName!,
                                 style: TextStyle(
@@ -162,7 +169,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                             ],
-                            if (widget.friend.memo != null && widget.friend.memo!.isNotEmpty) ...[
+                            if (widget.friend.memo != null &&
+                                widget.friend.memo!.isNotEmpty) ...[
                               Text(
                                 widget.friend.memo!,
                                 style: TextStyle(
@@ -213,97 +221,97 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              
+
               if (sharedEntries.isNotEmpty)
-                ...sharedEntries.map((entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    child: ListTile(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DiaryDetailScreen(
-                              entry: entry,
-                              friends: widget.allFriends,
-                              onUpdate: widget.onUpdate,
-                              onDelete: widget.onDelete,
-                              onAddFriend: widget.onAddFriend,
-                              onRemoveFriend: widget.onRemoveFriend,
-                              onUpdateFriend: widget.onUpdateFriend,
+                ...sharedEntries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => DiaryDetailScreen(
+                                    entry: entry,
+                                    friends: widget.allFriends,
+                                    onUpdate: widget.onUpdate,
+                                    onDelete: widget.onDelete,
+                                    onAddFriend: widget.onAddFriend,
+                                    onRemoveFriend: widget.onRemoveFriend,
+                                    onUpdateFriend: widget.onUpdateFriend,
+                                  ),
                             ),
+                          );
+                        },
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              entry.escaped == true
+                                  ? Colors.green[100]
+                                  : entry.escaped == false
+                                  ? Colors.red[100]
+                                  : Colors.grey[100],
+                          child: Icon(
+                            entry.escaped == true
+                                ? Icons.check_circle
+                                : entry.escaped == false
+                                ? Icons.cancel
+                                : Icons.help_outline,
+                            color:
+                                entry.escaped == true
+                                    ? Colors.green[600]
+                                    : entry.escaped == false
+                                    ? Colors.red[600]
+                                    : Colors.grey[600],
+                            size: 20,
                           ),
-                        );
-                      },
-                      leading: CircleAvatar(
-                        backgroundColor: entry.escaped == true 
-                            ? Colors.green[100] 
-                            : entry.escaped == false 
-                                ? Colors.red[100] 
-                                : Colors.grey[100],
-                        child: Icon(
-                          entry.escaped == true 
-                              ? Icons.check_circle 
-                              : entry.escaped == false 
-                                  ? Icons.cancel 
-                                  : Icons.help_outline,
-                          color: entry.escaped == true 
-                              ? Colors.green[600] 
-                              : entry.escaped == false 
-                                  ? Colors.red[600] 
-                                  : Colors.grey[600],
-                          size: 20,
                         ),
-                      ),
-                      title: Text(
-                        entry.theme?.name ?? '테마 정보 없음',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
+                        title: Text(
+                          entry.theme?.name ?? '테마 정보 없음',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(entry.theme?.cafe?.name ?? ''),
-                          const SizedBox(height: 2),
-                          Text(
-                            _formatDate(entry.date),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (entry.rating != null) ...[
-                            Icon(
-                              Icons.star,
-                              size: 16,
-                              color: Colors.amber[600],
-                            ),
-                            const SizedBox(width: 2),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(entry.theme?.cafe?.name ?? ''),
+                            const SizedBox(height: 2),
                             Text(
-                              entry.rating!.toStringAsFixed(1),
+                              _formatDate(entry.date),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
                               ),
                             ),
-                            const SizedBox(width: 8),
                           ],
-                          const Icon(
-                            Icons.chevron_right,
-                            color: Colors.grey,
-                          ),
-                        ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (entry.rating != null) ...[
+                              Icon(
+                                Icons.star,
+                                size: 16,
+                                color: Colors.amber[600],
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                entry.rating!.toStringAsFixed(1),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            const Icon(Icons.chevron_right, color: Colors.grey),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ))
+                )
               else
                 Card(
                   margin: EdgeInsets.zero,

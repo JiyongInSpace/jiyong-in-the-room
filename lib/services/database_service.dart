@@ -180,7 +180,8 @@ class DatabaseService {
       final response = await supabase
           .from('friends')
           .select('id, connected_user_id, nickname, memo, added_at')
-          .eq('user_id', currentUserId);
+          .eq('user_id', currentUserId)
+          .order('added_at', ascending: false);
 
       return (response as List).map((json) {
         return Friend(
@@ -198,6 +199,94 @@ class DatabaseService {
       }
       rethrow;
     }
+  }
+
+  /// 내 친구 목록 페이징 조회 (검색 지원)
+  static Future<List<Friend>> getMyFriendsPaginated({
+    int page = 0,
+    int limit = 20,
+    String? searchQuery,
+  }) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // 친구 + 연결된 사용자 프로필 정보를 함께 조회
+      var queryBuilder = supabase
+          .from('friends')
+          .select('''
+            id, connected_user_id, nickname, memo, added_at,
+            connected_profile:connected_user_id (
+              id, display_name, email, avatar_url, user_code
+            )
+          ''')
+          .eq('user_id', currentUserId);
+
+      // 검색어가 있는 경우 필터링
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final searchLower = searchQuery.trim().toLowerCase();
+        
+        // 모든 데이터를 가져온 후 클라이언트에서 필터링
+        final allResponse = await queryBuilder.order('added_at', ascending: false);
+        
+        final filteredResponse = (allResponse as List).where((item) {
+          final nickname = (item['nickname'] as String? ?? '').toLowerCase();
+          final memo = (item['memo'] as String? ?? '').toLowerCase();
+          final profileName = item['connected_profile'] != null 
+              ? ((item['connected_profile'] as Map<String, dynamic>)['display_name'] as String? ?? '').toLowerCase()
+              : '';
+          
+          return nickname.contains(searchLower) || 
+                 memo.contains(searchLower) || 
+                 profileName.contains(searchLower);
+        }).toList();
+        
+        // 페이징 적용
+        final startIndex = page * limit;
+        final endIndex = (startIndex + limit).clamp(0, filteredResponse.length);
+        final response = filteredResponse.sublist(
+          startIndex.clamp(0, filteredResponse.length), 
+          endIndex
+        );
+        
+        return response.map((json) => _mapToFriend(json)).toList();
+      } else {
+        // 검색어가 없는 경우 DB 레벨에서 페이징
+        final response = await queryBuilder
+            .order('added_at', ascending: false)
+            .range(page * limit, (page + 1) * limit - 1);
+        
+        return (response as List).map((json) => _mapToFriend(json)).toList();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('페이징된 친구 목록 조회 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// JSON 데이터를 Friend 객체로 변환하는 헬퍼 메서드
+  static Friend _mapToFriend(Map<String, dynamic> json) {
+    final profileData = json['connected_profile'] as Map<String, dynamic>?;
+    
+    return Friend(
+      id: json['id'] as int,
+      connectedUserId: json['connected_user_id'],
+      user: profileData != null ? User(
+        id: profileData['id'],
+        name: profileData['display_name'] ?? '알 수 없는 사용자',
+        email: profileData['email'] ?? '',
+        avatarUrl: profileData['avatar_url'],
+        joinedAt: DateTime.now(),
+      ) : null,
+      nickname: json['nickname'],
+      memo: json['memo'],
+      addedAt: DateTime.parse(json['added_at']),
+    );
   }
 
   /// 새 친구 추가
@@ -788,7 +877,7 @@ class DatabaseService {
         }
       } else {
         // 참여자인 경우: 자신만 참여자 목록에서 제거
-        final deleteResult = await supabase
+        await supabase
             .from('diary_entry_participants')
             .delete()
             .eq('diary_entry_id', entryId)
