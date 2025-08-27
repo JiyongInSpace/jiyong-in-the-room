@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
@@ -549,6 +550,195 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
+  // 길게 눌렀을 때 나타나는 컨텍스트 메뉴
+  void _showFriendContextMenu(BuildContext context, Friend friend) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 드래그 핸들
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // 메뉴 헤더
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      // 친구 아바타
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: friend.isConnected 
+                            ? null
+                            : Colors.grey,
+                        backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
+                            ? NetworkImage(friend.user!.avatarUrl!)
+                            : null,
+                        child: (!friend.isConnected || friend.user?.avatarUrl == null)
+                            ? Text(
+                                friend.displayName[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 16),
+                      // 친구 이름과 정보
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  friend.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (!friend.isConnected) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.link_off,
+                                    size: 18,
+                                    color: Colors.orange[700],
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (friend.memo != null && friend.memo!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                friend.memo!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const Divider(height: 1, thickness: 0.5),
+                
+                // 메뉴 옵션들
+                _buildContextMenuItem(
+                  icon: Icons.edit_outlined,
+                  iconColor: Colors.blue,
+                  title: '정보 수정',
+                  subtitle: '별명이나 메모를 변경',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEditFriendDialog(friend);
+                  },
+                ),
+                
+                // 연동되지 않은 친구의 경우에만 "코드 등록" 메뉴 표시
+                if (!friend.isConnected)
+                  _buildContextMenuItem(
+                    icon: Icons.link_outlined,
+                    iconColor: Colors.green,
+                    title: '코드 등록',
+                    subtitle: '실제 사용자와 연동하여 프로필 정보 동기화',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showLinkCodeDialog(friend);
+                    },
+                  ),
+                
+                _buildContextMenuItem(
+                  icon: Icons.delete_outline,
+                  iconColor: Colors.red,
+                  title: '친구 삭제',
+                  subtitle: '친구 목록에서 완전히 제거',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDeleteConfirmDialog(friend);
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  // 컨텍스트 메뉴 아이템 빌더
+  Widget _buildContextMenuItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: iconColor,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey[600],
+        ),
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+    );
+  }
+
   // 친구 목록 새로고침
   void _refreshFriendsList() {
     _currentPage = 0;
@@ -704,8 +894,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 // Card: 그림자가 있는 사각형 컨테이너
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  // ListTile: 리스트 아이템을 표시하는 데 특화된 위젯
-                  child: ListTile(
+                  // GestureDetector: 제스처를 감지하는 위젯
+                  child: GestureDetector(
+                    // 전체 카드 영역에서 터치 이벤트 감지
+                    behavior: HitTestBehavior.opaque,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -723,123 +915,103 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         ),
                       );
                     },
-                    // leading: 리스트 아이템의 맨 앞에 표시될 위젯
-                    // CircleAvatar: 원형 아바타 위젯
-                    leading: CircleAvatar(
-                      // 연동된 친구는 프로필 이미지, 미연동 친구는 기본 아바타
-                      backgroundColor: friend.isConnected 
-                          ? null
-                          : Colors.grey,
-                      backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
-                          ? NetworkImage(friend.user!.avatarUrl!)
-                          : null,
-                      child: (!friend.isConnected || friend.user?.avatarUrl == null)
-                          ? Text(
-                              // 친구 이름의 첫 글자를 대문자로 표시
-                              friend.displayName[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold, // 굵은 글씨
-                              ),
-                            )
-                          : null,
-                    ),
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(friend.displayName),
-                            const SizedBox(width: 8),
-                            if (!friend.isConnected)
-                              const Icon(
-                                Icons.link_off,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                          ],
-                        ),
-                        if (friend.memo != null && friend.memo!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            friend.memo!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.normal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    // 길게 눌렀을 때 컨텍스트 메뉴 표시
+                    onLongPress: () {
+                      // 햅틱 피드백 제공
+                      HapticFeedback.mediumImpact();
+                      _showFriendContextMenu(context, friend);
+                    },
+                    // 커스텀 ListTile 대신 Container 사용
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          // 프로필 아바타
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: friend.isConnected 
+                                ? null
+                                : Colors.grey,
+                            backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
+                                ? NetworkImage(friend.user!.avatarUrl!)
+                                : null,
+                            child: (!friend.isConnected || friend.user?.avatarUrl == null)
+                                ? Text(
+                                    friend.displayName[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  )
+                                : null,
                           ),
-                        ],
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (friend.isConnected && friend.realName != null)
-                          Text('실명: ${friend.realName}'),
-                        if (friend.isConnected && friend.displayEmail != null)
-                          Text('이메일: ${friend.displayEmail}'),
-                        Text(
-                          '함께한 횟수: $participationCount회',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // trailing: 리스트 아이템의 맨 뒤에 표시될 위젯
-                    // PopupMenuButton: 클릭하면 팝업 메뉴가 나타나는 버튼
-                    trailing: PopupMenuButton<String>(
-                      // onSelected: 메뉴 아이템이 선택됐 때 실행될 함수
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showEditFriendDialog(friend);
-                        } else if (value == 'delete') {
-                          _showDeleteConfirmDialog(friend);
-                        } else if (value == 'link_code') {
-                          _showLinkCodeDialog(friend);
-                        }
-                      },
-                      // itemBuilder: 팝업 메뉴에 표시될 아이템들을 정의
-                      itemBuilder: (context) => [
-                        // PopupMenuItem: 팝업 메뉴의 각 아이템
-                        const PopupMenuItem(
-                          value: 'edit', // 선택 시 반환될 값
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit),
-                              SizedBox(width: 8),
-                              Text('수정'),
-                            ],
-                          ),
-                        ),
-                        // 연동되지 않은 친구의 경우에만 "코드 등록" 메뉴 표시
-                        if (!friend.isConnected)
-                          const PopupMenuItem(
-                            value: 'link_code',
-                            child: Row(
+                          const SizedBox(width: 16),
+                          // 친구 정보
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.link, color: Colors.blue),
-                                SizedBox(width: 8),
-                                Text('코드 등록'),
+                                // 친구 이름과 연동 상태
+                                Row(
+                                  children: [
+                                    Text(
+                                      friend.displayName,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (!friend.isConnected)
+                                      const Icon(
+                                        Icons.link_off,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // 메모 (있는 경우)
+                                if (friend.memo != null && friend.memo!.isNotEmpty) ...[
+                                  Text(
+                                    friend.memo!,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                // 연동된 사용자 정보
+                                if (friend.isConnected) ...[
+                                  if (friend.realName != null)
+                                    Text(
+                                      '실명: ${friend.realName}',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  if (friend.displayEmail != null)
+                                    Text(
+                                      '이메일: ${friend.displayEmail}',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                ],
+                                // 함께한 횟수
+                                Text(
+                                  '함께한 횟수: $participationCount회',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('삭제'),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
