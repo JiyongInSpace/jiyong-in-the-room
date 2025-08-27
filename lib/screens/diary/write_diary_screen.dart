@@ -59,8 +59,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // 별점 평가를 저장하는 변수 (기본값 null - 평가하지 않은 상태)
   double? _rating;
   // bool?: null이 될 수 있는 불린(참/거짓) 타입
-  // 탈출 성공 여부를 저장하는 변수
-  bool? _escaped;
+  // 탈출 성공 여부를 저장하는 변수 (기본값: 성공)
+  bool? _escaped = true;
   // int?: null이 될 수 있는 정수 타입
   // 힌트 사용 횟수를 저장하는 변수
   int? _hintUsedCount;
