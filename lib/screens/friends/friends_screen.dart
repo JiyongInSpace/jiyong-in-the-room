@@ -149,7 +149,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
 
-  // 친구 추가 방식 선택 다이얼로그
+  // 통합 친구 추가 다이얼로그
   void _showAddFriendDialog() {
     // 로그인 확인
     if (!AuthService.isLoggedIn) {
@@ -162,207 +162,185 @@ class _FriendsScreenState extends State<FriendsScreen> {
       return;
     }
     
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('친구 추가'),
-        content: const Text('친구 코드를 알고 있나요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showAddFriendByCodeDialog();
-            },
-            child: const Text('네'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showAddFriendManuallyDialog();
-            },
-            child: const Text('아니요'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 코드로 친구 추가 다이얼로그
-  void _showAddFriendByCodeDialog() {
     _userCodeController.clear();
     _nicknameController.clear();
     _memoController.clear();
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('코드로 친구 추가'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _userCodeController,
-                decoration: const InputDecoration(
-                  labelText: '친구 코드',
-                  border: OutlineInputBorder(),
-                  helperText: '친구의 6자리 코드를 입력하세요',
-                ),
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 6,
+      builder: (context) {
+        String? errorMessage; // 에러 메시지 상태
+        
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // 친구 코드가 입력되었는지 확인
+            final hasUserCode = _userCodeController.text.trim().isNotEmpty;
+          
+          return AlertDialog(
+            title: const Text('친구 추가'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 친구 코드 입력 (선택사항)
+                  TextField(
+                    controller: _userCodeController,
+                    decoration: InputDecoration(
+                      labelText: '친구 코드 (선택사항)',
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: errorMessage != null && errorMessage!.contains('코드') 
+                              ? Colors.red 
+                              : Colors.grey,
+                        ),
+                      ),
+                      hintText: '친구 코드가 있으면 입력하세요',
+                      helperText: '6자리 영숫자 코드',
+                      errorText: errorMessage != null && errorMessage!.contains('코드') 
+                          ? errorMessage 
+                          : null,
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 6,
+                    onChanged: (value) {
+                      // 코드 입력 상태가 변경될 때 다이얼로그 UI 업데이트
+                      setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 별명 입력 (조건부 필수)
+                  TextField(
+                    controller: _nicknameController,
+                    decoration: InputDecoration(
+                      labelText: hasUserCode ? '별명 (선택사항)' : '별명 (필수)',
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: errorMessage != null && errorMessage!.contains('별명') 
+                              ? Colors.red 
+                              : Colors.grey,
+                        ),
+                      ),
+                      hintText: hasUserCode 
+                          ? '비워두면 상대방 이름을 사용합니다' 
+                          : '이 친구를 부르는 이름을 입력하세요',
+                      errorText: errorMessage != null && errorMessage!.contains('별명') 
+                          ? errorMessage 
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 메모 입력 (선택사항)
+                  TextField(
+                    controller: _memoController,
+                    decoration: const InputDecoration(
+                      labelText: '메모 (선택사항)',
+                      border: OutlineInputBorder(),
+                      hintText: '친구에 대한 메모를 남겨보세요',
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _nicknameController,
-                decoration: const InputDecoration(
-                  labelText: '별명 (선택사항)',
-                  border: OutlineInputBorder(),
-                  helperText: '비어두면 상대방 이름을 사용합니다',
-                ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _memoController,
-                decoration: const InputDecoration(
-                  labelText: '메모 (선택사항)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
+              ElevatedButton(
+                onPressed: () async {
+                  // 에러 메시지 초기화
+                  errorMessage = null;
+                  setDialogState(() {});
+                  
+                  final userCode = _userCodeController.text.trim();
+                  final nickname = _nicknameController.text.trim();
+                  final memo = _memoController.text.trim();
+                  
+                  // 밸리데이션
+                  if (hasUserCode) {
+                    // 친구 코드가 있는 경우
+                    if (userCode.length != 6) {
+                      setDialogState(() {
+                        errorMessage = '6자리 코드를 입력해주세요';
+                      });
+                      return;
+                    }
+                    
+                    // 코드로 친구 추가 시도
+                    try {
+                      final friend = await DatabaseService.addFriendByCode(
+                        userCode,
+                        nickname: nickname.isEmpty ? null : nickname,
+                        memo: memo.isEmpty ? null : memo,
+                      );
+                      
+                      widget.onAdd(friend);
+                      Navigator.pop(context);
+                      
+                      // 목록 새로고침
+                      _refreshFriendsList();
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('친구가 추가되었습니다')),
+                      );
+                    } catch (e) {
+                      String userFriendlyMessage;
+                      final errorMessageText = e.toString();
+                      
+                      if (errorMessageText.contains('해당 코드의 사용자를 찾을 수 없습니다')) {
+                        userFriendlyMessage = '입력한 코드가 올바르지 않아요.\n코드를 다시 확인해주세요.';
+                      } else if (errorMessageText.contains('자기 자신을 친구로 추가할 수 없습니다')) {
+                        userFriendlyMessage = '자신의 코드는 사용할 수 없어요.';
+                      } else if (errorMessageText.contains('이미 친구로 등록된 사용자입니다')) {
+                        userFriendlyMessage = '이미 친구로 등록된 사용자예요.';
+                      } else {
+                        userFriendlyMessage = '친구 추가에 실패했어요.\n잠시 후 다시 시도해주세요.';
+                      }
+                      
+                      setDialogState(() {
+                        errorMessage = userFriendlyMessage;
+                      });
+                    }
+                  } else {
+                    // 친구 코드가 없는 경우
+                    if (nickname.isEmpty) {
+                      setDialogState(() {
+                        errorMessage = '별명을 입력해주세요';
+                      });
+                      return;
+                    }
+                    
+                    // 직접 입력으로 친구 추가
+                    final friend = Friend(
+                      connectedUserId: null, // 연결되지 않은 친구로 추가
+                      user: null,
+                      addedAt: DateTime.now(),
+                      nickname: nickname,
+                      memo: memo.isEmpty ? null : memo,
+                    );
+
+                    widget.onAdd(friend);
+                    Navigator.pop(context);
+                    
+                    // 목록 새로고침
+                    _refreshFriendsList();
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('친구가 추가되었습니다')),
+                    );
+                  }
+                },
+                child: const Text('추가'),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final userCode = _userCodeController.text.trim();
-              
-              if (userCode.length != 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('6자리 코드를 입력해주세요')),
-                );
-                return;
-              }
-              
-              try {
-                final friend = await DatabaseService.addFriendByCode(
-                  userCode,
-                  nickname: _nicknameController.text.trim().isEmpty ? null : _nicknameController.text.trim(),
-                  memo: _memoController.text.trim().isEmpty ? null : _memoController.text.trim(),
-                );
-                
-                widget.onAdd(friend);
-                Navigator.pop(context);
-                
-                // 목록 새로고침
-                _refreshFriendsList();
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('친구가 추가되었습니다')),
-                );
-              } catch (e) {
-                Navigator.pop(context);
-                
-                String userFriendlyMessage;
-                final errorMessage = e.toString();
-                
-                if (errorMessage.contains('해당 코드의 사용자를 찾을 수 없습니다')) {
-                  userFriendlyMessage = '입력한 코드가 올바르지 않아요.\n코드를 다시 확인해주세요.';
-                } else if (errorMessage.contains('자기 자신을 친구로 추가할 수 없습니다')) {
-                  userFriendlyMessage = '자신의 코드는 사용할 수 없어요.';
-                } else if (errorMessage.contains('이미 친구로 등록된 사용자입니다')) {
-                  userFriendlyMessage = '이미 친구로 등록된 사용자예요.';
-                } else {
-                  userFriendlyMessage = '친구 추가에 실패했어요.\n잠시 후 다시 시도해주세요.';
-                }
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(userFriendlyMessage)),
-                );
-              }
-            },
-            child: const Text('추가'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 직접 입력으로 친구 추가 다이얼로그
-  void _showAddFriendManuallyDialog() {
-    _nicknameController.clear();
-    _memoController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('직접 입력으로 친구 추가'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nicknameController,
-                decoration: const InputDecoration(
-                  labelText: '별명',
-                  border: OutlineInputBorder(),
-                  helperText: '이 친구를 부르는 이름을 입력하세요',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _memoController,
-                decoration: const InputDecoration(
-                  labelText: '메모 (선택사항)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final nickname = _nicknameController.text.trim();
-
-              if (nickname.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('별명을 입력해주세요')),
-                );
-                return;
-              }
-
-              final friend = Friend(
-                connectedUserId: null, // 연결되지 않은 친구로 추가
-                user: null,
-                addedAt: DateTime.now(),
-                nickname: nickname,
-                memo: _memoController.text.isEmpty ? null : _memoController.text,
-              );
-
-              widget.onAdd(friend);
-              Navigator.pop(context);
-              
-              // 목록 새로고침
-              _refreshFriendsList();
-            },
-            child: const Text('추가'),
-          ),
-        ],
-      ),
+          );
+        },
+      );
+    },
     );
   }
 
