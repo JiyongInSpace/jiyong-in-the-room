@@ -332,9 +332,21 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: '탈출일지',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFF4D03F), // 지도 느낌의 밝은 노랑
+          primary: const Color(0xFFF39C12), // 따뜻한 오렌지-노랑
+          secondary: const Color(0xFFE67E22), // 연황토색
+          surface: const Color(0xFFFEF9E7), // 매우 연한 크림색
+          background: const Color(0xFFFDF2E9), // 연한 베이지
+        ),
         useMaterial3: true,
         fontFamily: 'Pretendard',
+        scaffoldBackgroundColor: const Color(0xFFFDF2E9), // 전체 배경색
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF4D03F), // AppBar 노랑색
+          foregroundColor: Color(0xFF8B4513), // 갈색 텍스트
+          elevation: 2,
+        ),
       ),
       // 한국어 로케일 설정
       localizationsDelegates: const [
