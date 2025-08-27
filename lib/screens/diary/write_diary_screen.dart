@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'dart:async';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
@@ -29,6 +30,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   bool isLoadingCafes = true;
   bool isLoadingThemes = false;
   bool isSearchingThemes = false; // 테마 검색 중인지 표시
+  bool _isSaving = false; // 일지 저장 중인지 표시
 
   // 테마 필드의 포커스 노드
   final FocusNode _themeFocusNode = FocusNode();
@@ -342,8 +344,11 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
       // AppBar: 화면 상단에 제목과 뒒로가기 버튼을 표시하는 위젯
       appBar: AppBar(title: const Text('일지 작성')),
       // body: 화면의 주요 내용을 담는 영역
-      // Padding: 자식 위젯 주변에 여백을 주는 위젯
-      body: Padding(
+      // LoadingOverlay: 저장 중일 때 로딩 오버레이 표시
+      body: LoadingOverlay(
+        isLoading: _isSaving,
+        message: '일지를 저장하는 중...',
+        child: Padding(
         // 하단 80px + 기본 16px 여백
         padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
         // SingleChildScrollView: 내용이 화면을 넘을 때 스크롤 가능하게 하는 위젯
@@ -946,14 +951,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   }
 
                   try {
-                    // 로딩 표시
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder:
-                          (context) =>
-                              const Center(child: CircularProgressIndicator()),
-                    );
+                    // 저장 상태 표시
+                    setState(() {
+                      _isSaving = true;
+                    });
 
                     // DiaryEntry 생성
                     final now = DateTime.now();
@@ -991,8 +992,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     );
 
                     if (mounted) {
-                      // 로딩 다이얼로그 닫기
-                      Navigator.of(context).pop();
+                      setState(() {
+                        _isSaving = false;
+                      });
 
                       // 성공 메시지
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1004,8 +1006,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     }
                   } catch (e) {
                     if (mounted) {
-                      // 로딩 다이얼로그 닫기
-                      Navigator.of(context).pop();
+                      setState(() {
+                        _isSaving = false;
+                      });
 
                       // 에러 메시지
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1020,6 +1023,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
           ),
         ),
       ),
+      ), // LoadingOverlay 닫기
     );
   }
 }

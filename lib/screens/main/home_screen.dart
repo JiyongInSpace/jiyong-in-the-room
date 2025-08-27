@@ -9,6 +9,7 @@ import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
+import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;

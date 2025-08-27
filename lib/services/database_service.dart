@@ -4,6 +4,7 @@ import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/error_service.dart';
 
 class DatabaseService {
   // 테마 관련 메서드들
@@ -984,14 +985,14 @@ class DatabaseService {
       // 사용자 코드로 사용자 검색
       final targetUser = await findUserByCode(userCode);
       if (targetUser == null) {
-        throw Exception('해당 코드의 사용자를 찾을 수 없습니다');
+        throw FriendNotFoundException('입력한 친구 코드를 찾을 수 없습니다');
       }
       
       final targetUserId = targetUser['id'] as String;
       
       // 자기 자신을 친구로 추가하려는 경우 방지
       if (targetUserId == currentUserId) {
-        throw Exception('자기 자신을 친구로 추가할 수 없습니다');
+        throw ValidationException('자신의 코드는 사용할 수 없습니다');
       }
       
       // 이미 친구로 등록되어 있는지 확인
@@ -1003,7 +1004,7 @@ class DatabaseService {
           .maybeSingle();
           
       if (existingFriend != null) {
-        throw Exception('이미 친구로 등록된 사용자입니다');
+        throw DuplicateFriendException('이미 친구로 등록된 사용자입니다');
       }
       
       // 친구 추가

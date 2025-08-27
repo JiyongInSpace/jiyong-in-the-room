@@ -4,7 +4,9 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/error_service.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
+import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'dart:async';
 
 // 친구 관리 화면 - 인피니트 스크롤과 검색 기능을 제공
@@ -129,8 +131,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('친구 목록을 불러오지 못했습니다: ${e.toString()}')),
+        ErrorService.showErrorSnackBar(
+          context, 
+          e,
+          customMessage: '친구 목록을 불러올 수 없습니다',
         );
       }
     } finally {
@@ -288,21 +292,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         const SnackBar(content: Text('친구가 추가되었습니다')),
                       );
                     } catch (e) {
-                      String userFriendlyMessage;
-                      final errorMessageText = e.toString();
-                      
-                      if (errorMessageText.contains('해당 코드의 사용자를 찾을 수 없습니다')) {
-                        userFriendlyMessage = '입력한 코드가 올바르지 않아요.\n코드를 다시 확인해주세요.';
-                      } else if (errorMessageText.contains('자기 자신을 친구로 추가할 수 없습니다')) {
-                        userFriendlyMessage = '자신의 코드는 사용할 수 없어요.';
-                      } else if (errorMessageText.contains('이미 친구로 등록된 사용자입니다')) {
-                        userFriendlyMessage = '이미 친구로 등록된 사용자예요.';
-                      } else {
-                        userFriendlyMessage = '친구 추가에 실패했어요.\n잠시 후 다시 시도해주세요.';
-                      }
-                      
+                      final errorInfo = ErrorService.parseError(e);
                       setDialogState(() {
-                        errorMessage = userFriendlyMessage;
+                        errorMessage = errorInfo.message;
                       });
                     }
                   } else {
@@ -816,7 +808,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
           
           // 친구 목록
           Expanded(
-            child: _friends.isEmpty && !_isLoading
+            child: _isLoading && _friends.isEmpty
+          // 첫 로딩 시 스켈레톤 표시
+          ? const FriendsListSkeleton()
+          : _friends.isEmpty && !_isLoading
           // 친구가 없을 때 또는 검색 결과가 없을 때 표시할 안내 메시지
           ? Center(
               child: Column(

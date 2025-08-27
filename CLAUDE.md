@@ -115,6 +115,7 @@ dependencies:
   flutter_dotenv: ^5.1.0     # 환경변수 관리
   image_picker: ^1.0.7       # 갤러리/카메라 이미지 선택
   path: ^1.9.0               # 파일 경로 처리 유틸리티
+  connectivity_plus: ^6.0.5  # 네트워크 연결 상태 모니터링
 ```
 
 ### 현재 작동하는 기능 (업데이트: 2025-08-27)
@@ -139,10 +140,33 @@ dependencies:
 19. **테마 검색 UX 완성** - 실시간 옵션 표시, 선택 상태 완벽 동작 ✅
 20. **친구 관리 UX 완성** - 길게 누르기 컨텍스트 메뉴, 통합 친구 추가 ✅
 21. **지도 느낌 테마** - 노랑+연황토 색상 테마 적용 ✅
+22. **네트워크 연결 관리** - 오프라인 모드 안내, 실시간 연결 상태 모니터링 ✅
+23. **사용자 친화적 에러 처리** - 지능형 에러 인식 및 맞춤 메시지 제공 ✅
+24. **Skeleton UI 로딩** - 페이지별 최적화된 로딩 스켈레톤 적용 ✅
 
 ### 최근 구현 완료
 
-#### 🚀 2025-08-27 최신 업데이트 (친구 관리 UX 완성 + 테마 변경)
+#### 🚀 2025-08-27 최신 업데이트 (에러 처리 및 로딩 UX 개선)
+- **🌐 네트워크 연결 관리 시스템**:
+  - **ConnectivityService**: `connectivity_plus` 패키지 활용한 실시간 네트워크 모니터링
+  - **OfflineBanner**: 연결 끊김 시 상단 애니메이션 배너 + 재시도 기능
+  - **오프라인 기능 안내**: 사용 가능/불가능 기능 목록 제공
+  - **주기적 연결 테스트**: 30초마다 Supabase 연결 상태 확인
+- **🛠️ 사용자 친화적 에러 메시지 표준화**:
+  - **ErrorService**: 50+ 에러 패턴 자동 인식 및 사용자 친화적 메시지 변환
+  - **커스텀 예외 클래스**: `FriendNotFoundException`, `ValidationException` 등 세분화
+  - **통합 에러 UI**: 일관된 아이콘, 색상, 액션 버튼을 가진 다이얼로그/SnackBar
+  - **지능형 에러 분류**: 에러 타입별 맞춤 아이콘 및 해결 방법 제시
+- **⚡ 로딩 상태 개선 (Skeleton UI)**:
+  - **페이지별 맞춤 스켈레톤**: 8가지 화면 구조에 최적화된 로딩 UI
+    - `HomeScreenSkeleton`: 통계 카드 + 일지 리스트 구조
+    - `FriendsListSkeleton`: 친구 카드 목록 스켈레톤
+    - `DiaryCardSkeleton`: 일지 카드 레이아웃 모방
+    - `LoadingOverlay`: 전체 화면 반투명 로딩 오버레이
+  - **부드러운 애니메이션**: 0.3~1.0 opacity 페이드 효과 (1.2초 주기)
+  - **실제 적용**: 친구 목록, 일지 작성 저장 등에 적용 완료
+
+#### 🚀 2025-08-27 이전 업데이트 (친구 관리 UX 완성 + 테마 변경)
 - **🎨 지도 테마 적용**:
   - **컬러 팔레트**: 연보라색 → 지도 느낌의 노랑+연황토 색상으로 완전 변경
   - **메인 컬러**: 밝은 노랑 (`#F4D03F`) + 오렌지-노랑 (`#F39C12`)
@@ -293,7 +317,9 @@ dependencies:
   - Supabase Storage 연동 (avatars 버킷)
   - 이미지 업로드/삭제, 프로필 정보 업데이트
 - `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
-- `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적
+- `lib/services/connectivity_service.dart` - **네트워크 연결 모니터링** + 오프라인 기능 관리
+- `lib/services/error_service.dart` - **사용자 친화적 에러 처리** + 커스텀 예외 클래스
+- `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적 + 오프라인 배너 적용
 - `lib/screens/auth/settings_screen.dart` - **단순화된 설정 페이지**
   - 친구 코드/로그아웃 기능 → 프로필 편집으로 이동
 - `lib/screens/auth/profile_edit_screen.dart` - **프로필 편집** + 친구 코드 관리 + 로그아웃
@@ -306,8 +332,10 @@ dependencies:
   - **연동 상태 UI**: 프로필 이미지 vs 미연동 아이콘
 - `lib/screens/main/home_screen.dart` - **홈 화면** (연동 친구 프로필 이미지 표시)
 - `lib/screens/diary/diary_list_infinite_screen.dart` - **인피니트 스크롤** + 검색/필터
-- `lib/screens/diary/write_diary_screen.dart` - **일지 작성** + 개선된 테마 검색 UX
+- `lib/screens/diary/write_diary_screen.dart` - **일지 작성** + 개선된 테마 검색 UX + 로딩 오버레이
 - `lib/widgets/diary_entry_card.dart` - **재사용 일지 카드 컴포넌트**
+- `lib/widgets/offline_banner.dart` - **오프라인 상태 알림 배너** + 애니메이션
+- `lib/widgets/skeleton_widgets.dart` - **페이지별 맞춤 스켈레톤 UI** (8가지 유형)
 
 ### 환경변수 및 설정
 - `.env` - Supabase 환경변수 (URL, API 키 등)

@@ -9,6 +9,8 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/connectivity_service.dart';
+import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +24,9 @@ void main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  
+  // ConnectivityService 초기화
+  await ConnectivityService().initialize();
   
   runApp(const MyApp());
 }
@@ -359,18 +364,20 @@ class _MyAppState extends State<MyApp> {
         Locale('en', 'US'), // 영어 (기본)
       ],
       locale: const Locale('ko', 'KR'), // 기본 로케일을 한국어로 설정,
-      home: HomeScreen(
-        diaryList: diaryList,
-        friends: friendsList,
-        onAdd: addDiary,
-        onUpdate: updateDiary,
-        onDelete: deleteDiary,
-        onAddFriend: addFriend,
-        onRemoveFriend: removeFriend,
-        onUpdateFriend: updateFriend,
-        isLoggedIn: isLoggedIn,
-        userProfile: userProfile,
-        onDataRefresh: _loadUserProfile, // 프로필 변경 시 사용자 프로필만 새로고침
+      home: OfflineBanner(
+        child: HomeScreen(
+          diaryList: diaryList,
+          friends: friendsList,
+          onAdd: addDiary,
+          onUpdate: updateDiary,
+          onDelete: deleteDiary,
+          onAddFriend: addFriend,
+          onRemoveFriend: removeFriend,
+          onUpdateFriend: updateFriend,
+          isLoggedIn: isLoggedIn,
+          userProfile: userProfile,
+          onDataRefresh: _loadUserProfile, // 프로필 변경 시 사용자 프로필만 새로고침
+        ),
       ),
     );
   }
