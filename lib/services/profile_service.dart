@@ -44,9 +44,9 @@ class ProfileService {
         interpolation: img.Interpolation.linear, // 고품질 보간법
       );
     
-    // 메타데이터 제거 및 WebP로 압축 (JPEG보다 30-50% 용량 절약)
+    // 메타데이터 제거 및 JPEG로 압축 (고품질 + 작은 용량)
     // EXIF 데이터도 자동 제거되어 추가 용량 절약
-    final optimizedBytes = img.encodeWebP(
+    final optimizedBytes = img.encodeJpg(
       resizedImage,
       quality: quality,
     );
@@ -65,8 +65,8 @@ class ProfileService {
       // 프로필 이미지 최적화 (원형 크롭 + 용량 절약)
       final optimizedImageBytes = await _optimizeProfileImage(imageFile);
       
-      // 최적화된 이미지는 WebP 형식으로 저장 (더 나은 압축)
-      const fileName = 'profile.webp';
+      // 최적화된 이미지는 JPEG 형식으로 저장 (호환성 + 압축)
+      const fileName = 'profile.jpg';
       final filePath = '${user.id}/$fileName';
       
       // 기존 이미지들이 있으면 모두 삭제 (다양한 확장자 대응)

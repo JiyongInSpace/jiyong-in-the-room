@@ -958,11 +958,31 @@ class DatabaseService {
     }
 
     try {
+      final searchCode = userCode.toUpperCase().trim();
+      if (kDebugMode) {
+        print('🔍 친구 코드 검색: "$searchCode" (원본: "$userCode")');
+      }
+      
       final response = await supabase
           .from('profiles')
-          .select('id, display_name, email, avatar_url, user_code')
-          .eq('user_code', userCode.toUpperCase())
+          .select('id, display_name, avatar_url, user_code')
+          .eq('user_code', searchCode)
           .maybeSingle();
+
+      if (kDebugMode) {
+        if (response != null) {
+          print('✅ 사용자 찾음: ${response['display_name']} (${response['user_code']})');
+        } else {
+          print('❌ 사용자 코드 "$searchCode"를 찾을 수 없음');
+          
+          // 디버깅: 전체 코드 목록 조회 (이메일 제외)
+          final allCodes = await supabase
+              .from('profiles')
+              .select('user_code, display_name')
+              .not('user_code', 'is', null);
+          print('현재 등록된 코드들: ${allCodes.map((c) => "${c['user_code']} (${c['display_name']})").join(", ")}');
+        }
+      }
 
       return response;
     } catch (e) {
@@ -983,8 +1003,15 @@ class DatabaseService {
       final currentUserId = AuthService.currentUser!.id;
       
       // 사용자 코드로 사용자 검색
+      if (kDebugMode) {
+        print('🔍 코드로 친구 추가 시도: "$userCode"');
+      }
+      
       final targetUser = await findUserByCode(userCode);
       if (targetUser == null) {
+        if (kDebugMode) {
+          print('❌ 코드로 친구 추가 실패: 입력한 친구 코드를 찾을 수 없습니다');
+        }
         throw FriendNotFoundException('입력한 친구 코드를 찾을 수 없습니다');
       }
       

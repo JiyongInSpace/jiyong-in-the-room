@@ -57,6 +57,9 @@ class _MyAppState extends State<MyApp> {
       }
       diaryList.insert(insertIndex, entry);
     });
+    
+    // 새 일지 추가 후 전체 데이터 다시 로드하여 참여자 정보 업데이트
+    _loadDiaryEntries();
   }
   
   // DB에서 일지 목록 로드
@@ -90,12 +93,18 @@ class _MyAppState extends State<MyApp> {
         diaryList[index] = newEntry;
       }
     });
+    
+    // 일지 수정 후 전체 데이터 다시 로드하여 참여자 정보 업데이트
+    _loadDiaryEntries();
   }
 
   void deleteDiary(DiaryEntry entry) {
     setState(() {
       diaryList.remove(entry);
     });
+    
+    // 일지 삭제 후 전체 데이터 다시 로드하여 참여자 정보 업데이트
+    _loadDiaryEntries();
   }
 
   Future<void> addFriend(Friend friend) async {
@@ -331,6 +340,22 @@ class _MyAppState extends State<MyApp> {
       }
     }
   }
+  
+  // 전체 데이터 새로고침 (일지 작성 후 호출)
+  Future<void> _refreshAllData() async {
+    if (kDebugMode) {
+      print('🔄 전체 데이터 새로고침 시작');
+    }
+    
+    await Future.wait([
+      _loadUserProfile(), // 프로필 로드
+      _loadUserData(),    // 일지 + 친구 데이터 로드
+    ]);
+    
+    if (kDebugMode) {
+      print('✅ 전체 데이터 새로고침 완료');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +401,7 @@ class _MyAppState extends State<MyApp> {
           onUpdateFriend: updateFriend,
           isLoggedIn: isLoggedIn,
           userProfile: userProfile,
-          onDataRefresh: _loadUserProfile, // 프로필 변경 시 사용자 프로필만 새로고침
+          onDataRefresh: _refreshAllData, // 전체 데이터 새로고침
         ),
       ),
     );

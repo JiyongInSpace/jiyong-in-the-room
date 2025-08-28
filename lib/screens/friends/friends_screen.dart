@@ -9,6 +9,17 @@ import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'dart:async';
 
+// 친구 정렬 옵션 열거형
+enum FriendSortOption {
+  name('가나다순', Icons.sort_by_alpha),
+  participation('함께한 횟수순', Icons.bar_chart),
+  recent('최근 추가순', Icons.schedule);
+  
+  const FriendSortOption(this.label, this.icon);
+  final String label;
+  final IconData icon;
+}
+
 // 친구 관리 화면 - 인피니트 스크롤과 검색 기능을 제공
 class FriendsScreen extends StatefulWidget {
   // 일지 목록 (친구별 참여 횟수 계산용)
@@ -57,6 +68,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
   
   // 페이지 당 아이템 수
   static const int _pageSize = 20;
+  
+  // 정렬 옵션
+  FriendSortOption _sortOption = FriendSortOption.name;
+  
+  // 필터 표시 상태
+  bool _showFilters = false;
   @override
   void initState() {
     super.initState();
@@ -126,6 +143,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
         } else {
           _friends.addAll(friends);
         }
+        
+        // 정렬 적용
+        _sortFriends();
+        
         _hasMoreData = friends.length == _pageSize;
         _currentPage++;
       });
@@ -143,6 +164,35 @@ class _FriendsScreenState extends State<FriendsScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+  
+  // 친구 목록 정렬
+  void _sortFriends() {
+    switch (_sortOption) {
+      case FriendSortOption.name:
+        _friends.sort((a, b) => a.displayName.compareTo(b.displayName));
+        break;
+      case FriendSortOption.participation:
+        _friends.sort((a, b) {
+          final aCount = _getFriendParticipationCount(a);
+          final bCount = _getFriendParticipationCount(b);
+          return bCount.compareTo(aCount); // 내림차순 (많은 순)
+        });
+        break;
+      case FriendSortOption.recent:
+        _friends.sort((a, b) => b.addedAt.compareTo(a.addedAt)); // 최근 순
+        break;
+    }
+  }
+  
+  // 정렬 옵션 변경
+  void _changeSortOption(FriendSortOption newOption) {
+    if (_sortOption != newOption) {
+      setState(() {
+        _sortOption = newOption;
+        _sortFriends();
+      });
     }
   }
   
@@ -586,6 +636,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           children: [
                             Row(
                               children: [
+                                // 내가 등록한 별명
                                 Text(
                                   friend.displayName,
                                   style: const TextStyle(
@@ -593,6 +644,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                
+                                // 연동된 경우 사용자의 실제 닉네임
+                                if (friend.isConnected && friend.realName != null && friend.realName != friend.nickname) ...[
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '(${friend.realName})',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                                
                                 if (!friend.isConnected) ...[
                                   const SizedBox(width: 8),
                                   Icon(
@@ -717,6 +782,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     _loadFriends();
   }
   
+  
   // 친구별 참여 횟수를 계산하는 메서드
   int _getFriendParticipationCount(Friend friend) {
     if (widget.diaryList.isEmpty) return 0;
@@ -778,30 +844,94 @@ class _FriendsScreenState extends State<FriendsScreen> {
         title: const Text(''),
         // Theme.of(context): 현재 테마의 색상 정보를 가져옴
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            color: _showFilters ? null : Colors.grey,
+            onPressed: () {
+              setState(() {
+                _showFilters = !_showFilters;
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // 검색 바
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: '친구 이름이나 메모로 검색...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                        },
-                      )
-                    : null,
-                border: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
+          // 애니메이션이 적용된 필터 영역
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            height: _showFilters ? null : 0,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _showFilters ? 1.0 : 0.0,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // 검색 입력창
+                    Row(
+                      children: [
+                        const Icon(Icons.search, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: '친구 이름이나 메모로 검색...',
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                      },
+                                    )
+                                  : null,
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // 정렬 옵션
+                    Row(
+                      children: [
+                        const Icon(Icons.sort, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<FriendSortOption>(
+                            value: _sortOption,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            items: FriendSortOption.values.map((option) {
+                              return DropdownMenuItem(
+                                value: option,
+                                child: Row(
+                                  children: [
+                                    Icon(option.icon, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(option.label),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                _changeSortOption(value);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
               ),
             ),
           ),
@@ -928,6 +1058,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 // 친구 이름과 연동 상태
                                 Row(
                                   children: [
+                                    // 내가 등록한 별명 (메인)
                                     Text(
                                       friend.displayName,
                                       style: const TextStyle(
@@ -935,6 +1066,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
+                                    
+                                    // 연동된 경우 사용자의 실제 닉네임 표시
+                                    if (friend.isConnected && friend.realName != null && friend.realName != friend.nickname) ...[
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '(${friend.realName})',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                    
                                     const SizedBox(width: 8),
                                     if (!friend.isConnected)
                                       const Icon(
@@ -957,19 +1102,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
-                                ],
-                                // 연동된 사용자 정보
-                                if (friend.isConnected) ...[
-                                  if (friend.realName != null)
-                                    Text(
-                                      '실명: ${friend.realName}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  if (friend.displayEmail != null)
-                                    Text(
-                                      '이메일: ${friend.displayEmail}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
                                 ],
                                 // 함께한 횟수
                                 Text(
