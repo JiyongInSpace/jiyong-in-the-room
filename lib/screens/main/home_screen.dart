@@ -99,6 +99,20 @@ class HomeScreen extends StatelessWidget {
       return '썩은물';
     }
   }
+  
+  // 프로필 이미지 가져오기 (null-safe)
+  ImageProvider? _getProfileImage() {
+    if (!isLoggedIn || userProfile == null) {
+      return null;
+    }
+    
+    final avatarUrl = userProfile!['avatar_url'];
+    if (avatarUrl != null && avatarUrl is String) {
+      return NetworkImage(avatarUrl);
+    }
+    
+    return null;
+  }
 
   // 칭호별 색상 반환
   Color _getTitleColor(String title) {
@@ -198,16 +212,14 @@ class HomeScreen extends StatelessWidget {
             icon: CircleAvatar(
               radius: 16,
               backgroundColor: isLoggedIn ? Colors.blue[400] : Colors.grey[300],
-              backgroundImage: (isLoggedIn && userProfile?['avatar_url'] != null)
-                  ? NetworkImage(userProfile!['avatar_url'])
-                  : null,
-              child: (isLoggedIn && userProfile?['avatar_url'] != null)
-                  ? null
-                  : Icon(
+              backgroundImage: _getProfileImage(),
+              child: _getProfileImage() == null
+                  ? Icon(
                       Icons.person,
                       size: 20,
                       color: isLoggedIn ? Colors.white : Colors.grey[600],
-                    ),
+                    )
+                  : null,
             ),
           ),
           const SizedBox(width: 8),

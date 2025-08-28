@@ -102,13 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ] else ...[
           ListTile(
-            leading: _currentUserProfile?['avatar_url'] != null
-                ? CircleAvatar(
-                    backgroundImage: NetworkImage(_currentUserProfile!['avatar_url']),
-                  )
-                : const CircleAvatar(
-                    child: Icon(Icons.person),
-                  ),
+            leading: _getProfileAvatar(),
             title: Text(_currentUserProfile?['display_name'] ?? '사용자'),
             subtitle: Text(_currentUserProfile?['email'] ?? ''),
             onTap: () => _editProfile(context),
@@ -261,13 +255,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 프로필 편집 화면으로 이동
   Future<void> _editProfile(BuildContext context) async {
-    if (_currentUserProfile == null) return;
+    final currentProfile = _currentUserProfile;
+    if (currentProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('프로필 정보를 불러오는 중입니다...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => ProfileEditScreen(
-          userProfile: _currentUserProfile!,
+          userProfile: currentProfile,
         ),
       ),
     );
@@ -282,6 +285,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
+  }
+  
+  // 프로필 아바타 가져오기 (null-safe)
+  Widget _getProfileAvatar() {
+    final currentProfile = _currentUserProfile;
+    if (currentProfile != null && currentProfile['avatar_url'] != null) {
+      return CircleAvatar(
+        backgroundImage: NetworkImage(currentProfile['avatar_url'] as String),
+      );
+    }
+    return const CircleAvatar(
+      child: Icon(Icons.person),
+    );
   }
 
 }
