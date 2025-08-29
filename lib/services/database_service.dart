@@ -621,47 +621,108 @@ class DatabaseService {
   }
 
 
-  /// 일지의 참여자 목록 가져오기 (실시간 프로필 정보 반영)
+  /// 일지의 참여자 목록 가져오기 (최적화된 뷰 사용)
   static Future<List<Friend>> getDiaryParticipants(int diaryEntryId) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
 
     try {
-      // 새로 생성한 뷰를 사용하여 최신 프로필 정보 가져오기
+      // 단순화된 뷰에서 기본 정보만 가져오기
       final response = await supabase
           .from('diary_participants_with_details')
-          .select('*')
+          .select('''
+            diary_entry_id,
+            user_id,
+            friend_id,
+            is_connected
+          ''')
           .eq('diary_entry_id', diaryEntryId);
 
       List<Friend> participants = [];
       
       for (var json in response as List) {
+        User? user;
+        String displayName = '알 수 없는 참여자';
+        String? connectedUserId;
+        int? friendId;
+        
         if (json['user_id'] != null) {
-          // 연결된 사용자 (실제 프로필 있음) - 실시간 프로필 정보 사용
-          participants.add(Friend(
-            id: null, // 연결된 사용자의 경우 Friend.id는 null (friend_id가 없으므로)
-            connectedUserId: json['user_id'],
-            user: User(
+          // 직접 참여자인 경우 (작성자 등)
+          connectedUserId = json['user_id'];
+          friendId = null;
+          
+          // 프로필 정보 조회
+          try {
+            final profileResponse = await supabase
+                .from('profiles')
+                .select('display_name, email, avatar_url')
+                .eq('id', json['user_id'])
+                .single();
+            
+            displayName = profileResponse['display_name'] ?? '알 수 없는 사용자';
+            user = User(
               id: json['user_id'],
-              name: json['profile_display_name'] ?? '알 수 없는 사용자',
-              email: json['profile_email'] ?? '',
-              avatarUrl: json['profile_avatar_url'],
+              name: displayName,
+              email: profileResponse['email'] ?? '',
+              avatarUrl: profileResponse['avatar_url'],
               joinedAt: DateTime.now(),
-            ),
-            addedAt: DateTime.now(),
-            nickname: json['profile_display_name'] ?? '알 수 없는 사용자',
-          ));
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              print('직접 참여자 프로필 조회 실패: $e');
+            }
+          }
         } else if (json['friend_id'] != null) {
-          // 연결되지 않은 친구 (nickname 사용)
-          participants.add(Friend(
-            id: json['friend_table_id'] as int?,
-            connectedUserId: json['friend_connected_user_id'],
-            user: null,
-            addedAt: DateTime.now(),
-            nickname: json['friend_nickname'] ?? '알 수 없는 친구',
-          ));
+          // 친구인 경우
+          friendId = json['friend_id'];
+          
+          try {
+            final friendResponse = await supabase
+                .from('friends')
+                .select('nickname, connected_user_id')
+                .eq('id', json['friend_id'])
+                .single();
+            
+            displayName = friendResponse['nickname'] ?? '알 수 없는 친구';
+            connectedUserId = friendResponse['connected_user_id'];
+            
+            // 연결된 친구인 경우 프로필 정보도 조회
+            if (json['is_connected'] == true && connectedUserId != null) {
+              try {
+                final profileResponse = await supabase
+                    .from('profiles')
+                    .select('display_name, email, avatar_url')
+                    .eq('id', connectedUserId)
+                    .single();
+                
+                user = User(
+                  id: connectedUserId,
+                  name: profileResponse['display_name'] ?? displayName,
+                  email: profileResponse['email'] ?? '',
+                  avatarUrl: profileResponse['avatar_url'],
+                  joinedAt: DateTime.now(),
+                );
+              } catch (e) {
+                if (kDebugMode) {
+                  print('연결된 친구 프로필 조회 실패: $e');
+                }
+              }
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('친구 정보 조회 실패: $e');
+            }
+          }
         }
+        
+        participants.add(Friend(
+          id: friendId,
+          connectedUserId: connectedUserId,
+          user: user,
+          addedAt: DateTime.now(),
+          nickname: displayName,
+        ));
       }
       
       return participants;
