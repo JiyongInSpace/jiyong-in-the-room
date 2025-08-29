@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:jiyong_in_the_room/services/profile_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'dart:io';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -291,13 +292,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             
             const SizedBox(height: 40),
             
-            TextFormField(
+            CommonTextField(
               controller: _displayNameController,
-              decoration: const InputDecoration(
-                labelText: '표시 이름',
-                hintText: '다른 사용자에게 표시될 이름을 입력하세요',
-                border: OutlineInputBorder(),
-              ),
+              labelText: '표시 이름',
+              hintText: '다른 사용자에게 표시될 이름을 입력하세요',
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return '표시 이름을 입력해주세요';

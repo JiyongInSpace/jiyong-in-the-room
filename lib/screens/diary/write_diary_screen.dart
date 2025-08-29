@@ -8,6 +8,7 @@ import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
+import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'dart:async';
 
 // StatefulWidget: 상태가 변할 수 있는 위젯 클래스
@@ -154,9 +155,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
           'Updated searchedThemes: ${searchedThemes.map((t) => t.name).toList()}',
         );
 
-        // optionsBuilder를 다시 호출하도록 텍스트를 미세하게 변경했다가 복원
+        // 테마가 선택되어 있지 않을 때만 UI 갱신을 위한 텍스트 조작 수행
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _themeController.text.trim() == trimmedQuery) {
+          if (mounted && selectedTheme == null && _themeController.text.trim() == trimmedQuery) {
             final currentText = _themeController.text;
             _themeController.text = '$currentText ';
             _themeController.text = currentText;
@@ -356,51 +357,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
           // Column: 자식 위젯들을 세로로 배치하는 위젯
           child: Column(
             children: [
-              // Row: 자식 위젯들을 가로로 배치하는 위젯
-              Row(
-                children: [
-                  // 탈출 날짜 라벨
-                  const Text(
-                    '탈출 날짜',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 16),
-                  // Expanded: 남은 공간을 채우도록 확장하는 위젯
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            selectedDateStr,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          // 달력 아이콘 버튼
-                          InkWell(
-                            onTap: _pickDate,
-                            borderRadius: BorderRadius.circular(20),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                Icons.calendar_today,
-                                size: 20,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              CommonDateField(
+                selectedDate: selectedDate,
+                labelText: '탈출 날짜',
+                onTap: _pickDate,
               ),
               // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
               const SizedBox(height: 20),
@@ -408,23 +368,13 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               if (isLoadingCafes)
                 const Center(child: CircularProgressIndicator())
               else
-                // RawAutocomplete<타입>: 자동완성 기능을 제공하는 위젯
-                RawAutocomplete<EscapeCafe>(
-                  textEditingController: _cafeController,
-                  focusNode: FocusNode(),
+                CommonAutocompleteField<EscapeCafe>(
+                  controller: _cafeController,
+                  labelText: '방탈출 카페',
                   optionsBuilder: (text) {
-                    // 검색어를 소문자로 변환하고 공백 제거
-                    final searchQuery = text.text.toLowerCase().replaceAll(
-                      ' ',
-                      '',
-                    );
-
+                    final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
                     return cafes.where((cafe) {
-                      // 카페명을 소문자로 변환하고 공백 제거하여 비교
-                      final cafeName = cafe.name.toLowerCase().replaceAll(
-                        ' ',
-                        '',
-                      );
+                      final cafeName = cafe.name.toLowerCase().replaceAll(' ', '');
                       return cafeName.contains(searchQuery);
                     }).toList();
                   },
@@ -433,37 +383,16 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     setState(() {
                       selectedCafe = cafe;
                     });
-                    // 컨트롤러 텍스트를 카페 이름으로 설정
                     _cafeController.text = cafe.name;
-                    // 포커스 해제로 옵션 박스를 즉시 닫음
                     FocusScope.of(context).unfocus();
-                    // 선택된 카페의 테마들을 로드
                     _loadThemesForCafe(cafe.id);
                   },
-                  fieldViewBuilder: (
-                    context,
-                    controller,
-                    focusNode,
-                    onFieldSubmitted,
-                  ) {
-                    return TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        labelText: '방탈출 카페',
-                        border: const OutlineInputBorder(),
-                        suffixIcon:
-                            selectedCafe != null
-                                ? const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                )
-                                : controller.text.isNotEmpty
-                                ? const Icon(Icons.edit, color: Colors.orange)
-                                : null,
-                      ),
-                    );
-                  },
+                  displayStringForOption: (cafe) => cafe.name,
+                  suffixIcon: selectedCafe != null
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : _cafeController.text.isNotEmpty
+                          ? const Icon(Icons.edit, color: Colors.orange)
+                          : null,
                   optionsViewBuilder: (context, onSelected, options) {
                     return Align(
                       alignment: Alignment.topLeft,
@@ -488,9 +417,25 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 ),
               const SizedBox(height: 20),
               // 테마 선택 영역 - 카페를 먼저 선택하거나 모든 테마에서 직접 검색 가능
-              RawAutocomplete<EscapeTheme>(
-                textEditingController: _themeController,
+              CommonAutocompleteField<EscapeTheme>(
+                controller: _themeController,
                 focusNode: _themeFocusNode,
+                labelText: '테마 선택',
+                hintText: selectedCafe != null
+                    ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
+                    : '테마를 검색하세요 (2글자 이상 입력)',
+                displayStringForOption: (theme) => theme.name,
+                suffixIcon: selectedTheme != null
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : isSearchingThemes
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : _themeController.text.isNotEmpty
+                            ? const Icon(Icons.search, color: Colors.orange)
+                            : null,
                 optionsBuilder: (text) {
                   final query = text.text.trim();
 
@@ -499,15 +444,18 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     if (text.text == selectedTheme!.name) {
                       return const Iterable<EscapeTheme>.empty();
                     } else {
-                      // 선택된 테마와 다른 텍스트가 입력되면 선택 해제
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            selectedTheme = null;
-                            _lastSearchQuery = null; // 검색 쿼리도 초기화
-                          });
-                        }
-                      });
+                      // 사용자가 직접 텍스트를 수정하는 경우만 선택 해제
+                      // (검색 결과로 인한 자동 업데이트는 무시)
+                      if (text.text.isNotEmpty && text.text != selectedTheme!.name) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && _themeController.text != selectedTheme?.name) {
+                            setState(() {
+                              selectedTheme = null;
+                              _lastSearchQuery = null; // 검색 쿼리도 초기화
+                            });
+                          }
+                        });
+                      }
                     }
                   }
 
@@ -593,47 +541,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       }
                     }
                   });
-                  // 컨트롤러 텍스트를 테마 이름으로 설정
                   _themeController.text = theme.name;
                   print('Set theme controller text: ${_themeController.text}');
-                  // 테마 포커스 해제로 옵션 박스를 즉시 닫음
                   _themeFocusNode.unfocus();
-                },
-                fieldViewBuilder: (
-                  context,
-                  controller,
-                  focusNode,
-                  onFieldSubmitted,
-                ) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      labelText: '테마 선택',
-                      hintText:
-                          selectedCafe != null
-                              ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
-                              : '테마를 검색하세요 (2글자 이상 입력)',
-                      border: const OutlineInputBorder(),
-                      suffixIcon:
-                          selectedTheme != null
-                              ? const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                              )
-                              : isSearchingThemes
-                              ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : controller.text.isNotEmpty
-                              ? const Icon(Icons.search, color: Colors.orange)
-                              : null,
-                    ),
-                  );
                 },
                 optionsViewBuilder: (context, onSelected, options) {
                   return Align(
@@ -659,32 +569,22 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              RawAutocomplete<Friend>(
-                textEditingController: friendSearchController,
+              CommonAutocompleteField<Friend>(
+                controller: friendSearchController,
                 focusNode: _friendSearchFocusNode,
+                labelText: '친구 검색',
                 optionsBuilder: (textEditingValue) {
-                  // 선택되지 않은 친구들 필터링
-                  final availableFriends =
-                      widget.friends
-                          .where((f) => !selectedFriends.contains(f))
-                          .toList();
+                  final availableFriends = widget.friends
+                      .where((f) => !selectedFriends.contains(f))
+                      .toList();
 
-                  // 텍스트가 비어있으면 모든 사용 가능한 친구들 표시
                   if (textEditingValue.text.isEmpty) {
                     return availableFriends;
                   }
 
-                  // 텍스트가 있으면 필터링된 친구들 표시
-                  // 검색어를 소문자로 변환하고 공백 제거
-                  final searchQuery = textEditingValue.text
-                      .toLowerCase()
-                      .replaceAll(' ', '');
+                  final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
                   return availableFriends.where((f) {
-                    // 친구 이름을 소문자로 변환하고 공백 제거하여 비교
-                    final friendName = f.displayName.toLowerCase().replaceAll(
-                      ' ',
-                      '',
-                    );
+                    final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
                     return friendName.contains(searchQuery);
                   }).toList();
                 },
@@ -693,28 +593,12 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     selectedFriends.add(selected);
                     friendSearchController.clear();
                   });
-                  // 친구 검색 필드 포커스만 해제
                   _friendSearchFocusNode.unfocus();
                 },
-                fieldViewBuilder: (
-                  context,
-                  controller,
-                  focusNode,
-                  onFieldSubmitted,
-                ) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      labelText: '친구 검색',
-                      border: const OutlineInputBorder(),
-                      suffixIcon:
-                          controller.text.isNotEmpty
-                              ? const Icon(Icons.search, color: Colors.orange)
-                              : null,
-                    ),
-                  );
-                },
+                displayStringForOption: (friend) => friend.displayName,
+                suffixIcon: friendSearchController.text.isNotEmpty
+                    ? const Icon(Icons.search, color: Colors.orange)
+                    : null,
                 optionsViewBuilder: (context, onSelected, options) {
                   return Align(
                     alignment: Alignment.topLeft,
@@ -728,19 +612,13 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                             final option = options.elementAt(index);
                             return ListTile(
                               title: Text(option.displayName),
-                              subtitle:
-                                  option.isConnected && option.realName != null
-                                      ? Text(option.realName!)
-                                      : null,
+                              subtitle: option.isConnected && option.realName != null
+                                  ? Text(option.realName!)
+                                  : null,
                               leading: Icon(
-                                option.isConnected
-                                    ? Icons.link
-                                    : Icons.link_off,
+                                option.isConnected ? Icons.link : Icons.link_off,
                                 size: 16,
-                                color:
-                                    option.isConnected
-                                        ? Colors.green
-                                        : Colors.grey,
+                                color: option.isConnected ? Colors.green : Colors.grey,
                               ),
                               onTap: () => onSelected(option),
                             );
@@ -786,12 +664,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
               ),
               if (_showDetails) ...[
                 const SizedBox(height: 20),
-                TextField(
+                CommonTextArea(
                   controller: _memoController,
-                  decoration: const InputDecoration(
-                    labelText: '메모',
-                    border: OutlineInputBorder(),
-                  ),
+                  labelText: '메모',
                   maxLines: 3,
                 ),
                 const SizedBox(height: 20),
@@ -898,12 +773,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: CommonTextField(
                         controller: _hintController,
-                        decoration: const InputDecoration(
-                          labelText: '힌트 사용 횟수',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: '힌트 사용 횟수',
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           _hintUsedCount = int.tryParse(value);
@@ -912,12 +784,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: TextField(
+                      child: CommonTextField(
                         controller: _timeController,
-                        decoration: const InputDecoration(
-                          labelText: '소요시간 (분)',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: '소요시간 (분)',
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final minutes = int.tryParse(value);

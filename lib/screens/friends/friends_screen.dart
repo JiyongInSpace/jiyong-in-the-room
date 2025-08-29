@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/error_service.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
+import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'dart:async';
 
 // 친구 정렬 옵션 열거형
@@ -238,23 +239,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 친구 코드 입력 (선택사항)
-                  TextField(
+                  CommonTextField(
                     controller: _userCodeController,
-                    decoration: InputDecoration(
-                      labelText: '친구 코드 (선택사항)',
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: errorMessage != null && errorMessage!.contains('코드') 
-                              ? Colors.red 
-                              : Colors.grey,
-                        ),
-                      ),
-                      hintText: '친구 코드가 있으면 입력하세요',
-                      helperText: '6자리 영숫자 코드',
-                      errorText: errorMessage != null && errorMessage!.contains('코드') 
-                          ? errorMessage 
-                          : null,
-                    ),
+                    labelText: '친구 코드 (선택사항)',
+                    hintText: '친구 코드가 있으면 입력하세요',
+                    helperText: '6자리 영숫자 코드',
                     textCapitalization: TextCapitalization.characters,
                     maxLength: 6,
                     onChanged: (value) {
@@ -265,35 +254,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   const SizedBox(height: 16),
                   
                   // 별명 입력 (조건부 필수)
-                  TextField(
+                  CommonTextField(
                     controller: _nicknameController,
-                    decoration: InputDecoration(
-                      labelText: hasUserCode ? '별명 (선택사항)' : '별명 (필수)',
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: errorMessage != null && errorMessage!.contains('별명') 
-                              ? Colors.red 
-                              : Colors.grey,
-                        ),
-                      ),
-                      hintText: hasUserCode 
-                          ? '비워두면 상대방 이름을 사용합니다' 
-                          : '이 친구를 부르는 이름을 입력하세요',
-                      errorText: errorMessage != null && errorMessage!.contains('별명') 
-                          ? errorMessage 
-                          : null,
-                    ),
+                    labelText: hasUserCode ? '별명 (선택사항)' : '별명 (필수)',
+                    hintText: hasUserCode 
+                        ? '비워두면 상대방 이름을 사용합니다' 
+                        : '이 친구를 부르는 이름을 입력하세요',
                   ),
                   const SizedBox(height: 16),
                   
                   // 메모 입력 (선택사항)
-                  TextField(
+                  CommonTextArea(
                     controller: _memoController,
-                    decoration: const InputDecoration(
-                      labelText: '메모 (선택사항)',
-                      border: OutlineInputBorder(),
-                      hintText: '친구에 대한 메모를 남겨보세요',
-                    ),
+                    labelText: '메모 (선택사항)',
+                    hintText: '친구에 대한 메모를 남겨보세요',
                     maxLines: 2,
                   ),
                 ],
@@ -406,13 +380,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              CommonTextField(
                 controller: _userCodeController,
-                decoration: const InputDecoration(
-                  labelText: '친구 코드',
-                  border: OutlineInputBorder(),
-                  helperText: '6자리 영숫자 코드',
-                ),
+                labelText: '친구 코드',
+                helperText: '6자리 영숫자 코드',
                 textCapitalization: TextCapitalization.characters,
                 maxLength: 6,
               ),
@@ -486,21 +457,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              CommonTextField(
                 controller: _nicknameController,
-                decoration: const InputDecoration(
-                  labelText: '별명',
-                  border: OutlineInputBorder(),
-                  helperText: '이 친구를 부르는 이름을 입력하세요',
-                ),
+                labelText: '별명',
+                helperText: '이 친구를 부르는 이름을 입력하세요',
               ),
               const SizedBox(height: 16),
-              TextField(
+              CommonTextArea(
                 controller: _memoController,
-                decoration: const InputDecoration(
-                  labelText: '메모 (선택사항)',
-                  border: OutlineInputBorder(),
-                ),
+                labelText: '메모 (선택사항)',
                 maxLines: 2,
               ),
             ],
@@ -876,21 +841,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         const Icon(Icons.search, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: TextField(
+                          child: CommonTextField(
                             controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: '친구 이름이나 메모로 검색...',
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                      },
-                                    )
-                                  : null,
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
+                            labelText: '',
+                            hintText: '친구 이름이나 메모로 검색...',
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                    },
+                                  )
+                                : null,
                           ),
                         ),
                       ],
@@ -903,12 +865,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         const Icon(Icons.sort, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<FriendSortOption>(
+                          child: CommonDropdownField<FriendSortOption>(
                             value: _sortOption,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
+                            labelText: '',
                             items: FriendSortOption.values.map((option) {
                               return DropdownMenuItem(
                                 value: option,

@@ -8,6 +8,7 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
+import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 
 // 인피니트 스크롤이 적용된 일지 목록 화면
 class DiaryListInfiniteScreen extends StatefulWidget {
@@ -270,19 +271,16 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                         const Icon(Icons.search, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: TextField(
+                          child: CommonTextField(
                             controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: '테마명, 카페명',
-                              suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: _clearFilters,
-                                    )
-                                  : null,
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
+                            labelText: '',
+                            hintText: '테마명, 카페명',
+                            suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: _clearFilters,
+                                  )
+                                : null,
                             onSubmitted: (value) => _performSearch(),
                             onChanged: _onSearchChanged,
                           ),
@@ -296,15 +294,11 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                         const Icon(Icons.person, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<Friend?>(
+                          child: CommonDropdownField<Friend?>(
                             key: ValueKey(_selectedFriends.length),
                             value: null,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              isDense: true,
-                            ),
-                            hint: const Text('같이 한 친구'),
+                            labelText: '',
+                            hintText: '같이 한 친구',
                             items: widget.friends
                                 .where((friend) => !_selectedFriends.contains(friend))
                                 .map((friend) => DropdownMenuItem<Friend?>(
