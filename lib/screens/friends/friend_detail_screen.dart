@@ -246,27 +246,51 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                             ),
                           );
                         },
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              entry.escaped == true
-                                  ? Colors.green[100]
-                                  : entry.escaped == false
-                                  ? Colors.red[100]
-                                  : Colors.grey[100],
-                          child: Icon(
-                            entry.escaped == true
-                                ? Icons.check_circle
-                                : entry.escaped == false
-                                ? Icons.cancel
-                                : Icons.help_outline,
-                            color:
-                                entry.escaped == true
-                                    ? Colors.green[600]
-                                    : entry.escaped == false
-                                    ? Colors.red[600]
-                                    : Colors.grey[600],
-                            size: 20,
-                          ),
+                        leading: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: entry.escaped == true 
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // 연한 초록 배경
+                                    CircleAvatar(
+                                      backgroundColor: Colors.green[100],
+                                      radius: 20,
+                                    ),
+                                    // 스탬프 이미지 (위에 덮기)
+                                    Image.asset(
+                                      'assets/images/stamp_success.png',
+                                      width: 40,
+                                      height: 40,
+                                    ),
+                                  ],
+                                )
+                              : entry.escaped == false
+                                  ? Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // 연한 빨강 배경
+                                        CircleAvatar(
+                                          backgroundColor: Colors.red[100],
+                                          radius: 20,
+                                        ),
+                                        // 스탬프 이미지 (위에 덮기)
+                                        Image.asset(
+                                          'assets/images/stamp_failed.png',
+                                          width: 40,
+                                          height: 40,
+                                        ),
+                                      ],
+                                    )
+                                  : CircleAvatar(
+                                      backgroundColor: Colors.grey[100],
+                                      child: Icon(
+                                        Icons.help_outline,
+                                        color: Colors.grey[600],
+                                        size: 20,
+                                      ),
+                                    ),
                         ),
                         title: Text(
                           entry.theme?.name ?? '테마 정보 없음',

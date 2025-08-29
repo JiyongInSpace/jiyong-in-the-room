@@ -123,20 +123,28 @@ class DiaryEntryCard extends StatelessWidget {
               // 친구 정보 표시
               if (entry.friends != null && entry.friends!.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 2,
-                  children: entry.friends!
-                      .map((friend) => Chip(
-                            label: Text(
-                              friend.displayName,
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                            backgroundColor: Colors.blue[50],
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ))
-                      .toList(),
+                Padding(
+                  padding: const EdgeInsets.only(left: 52), // 40 (아바타 너비) + 12 (간격)
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.people,
+                        size: 14,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          entry.friends!.map((friend) => friend.displayName).join(', '),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
