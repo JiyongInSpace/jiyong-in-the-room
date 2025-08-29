@@ -1,5 +1,5 @@
 # 📋 데이터 모델 통합 명세
-*최종 업데이트: 2025-08-22*
+*최종 업데이트: 2025-08-29*
 
 ## 🎯 앱의 핵심 가치
 **"누구와 함께했는지"**에 중점을 둔 설계로, Friend와 DiaryEntry 간의 관계가 가장 중요한 데이터 구조입니다.
@@ -8,6 +8,28 @@
 - **OAuth 기반 인증**: Supabase Auth의 `auth.users` 테이블 활용
 - **제공자**: Google, Apple, GitHub 등
 - **유저 구분**: `auth.users.id` (UUID)를 기준으로 모든 데이터 분리
+
+## 📊 데이터베이스 테이블 목록
+
+### 📋 기본 테이블 (Base Tables)
+| 테이블명 | 역할 | 주요 컬럼 | RLS 적용 |
+|---------|------|----------|---------|
+| `profiles` | 사용자 프로필 확장 | id(UUID), display_name, avatar_url, user_code | ✅ |
+| `friends` | 친구 관리 | id(INT), user_id, connected_user_id, nickname | ✅ |
+| `escape_cafes` | 방탈출 카페 정보 (공통) | id(INT), name, address, contact | ✅ |
+| `escape_themes` | 방탈출 테마 정보 (공통) | id(INT), cafe_id, name, difficulty | ✅ |
+| `diary_entries` | 방탈출 일지 | id(INT), user_id, theme_id, date, rating | ✅ |
+| `diary_entry_participants` | 일지 참여자 관계 | id(INT), diary_entry_id, user_id, friend_id | ✅ |
+
+### 🔍 뷰 (Views)
+| 뷰명 | 역할 | 기반 테이블 | 목적 |
+|-----|------|-----------|------|
+| `diary_participants_with_details` | 참여자 정보 조회 최적화 | diary_entry_participants + friends | 복잡한 JOIN 로직 캡슐화 |
+
+### 📈 인덱스 및 성능 최적화
+- **복합 인덱스**: `diary_entries(user_id, date DESC)` - 사용자별 일지 날짜순 정렬
+- **단일 인덱스**: `escape_themes(cafe_id)` - 카페별 테마 조회
+- **UNIQUE 제약**: `profiles(user_code)` - 사용자 코드 중복 방지
 
 ---
 
@@ -554,6 +576,46 @@ WHERE def.diary_entry_id = $1;
 ---
 
 ## 🚀 최근 구현 완료
+
+### ⚡ 2025-08-29 데이터베이스 최적화 (뷰 구조 개선)
+
+#### 🔄 `diary_participants_with_details` 뷰 최적화
+**문제점**: 기존 뷰에서 중복 컬럼과 비효율적인 구조
+- `friend_id`와 `friend_table_id` 중복
+- `user_id`와 `actual_user_id` 중복  
+- `display_name` 미리 계산으로 정규화 위반
+
+**해결책**: 뷰 단순화 + Flutter에서 실시간 JOIN
+```sql
+-- 최적화된 뷰 (2025-08-29)
+CREATE VIEW diary_participants_with_details AS
+SELECT 
+    dep.diary_entry_id,
+    dep.user_id,          -- 직접 참여자 (작성자 등)
+    dep.friend_id,        -- 친구 테이블 참조
+    
+    -- 연결 상태만 계산 (나머지는 Flutter에서 실시간 JOIN)
+    CASE 
+        WHEN dep.user_id IS NOT NULL THEN true
+        WHEN dep.friend_id IS NOT NULL AND f.connected_user_id IS NOT NULL THEN true
+        ELSE false
+    END AS is_connected
+
+FROM diary_entry_participants dep
+LEFT JOIN friends f ON (dep.friend_id = f.id);
+```
+
+#### 🎯 Flutter 코드 개선
+**변경사항**: 뷰에서 기본 정보만 가져오고, 실제 사용자/친구 정보는 별도 쿼리
+- **직접 참여자**: `profiles` 테이블에서 `display_name`, `email`, `avatar_url` 조회
+- **친구 참여자**: `friends` 테이블에서 `nickname`, `connected_user_id` 조회 후 필요시 `profiles` 추가 조회
+- **실시간 반영**: `display_name` 변경 시 자동으로 모든 일지에 반영
+
+#### ✅ 최적화 효과
+1. **데이터 정규화 준수**: 중복 데이터 저장 없음
+2. **실시간 정보 반영**: 프로필 변경 시 즉시 모든 곳에 반영
+3. **성능 향상**: 불필요한 컬럼 제거로 뷰 크기 감소
+4. **유지보수성**: 각 테이블의 책임이 명확함
 
 ### ⚡ 2025-08-14 주요 업데이트 (참여자 시스템 개선)
 
