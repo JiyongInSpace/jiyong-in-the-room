@@ -32,22 +32,22 @@ class DiaryEntryCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  // 탈출 상태 아이콘
-                  CircleAvatar(
-                    backgroundColor: entry.escaped == true 
-                        ? Colors.green 
-                        : entry.escaped == false 
-                            ? Colors.red 
-                            : Colors.grey,
-                    child: Icon(
-                      entry.escaped == true 
-                          ? Icons.check 
-                          : entry.escaped == false 
-                              ? Icons.close 
-                              : Icons.question_mark,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                  // 탈출 상태 스탬프
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: entry.escaped == true 
+                        ? Image.asset('assets/images/stamp_success.png')
+                        : entry.escaped == false
+                            ? Image.asset('assets/images/stamp_failed.png')
+                            : CircleAvatar(
+                                backgroundColor: Colors.grey,
+                                child: Icon(
+                                  Icons.question_mark,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

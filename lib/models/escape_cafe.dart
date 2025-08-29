@@ -44,6 +44,7 @@ class EscapeTheme {
   final Duration? timeLimit;
   final List<String>? genre; // ex: 추리, 공포, SF 등
   final String? themeImageUrl;
+  final String? searchKeywords; // 연관검색어 필드 추가
 
   EscapeTheme({
     required this.id,
@@ -54,6 +55,7 @@ class EscapeTheme {
     this.timeLimit,
     this.genre,
     this.themeImageUrl,
+    this.searchKeywords, // 연관검색어 필드 추가
   });
 
   // JSON 변환
@@ -66,6 +68,7 @@ class EscapeTheme {
       'time_limit_minutes': timeLimit?.inMinutes,
       'genre': genre,
       'theme_image_url': themeImageUrl,
+      'search_keywords': searchKeywords,
       if (cafe != null) 'escape_cafes': cafe!.toJson(),
     };
   }
@@ -94,6 +97,7 @@ class EscapeTheme {
           ? List<String>.from(json['genre'] as List)
           : null,
       themeImageUrl: json['theme_image_url'] as String?,
+      searchKeywords: json['search_keywords'] as String?,
     );
   }
 }

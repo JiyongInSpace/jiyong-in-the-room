@@ -54,14 +54,14 @@ class DatabaseService {
     }
 
     try {
-      // PostgreSQL ILIKE를 사용한 대소문자 구분 없는 검색
+      // PostgreSQL ILIKE를 사용한 대소문자 구분 없는 검색 (테마명 + 연관검색어)
       final response = await supabase
           .from('escape_themes')
           .select('''
-            id, name, cafe_id, difficulty, time_limit_minutes, genre, theme_image_url,
+            id, name, cafe_id, difficulty, time_limit_minutes, genre, theme_image_url, search_keywords,
             escape_cafes!inner(id, name, address, contact, logo_url)
           ''')
-          .ilike('name', '%${searchQuery.trim()}%')
+          .or('name.ilike.%${searchQuery.trim()}%,search_keywords.ilike.%${searchQuery.trim()}%')
           .limit(limit);
 
       return (response as List).map((json) {
@@ -81,6 +81,7 @@ class DatabaseService {
               ? List<String>.from(themeData['genre'])
               : null,
           themeImageUrl: themeData['theme_image_url'],
+          searchKeywords: themeData['search_keywords'],
         );
       }).toList();
     } catch (e) {
