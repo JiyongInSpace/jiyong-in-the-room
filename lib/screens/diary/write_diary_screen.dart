@@ -73,6 +73,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // bool: 불린 타입 (true/false만 가능)
   // 상세 정보 표시 여부를 저장하는 변수
   bool _showDetails = false;
+  // 메모 공개 여부를 저장하는 변수
+  bool _memoPublic = false;
 
   @override
   void initState() {
@@ -797,7 +799,33 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   controller: _memoController,
                   labelText: '메모',
                   maxLines: 3,
+                  onChanged: (value) {
+                    // 메모 내용 변경 시 UI 업데이트 (체크박스 표시/숨김용)
+                    setState(() {});
+                  },
                 ),
+                
+                // 메모가 있을 때만 공개 옵션 표시
+                if (_memoController.text.isNotEmpty) ...[
+                  CheckboxListTile(
+                    title: const Text(
+                      '친구들에게 메모 공개',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    subtitle: const Text(
+                      '같은 테마를 플레이한 친구들이 볼 수 있어요',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: _memoPublic,
+                    onChanged: (value) {
+                      setState(() {
+                        _memoPublic = value ?? false;
+                      });
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  ),
+                ],
               ],
               const SizedBox(height: 20),
               ElevatedButton(
@@ -838,6 +866,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           _memoController.text.isEmpty
                               ? null
                               : _memoController.text,
+                      memoPublic: _memoController.text.isNotEmpty ? _memoPublic : false,
                       rating: _rating,
                       escaped: _escaped,
                       hintUsedCount: _hintUsedCount,

@@ -1224,4 +1224,51 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  /// 같은 테마로 진행한 상호친구들의 일지 조회 (평점 + 공개 메모) - 최적화된 버전
+  static Future<List<FriendDiaryInfo>> getFriendsForTheme({
+    required int themeId,
+  }) async {
+    if (!AuthService.isLoggedIn) {
+      return [];
+    }
+
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // 최적화된 단일 쿼리: JOIN을 사용한 상호친구들의 일지 조회
+      // f1: 내가 등록한 친구들, f2: 나를 친구로 등록한 사람들
+      // INNER JOIN으로 상호친구만 필터링하고, 바로 일지까지 조회
+      final response = await supabase.rpc('get_mutual_friends_diaries', params: {
+        'current_user_id': currentUserId,
+        'target_theme_id': themeId,
+      });
+      
+      if (response == null || (response as List).isEmpty) {
+        return [];
+      }
+
+      final List<FriendDiaryInfo> friendDiaries = [];
+      
+      // 최적화된 RPC 함수 결과 처리
+      for (var json in response as List) {
+        friendDiaries.add(FriendDiaryInfo(
+          userId: json['user_id'],
+          displayName: json['display_name'] ?? '익명',
+          avatarUrl: json['avatar_url'],
+          date: DateTime.parse(json['date']),
+          rating: json['rating']?.toDouble(),
+          memo: json['memo_public'] == true ? json['memo'] : null, // 공개된 메모만
+          escaped: json['escaped'],
+        ));
+      }
+
+      return friendDiaries;
+    } catch (e) {
+      if (kDebugMode) {
+        print('친구 일지 조회 실패: $e');
+      }
+      return [];
+    }
+  }
 }

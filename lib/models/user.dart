@@ -94,3 +94,49 @@ class Friend {
     );
   }
 }
+
+// 친구의 일지 정보 (같은 테마로 진행한 경우)
+class FriendDiaryInfo {
+  final String userId;      // 친구의 user_id
+  final String displayName; // 친구의 표시 이름
+  final String? avatarUrl;  // 친구의 아바타 URL
+  final DateTime date;      // 진행 날짜
+  final double? rating;     // 친구의 평점 (항상 공개)
+  final String? memo;       // 친구의 메모 (공개 설정된 경우만)
+  final bool? escaped;      // 친구의 탈출 결과
+
+  FriendDiaryInfo({
+    required this.userId,
+    required this.displayName,
+    this.avatarUrl,
+    required this.date,
+    this.rating,
+    this.memo,
+    this.escaped,
+  });
+
+  // JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'display_name': displayName,
+      'avatar_url': avatarUrl,
+      'date': date.toIso8601String(),
+      'rating': rating,
+      'memo': memo,
+      'escaped': escaped,
+    };
+  }
+
+  factory FriendDiaryInfo.fromJson(Map<String, dynamic> json) {
+    return FriendDiaryInfo(
+      userId: json['user_id'] as String,
+      displayName: json['display_name'] as String,
+      avatarUrl: json['avatar_url'] as String?,
+      date: DateTime.parse(json['date'] as String),
+      rating: json['rating']?.toDouble(),
+      memo: json['memo'] as String?,
+      escaped: json['escaped'] as bool?,
+    );
+  }
+}

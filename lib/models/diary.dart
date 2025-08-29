@@ -10,6 +10,7 @@ class DiaryEntry {
   final DateTime date;          // 진행 날짜
   final List<Friend>? friends;  // 친구들 정보 (조인 시에만)
   final String? memo;           // 메모/후기
+  final bool memoPublic;        // 메모 공개 여부
   final double? rating;         // 별점 (0.0~5.0)
   final bool? escaped;          // 탈출 성공 여부
   final int? hintUsedCount;     // 사용한 힌트 횟수
@@ -26,6 +27,7 @@ class DiaryEntry {
     required this.date,
     this.friends,
     this.memo,
+    this.memoPublic = false,
     this.rating,
     this.escaped,
     this.hintUsedCount,
@@ -47,6 +49,7 @@ class DiaryEntry {
     DateTime? date,
     List<Friend>? friends,
     String? memo,
+    bool? memoPublic,
     double? rating,
     bool? escaped,
     int? hintUsedCount,
@@ -63,6 +66,7 @@ class DiaryEntry {
       date: date ?? this.date,
       friends: friends ?? this.friends,
       memo: memo ?? this.memo,
+      memoPublic: memoPublic ?? this.memoPublic,
       rating: rating ?? this.rating,
       escaped: escaped ?? this.escaped,
       hintUsedCount: hintUsedCount ?? this.hintUsedCount,
@@ -81,6 +85,7 @@ class DiaryEntry {
       'theme_id': themeId,
       'date': date.toIso8601String().split('T')[0], // YYYY-MM-DD 형태
       'memo': memo,
+      'memo_public': memoPublic,
       'rating': rating,
       'escaped': escaped,
       'hint_used_count': hintUsedCount,
@@ -102,6 +107,7 @@ class DiaryEntry {
       date: DateTime.parse(json['date'] as String),
       friends: null, // 별도 메서드로 조회
       memo: json['memo'] as String?,
+      memoPublic: json['memo_public'] as bool? ?? false,
       rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
       escaped: json['escaped'] as bool?,
       hintUsedCount: json['hint_used_count'] as int?,

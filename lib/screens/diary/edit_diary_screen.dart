@@ -60,6 +60,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   int? _hintUsedCount;
   Duration? _timeTaken;
   bool _showDetails = false;
+  bool _memoPublic = false;
 
   @override
   void initState() {
@@ -202,6 +203,9 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     if (widget.entry.memo != null) {
       _memoController.text = widget.entry.memo!;
     }
+    
+    // 메모 공개 설정
+    _memoPublic = widget.entry.memoPublic;
     
     // 게임 데이터
     _rating = widget.entry.rating;
@@ -700,7 +704,33 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                   controller: _memoController,
                   labelText: '메모',
                   maxLines: 3,
+                  onChanged: (value) {
+                    // 메모 내용 변경 시 UI 업데이트 (체크박스 표시/숨김용)
+                    setState(() {});
+                  },
                 ),
+                
+                // 메모가 있을 때만 공개 옵션 표시
+                if (_memoController.text.isNotEmpty) ...[
+                  CheckboxListTile(
+                    title: const Text(
+                      '친구들에게 메모 공개',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    subtitle: const Text(
+                      '같은 테마를 플레이한 친구들이 볼 수 있어요',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: _memoPublic,
+                    onChanged: (value) {
+                      setState(() {
+                        _memoPublic = value ?? false;
+                      });
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  ),
+                ],
               ],
               const SizedBox(height: 20),
               
@@ -797,6 +827,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           date: selectedDate!,
                           friends: null, // 별도 테이블로 관리
                           memo: _memoController.text.isEmpty ? null : _memoController.text,
+                          memoPublic: _memoController.text.isNotEmpty ? _memoPublic : false,
                           rating: _rating,
                           escaped: _escaped,
                           hintUsedCount: _hintUsedCount,
