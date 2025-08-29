@@ -11,11 +11,13 @@ import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 class EditDiaryScreen extends StatefulWidget {
   final DiaryEntry entry;
   final List<Friend> friends;
+  final Function(DiaryEntry, DiaryEntry)? onUpdate;
 
   const EditDiaryScreen({
     super.key,
     required this.entry,
     required this.friends,
+    this.onUpdate,
   });
 
   @override
@@ -825,6 +827,11 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('일지가 수정되었습니다!')),
                           );
+                          
+                          // 업데이트 콜백 호출 (부모 화면에서 데이터 갱신용)
+                          if (widget.onUpdate != null) {
+                            widget.onUpdate!(widget.entry, savedEntry);
+                          }
                           
                           // 수정된 데이터와 함께 화면 닫기
                           Navigator.pop(context, savedEntry);

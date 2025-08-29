@@ -29,7 +29,6 @@ class DiaryDetailScreen extends StatefulWidget {
 }
 
 class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
-
   // 날짜를 YYYY.MM.DD 형식으로 포맷팅하는 함수
   String formatDate(DateTime date) {
     return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
@@ -38,43 +37,46 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   // 친구 아이템을 생성하는 함수
   Widget _buildFriendItem(Friend friend) {
     return InkWell(
-        onTap: () {
-          // 친구 상세페이지로 이동
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FriendDetailScreen(
-                friend: friend,
-                diaryList: [widget.entry], // 현재 일지만 전달
-                allFriends: widget.friends,
-                onUpdate: widget.onUpdate,
-                onDelete: widget.onDelete,
-                onAddFriend: widget.onAddFriend,
-                onRemoveFriend: widget.onRemoveFriend,
-                onUpdateFriend: widget.onUpdateFriend,
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Theme.of(context).scaffoldBackgroundColor,
+      onTap: () {
+        // 친구 상세페이지로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => FriendDetailScreen(
+                  friend: friend,
+                  diaryList: [widget.entry], // 현재 일지만 전달
+                  allFriends: widget.friends,
+                  onUpdate: widget.onUpdate,
+                  onDelete: widget.onDelete,
+                  onAddFriend: widget.onAddFriend,
+                  onRemoveFriend: widget.onRemoveFriend,
+                  onUpdateFriend: widget.onUpdateFriend,
+                ),
           ),
-          child: Row(
-            children: [
-              // 친구 아바타
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: friend.isConnected ? null : Colors.grey[400],
-                backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
-                    ? NetworkImage(friend.user!.avatarUrl!)
-                    : null,
-                child: (!friend.isConnected || friend.user?.avatarUrl == null)
-                    ? Text(
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        child: Row(
+          children: [
+            // 친구 아바타
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: friend.isConnected ? null : Colors.grey[400],
+              backgroundImage:
+                  friend.isConnected && friend.user?.avatarUrl != null
+                      ? NetworkImage(friend.user!.avatarUrl!)
+                      : null,
+              child:
+                  (!friend.isConnected || friend.user?.avatarUrl == null)
+                      ? Text(
                         friend.displayName[0].toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
@@ -82,61 +84,55 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           fontSize: 14,
                         ),
                       )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              // 친구 정보
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        // 내가 등록한 별명 (메인)
+                      : null,
+            ),
+            const SizedBox(width: 12),
+            // 친구 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // 내가 등록한 별명 (메인)
+                      Text(
+                        friend.displayName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      // 미연동 아이콘
+                      if (!friend.isConnected) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.link_off, size: 14, color: Colors.grey[500]),
+                      ],
+
+                      // 연동된 경우 사용자의 실제 닉네임 표시
+                      if (friend.isConnected &&
+                          friend.realName != null &&
+                          friend.realName != friend.nickname) ...[
+                        const SizedBox(width: 8),
                         Text(
-                          friend.displayName,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                          '(${friend.realName})',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
-                        
-                        // 미연동 아이콘
-                        if (!friend.isConnected) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.link_off,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ],
-                        
-                        // 연동된 경우 사용자의 실제 닉네임 표시
-                        if (friend.isConnected && friend.realName != null && friend.realName != friend.nickname) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            '(${friend.realName})',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
                       ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
-              // 화살표 아이콘
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
-              ),
-            ],
-          ),
+            ),
+            // 화살표 아이콘
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+          ],
         ),
+      ),
     );
   }
 
@@ -149,18 +145,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 1),
           child: Stack(
             children: [
-              Icon(
-                Icons.star_border,
-                color: Colors.grey[400],
-                size: 20,
-              ),
+              Icon(Icons.star_border, color: Colors.grey[400], size: 20),
               if (rating > index) ...[
                 if (rating >= index + 1)
-                  const Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 20,
-                  )
+                  const Icon(Icons.star, color: Colors.amber, size: 20)
                 else
                   ClipRect(
                     child: Align(
@@ -185,11 +173,14 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   // 화면의 UI를 구성하는 메인 빌드 함수
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(''),
-      ),
+      appBar: AppBar(title: Text('')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0), // 하단 80px + 기본 16px 여백
+        padding: const EdgeInsets.fromLTRB(
+          16.0,
+          16.0,
+          16.0,
+          96.0,
+        ), // 하단 80px + 기본 16px 여백
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -228,44 +219,15 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                         ),
                       ],
                     ),
-                    
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            
-            // 함께한 친구들 카드
-            if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.people, size: 20, color: Colors.grey[700]),
-                          const SizedBox(width: 12),
-                          Text(
-                            '함께한 친구들 (${widget.entry.friends!.length}명)',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ...widget.entry.friends!.map((friend) => _buildFriendItem(friend)),
-                    ],
-                  ),
-                ),
-              ),
-            
-            if (widget.entry.friends != null && widget.entry.friends!.isNotEmpty)
+
+            if (widget.entry.friends != null &&
+                widget.entry.friends!.isNotEmpty)
               const SizedBox(height: 16),
-            
+
             // 게임 상세 정보 카드 (항상 표시)
             Card(
               child: Padding(
@@ -287,7 +249,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // 평점 정보 (별표 포함)
                     Row(
                       children: [
@@ -310,7 +272,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // 탈출 결과 정보 (글자색으로 표시)
                     Row(
                       children: [
@@ -319,7 +281,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           Text(
                             widget.entry.escaped! ? '성공' : '실패',
                             style: TextStyle(
-                              color: widget.entry.escaped! ? Colors.green[800] : Colors.red[800],
+                              color:
+                                  widget.entry.escaped!
+                                      ? Colors.green[800]
+                                      : Colors.red[800],
                               fontWeight: FontWeight.bold,
                             ),
                           )
@@ -334,7 +299,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // 소요시간 정보
                     Row(
                       children: [
@@ -355,7 +320,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // 힌트 사용 정보
                     Row(
                       children: [
@@ -380,7 +345,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // 메모 카드 (항상 표시)
             Card(
               child: Padding(
@@ -402,7 +367,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (widget.entry.memo != null && widget.entry.memo!.isNotEmpty)
+                    if (widget.entry.memo != null &&
+                        widget.entry.memo!.isNotEmpty)
                       Text(
                         widget.entry.memo!,
                         style: const TextStyle(fontSize: 14),
@@ -420,6 +386,39 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            // 함께한 친구들 카드
+            if (widget.entry.friends != null &&
+                widget.entry.friends!.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.people, size: 20, color: Colors.grey[700]),
+                          const SizedBox(width: 12),
+                          Text(
+                            '함께한 친구들 (${widget.entry.friends!.length}명)',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ...widget.entry.friends!.map(
+                        (friend) => _buildFriendItem(friend),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -429,10 +428,11 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => EditDiaryScreen(
-                entry: widget.entry,
-                friends: widget.friends,
-              ),
+              builder:
+                  (context) => EditDiaryScreen(
+                    entry: widget.entry,
+                    friends: widget.friends,
+                  ),
             ),
           );
 

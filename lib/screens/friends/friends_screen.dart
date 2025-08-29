@@ -509,30 +509,63 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   void _showDeleteConfirmDialog(Friend friend) {
-    showDialog(
+    showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('친구 삭제'),
-        content: Text('${friend.displayName}을(를) 친구 목록에서 삭제하시겠습니까?'),
+        content: Text(
+          '${friend.displayName}을(를) 친구 목록에서 정말 삭제하시겠습니까?\n\n'
+          '삭제된 친구 정보는 복구할 수 없습니다.',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('취소'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              widget.onRemove(friend);
-              Navigator.pop(context);
-              
-              // 목록 새로고침
-              _refreshFriendsList();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('삭제'),
           ),
         ],
       ),
-    );
+    ).then((confirmed) async {
+      if (confirmed == true) {
+        try {
+          // 친구 삭제 처리
+          widget.onRemove(friend);
+          
+          // 목록 새로고침
+          _refreshFriendsList();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('친구가 삭제되었습니다'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('친구 삭제에 실패했습니다: $e'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+        }
+      }
+    });
   }
 
   // 길게 눌렀을 때 나타나는 컨텍스트 메뉴

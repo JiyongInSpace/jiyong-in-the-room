@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/screens/diary/write_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
@@ -232,6 +233,96 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     }
   }
 
+  // 일지 수정 페이지로 이동
+  void _editDiary(DiaryEntry entry) async {
+    try {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EditDiaryScreen(
+            entry: entry,
+            friends: widget.friends,
+            onUpdate: _updateDiary,
+          ),
+        ),
+      );
+      
+      if (result != null && result is DiaryEntry) {
+        _updateDiary(entry, result);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('일지 수정 페이지를 열 수 없습니다: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // 삭제 확인 다이얼로그 표시
+  void _showDeleteConfirmation(DiaryEntry entry) {
+    showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('일지 삭제'),
+        content: Text(
+          '${entry.theme?.name ?? "일지"}를 정말 삭제하시겠습니까?\n\n'
+          '삭제된 일지는 복구할 수 없습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    ).then((confirmed) async {
+      if (confirmed == true) {
+        try {
+          // 데이터베이스에서 삭제
+          await DatabaseService.deleteDiaryEntry(entry.id);
+          
+          // UI에서 제거
+          _deleteDiary(entry);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('일지가 삭제되었습니다'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('일지 삭제에 실패했습니다: $e'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+        }
+      }
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +525,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                               _deleteDiary(entry);
                             }
                           },
+                          onEdit: () => _editDiary(entry),
+                          onDelete: () => _showDeleteConfirmation(entry),
                         );
                       },
                     ),
