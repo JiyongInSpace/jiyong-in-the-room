@@ -805,27 +805,27 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   },
                 ),
                 
-                // 메모가 있을 때만 공개 옵션 표시
-                if (_memoController.text.isNotEmpty) ...[
-                  CheckboxListTile(
-                    title: const Text(
-                      '친구들에게 메모 공개',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    subtitle: const Text(
-                      '같은 테마를 플레이한 친구들이 볼 수 있어요',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _memoPublic,
-                    onChanged: (value) {
-                      setState(() {
-                        _memoPublic = value ?? false;
-                      });
-                    },
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                  ),
-                ],
+                // 메모 공개 옵션은 현재 비활성화됨 (기능 제거)
+                // if (_memoController.text.isNotEmpty) ...[
+                //   CheckboxListTile(
+                //     title: const Text(
+                //       '친구들에게 메모 공개',
+                //       style: TextStyle(fontSize: 16),
+                //     ),
+                //     subtitle: const Text(
+                //       '같은 테마를 플레이한 친구들이 볼 수 있어요',
+                //       style: TextStyle(fontSize: 12),
+                //     ),
+                //     value: _memoPublic,
+                //     onChanged: (value) {
+                //       setState(() {
+                //         _memoPublic = value ?? false;
+                //       });
+                //     },
+                //     controlAffinity: ListTileControlAffinity.leading,
+                //     contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                //   ),
+                // ],
               ],
               const SizedBox(height: 20),
               ElevatedButton(
