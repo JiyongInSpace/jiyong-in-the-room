@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// 주요 기능:
 /// - 실시간 네트워크 연결 상태 모니터링
 /// - Supabase 연결 상태 확인
+/// - 자동 재시도 메커니즘
 /// - 오프라인/온라인 상태 변경 이벤트 제공
 class ConnectivityService {
   static final ConnectivityService _instance = ConnectivityService._internal();
@@ -18,13 +19,21 @@ class ConnectivityService {
   final StreamController<bool> _connectionController = StreamController<bool>.broadcast();
   
   bool _isConnected = true;
+  bool _showingDisconnectedState = false; // UI에 연결 끊김 상태를 표시 중인지
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _connectionTestTimer;
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 3;
+  static const Duration _reconnectDelay = Duration(seconds: 2);
 
   /// 현재 연결 상태
   bool get isConnected => _isConnected;
   
-  /// 연결 상태 변경 스트림
+  /// UI에 표시할 연결 끊김 상태 (짧은 연결 끊김은 표시하지 않음)
+  bool get shouldShowDisconnectedState => _showingDisconnectedState;
+  
+  /// 연결 상태 변경 스트림 (UI 표시용 - 짧은 끊김은 필터링)
   Stream<bool> get connectionStream => _connectionController.stream;
 
   /// 서비스 초기화
@@ -68,18 +77,17 @@ class ConnectivityService {
         final hasNetworkConnection = !results.contains(ConnectivityResult.none);
         
         if (hasNetworkConnection) {
-          // 네트워크 연결이 있을 때만 실제 연결 테스트
-          final isActuallyConnected = await _testSupabaseConnection();
-          _updateConnectionStatus(isActuallyConnected);
+          // 네트워크 연결이 있을 때는 재시도 로직 시작
+          _startReconnectAttempts();
         } else {
-          _updateConnectionStatus(false);
+          _handleConnectionLoss();
         }
       },
       onError: (error) {
         if (kDebugMode) {
           print('❌ 연결 모니터링 에러: $error');
         }
-        _updateConnectionStatus(false);
+        _handleConnectionLoss();
       },
     );
 
@@ -96,11 +104,98 @@ class ConnectivityService {
           // 현재 연결 상태일 때만 테스트 (불필요한 요청 방지)
           final isStillConnected = await _testSupabaseConnection();
           if (!isStillConnected) {
-            _updateConnectionStatus(false);
+            _handleConnectionLoss();
           }
         }
       },
     );
+  }
+
+  /// 연결 끊김 처리 (재시도 로직 포함)
+  void _handleConnectionLoss() {
+    _isConnected = false;
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    
+    // 즉시 재시도 시작 (UI 표시는 지연)
+    _startReconnectAttempts();
+  }
+
+  /// 재시도 로직 시작
+  void _startReconnectAttempts() {
+    _reconnectTimer?.cancel();
+    
+    if (kDebugMode) {
+      print('🔄 연결 재시도 시작 (${_reconnectAttempts + 1}/$_maxReconnectAttempts)');
+    }
+    
+    // 첫 번째 재시도는 즉시, 이후는 2초 간격
+    final delay = _reconnectAttempts == 0 ? Duration.zero : _reconnectDelay;
+    
+    _reconnectTimer = Timer(delay, () async {
+      final isReconnected = await _testSupabaseConnection();
+      
+      if (isReconnected) {
+        // 재연결 성공
+        _handleReconnectionSuccess();
+      } else {
+        _reconnectAttempts++;
+        
+        if (_reconnectAttempts < _maxReconnectAttempts) {
+          // 더 재시도
+          _startReconnectAttempts();
+        } else {
+          // 모든 재시도 실패 - 이제야 UI에 오프라인 표시
+          _handleReconnectionFailure();
+        }
+      }
+    });
+  }
+
+  /// 재연결 성공 처리
+  void _handleReconnectionSuccess() {
+    if (kDebugMode) {
+      print('✅ 재연결 성공! (${_reconnectAttempts + 1}번째 시도에서 성공)');
+    }
+    
+    _isConnected = true;
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    
+    // UI에 오프라인 표시를 하고 있었다면 온라인으로 복구
+    if (_showingDisconnectedState) {
+      _showingDisconnectedState = false;
+      _connectionController.add(true);
+    }
+  }
+
+  /// 재연결 실패 처리 (모든 시도 완료 후)
+  void _handleReconnectionFailure() {
+    if (kDebugMode) {
+      print('❌ 재연결 실패 - UI에 오프라인 상태 표시');
+    }
+    
+    _showingDisconnectedState = true;
+    _connectionController.add(false);
+    
+    // 계속해서 주기적으로 재시도 (더 긴 간격으로)
+    _startLongTermReconnectAttempts();
+  }
+
+  /// 장기 재연결 시도 (10초 간격)
+  void _startLongTermReconnectAttempts() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      if (kDebugMode) {
+        print('🔄 장기 재연결 시도...');
+      }
+      
+      final isReconnected = await _testSupabaseConnection();
+      if (isReconnected) {
+        timer.cancel();
+        _handleReconnectionSuccess();
+      }
+    });
   }
 
   /// Supabase 연결 상태 테스트
@@ -122,11 +217,19 @@ class ConnectivityService {
     }
   }
 
-  /// 연결 상태 업데이트
+  /// 연결 상태 업데이트 (내부용 - 직접 호출하지 말 것)
   void _updateConnectionStatus(bool isConnected) {
     if (_isConnected != isConnected) {
       _isConnected = isConnected;
-      _connectionController.add(isConnected);
+      
+      // 오프라인이 되었을 때는 재시도 로직을 통해 처리
+      if (!isConnected) {
+        _handleConnectionLoss();
+      } else if (_showingDisconnectedState) {
+        // 온라인이 되었을 때는 즉시 UI 업데이트
+        _showingDisconnectedState = false;
+        _connectionController.add(true);
+      }
       
       if (kDebugMode) {
         print('🌐 연결 상태 변경: ${isConnected ? "온라인" : "오프라인"}');
@@ -156,6 +259,7 @@ class ConnectivityService {
   void dispose() {
     _connectivitySubscription?.cancel();
     _connectionTestTimer?.cancel();
+    _reconnectTimer?.cancel();
     _connectionController.close();
     
     if (kDebugMode) {

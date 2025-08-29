@@ -79,9 +79,9 @@ class _OfflineBannerState extends State<OfflineBanner>
       }
     });
     
-    // 현재 연결 상태 확인
-    _isConnected = _connectivityService.isConnected;
-    if (!_isConnected) {
+    // 현재 UI 표시 상태 확인 (실제 연결 상태가 아닌 UI 표시 상태)
+    _isConnected = !_connectivityService.shouldShowDisconnectedState;
+    if (_connectivityService.shouldShowDisconnectedState) {
       _showOfflineBanner();
     }
   }
@@ -180,7 +180,7 @@ class _OfflineBannerState extends State<OfflineBanner>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '인터넷 연결이 끊어졌습니다',
+                                  '인터넷 연결이 불안정합니다',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
@@ -189,7 +189,7 @@ class _OfflineBannerState extends State<OfflineBanner>
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  '일부 기능이 제한됩니다',
+                                  '연결을 복구하는 중입니다...',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
