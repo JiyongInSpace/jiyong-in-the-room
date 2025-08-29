@@ -734,6 +734,66 @@ class DatabaseService {
     }
   }
 
+  /// 상호 친구에게 일지 자동 생성 (내부 함수)
+  static Future<void> _createMutualFriendsEntries(DiaryEntry originalEntry, List<int> friendIds, String currentUserId) async {
+    try {
+      if (kDebugMode) {
+        print('🔄 상호 친구 일지 생성 시작...');
+      }
+
+      // 상호 친구 관계 확인
+      final mutualFriendsResponse = await supabase
+          .rpc('get_mutual_friends', params: {
+            'user_uuid': currentUserId,
+            'selected_friend_ids': friendIds,
+          });
+
+      if (mutualFriendsResponse == null || mutualFriendsResponse.isEmpty) {
+        if (kDebugMode) {
+          print('상호 친구 관계가 없어서 자동 생성하지 않음');
+        }
+        return;
+      }
+
+      for (var mutualFriend in mutualFriendsResponse) {
+        final friendUserId = mutualFriend['friend_user_id'] as String;
+        final mutualFriendId = mutualFriend['mutual_friend_id'] as int;
+        
+        if (kDebugMode) {
+          print('📝 ${friendUserId}에게 일지 자동 생성 중...');
+        }
+
+        // SECURITY DEFINER 함수로 친구 일지 생성 (RLS 우회)
+        final friendEntryId = await supabase.rpc(
+          'create_mutual_friend_diary',
+          params: {
+            'original_user_id': currentUserId,
+            'friend_user_id': friendUserId,
+            'mutual_friend_id': mutualFriendId,
+            'theme_id': originalEntry.themeId,
+            'diary_date': originalEntry.date.toIso8601String().split('T')[0],
+            'memo': originalEntry.memo ?? '',
+            'time_taken_minutes': originalEntry.timeTaken?.inMinutes,
+            'escaped_status': originalEntry.escaped, // 탈출 성공여부 동일하게 복사
+          },
+        ) as int;
+
+        if (kDebugMode) {
+          print('✅ ${friendUserId}에게 일지 자동 생성 완료 (ID: $friendEntryId)');
+        }
+      }
+
+      if (kDebugMode) {
+        print('🎉 상호 친구 일지 생성 완료!');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 상호 친구 일지 생성 실패: $e');
+      }
+      // 에러가 발생해도 원본 일지 저장에는 영향 주지 않음
+    }
+  }
+
   /// 새 일지 추가
   static Future<DiaryEntry> addDiaryEntry(DiaryEntry entry, {List<int>? friendIds}) async {
     if (!AuthService.isLoggedIn) {
@@ -800,6 +860,11 @@ class DatabaseService {
         await supabase
             .from('diary_entry_participants')
             .insert(participantRelations);
+      }
+
+      // 🔄 상호 친구에게 일지 자동 생성 
+      if (friendIds != null && friendIds.isNotEmpty) {
+        await _createMutualFriendsEntries(savedEntry, friendIds, currentUserId);
       }
 
       // 친구 정보를 포함한 완전한 일지 데이터 반환
