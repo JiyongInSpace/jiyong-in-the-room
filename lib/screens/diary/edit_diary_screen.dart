@@ -567,12 +567,6 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               
               if (_showDetails) ...[
                 const SizedBox(height: 20),
-                CommonTextArea(
-                  controller: _memoController,
-                  labelText: '메모',
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 20),
                 Row(
                   children: [
                     const Text('평점: '),
@@ -698,6 +692,12 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+                CommonTextArea(
+                  controller: _memoController,
+                  labelText: '메모',
+                  maxLines: 3,
                 ),
               ],
               const SizedBox(height: 20),
