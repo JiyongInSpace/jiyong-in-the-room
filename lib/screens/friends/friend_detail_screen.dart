@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
+import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
 
 class FriendDetailScreen extends StatefulWidget {
   final Friend friend;
@@ -197,7 +198,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.games,
-                      title: '함께한 테마',
+                      title: '총 테마 수',
                       value: '$totalThemes개',
                       color: Colors.blue[600]!,
                     ),
@@ -215,15 +216,39 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 함께한 테마 목록
-              Text(
-                '함께한 테마 (${sharedEntries.length})',
-                style: Theme.of(context).textTheme.titleMedium,
+              // 최근 함께한 테마 목록 (최대 3개)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '최근 함께한 테마',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (sharedEntries.length > 3)
+                    TextButton.icon(
+                      onPressed: () {
+                        // 일지 리스트로 이동하면서 해당 친구 필터 적용
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DiaryListInfiniteScreen(
+                              friends: widget.allFriends,
+                              onAddFriend: widget.onAddFriend ?? (friend) {},
+                              onRemoveFriend: widget.onRemoveFriend ?? (friend) {},
+                              onUpdateFriend: widget.onUpdateFriend ?? (old, updated) {},
+                              initialSelectedFriends: [widget.friend], // 초기 필터 설정
+                            ),
+                          ),
+                        );
+                      },
+                      label: const Text('더 보기'),
+                    ),
+                ],
               ),
               const SizedBox(height: 12),
 
               if (sharedEntries.isNotEmpty)
-                ...sharedEntries.map(
+                ...sharedEntries.take(3).map( // 최대 3개만 표시
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: Card(

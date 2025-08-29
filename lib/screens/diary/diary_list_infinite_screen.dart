@@ -18,6 +18,7 @@ class DiaryListInfiniteScreen extends StatefulWidget {
   final void Function(Friend) onRemoveFriend;
   final void Function(Friend, Friend) onUpdateFriend;
   final VoidCallback? onDataRefresh;
+  final List<Friend>? initialSelectedFriends; // 초기 선택된 친구들
 
   const DiaryListInfiniteScreen({
     super.key,
@@ -26,6 +27,7 @@ class DiaryListInfiniteScreen extends StatefulWidget {
     required this.onRemoveFriend,
     required this.onUpdateFriend,
     this.onDataRefresh,
+    this.initialSelectedFriends,
   });
 
   @override
@@ -53,6 +55,13 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // 초기 선택된 친구들 설정
+    if (widget.initialSelectedFriends != null) {
+      _selectedFriends.addAll(widget.initialSelectedFriends!);
+      _showFilters = false; // 초기에는 필터 영역을 숨긴 상태로 시작
+    }
+    
     _loadDiaries(reset: true);
     
     // 스크롤 리스너 추가

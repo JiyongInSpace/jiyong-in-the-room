@@ -1225,10 +1225,8 @@ class DatabaseService {
     }
   }
 
-  /// 같은 테마로 진행한 상호친구들의 일지 조회 (평점 + 공개 메모) - 최적화된 버전
-  static Future<List<FriendDiaryInfo>> getFriendsForTheme({
-    required int themeId,
-  }) async {
+  /// 특정 친구와 함께한 모든 일지 조회
+  static Future<List<DiaryEntry>> getDiaryEntriesWithFriend(int friendId) async {
     if (!AuthService.isLoggedIn) {
       return [];
     }
@@ -1236,39 +1234,90 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
-      // 최적화된 단일 쿼리: JOIN을 사용한 상호친구들의 일지 조회
-      // f1: 내가 등록한 친구들, f2: 나를 친구로 등록한 사람들
-      // INNER JOIN으로 상호친구만 필터링하고, 바로 일지까지 조회
-      final response = await supabase.rpc('get_mutual_friends_diaries', params: {
-        'current_user_id': currentUserId,
-        'target_theme_id': themeId,
-      });
+      // 해당 친구와 함께 참여한 일지 ID들 조회
+      final participantResponse = await supabase
+          .from('diary_entry_participants')
+          .select('diary_entry_id')
+          .eq('friend_id', friendId);
       
-      if (response == null || (response as List).isEmpty) {
+      if (participantResponse.isEmpty) {
         return [];
       }
-
-      final List<FriendDiaryInfo> friendDiaries = [];
       
-      // 최적화된 RPC 함수 결과 처리
+      final diaryIds = (participantResponse as List)
+          .map((row) => row['diary_entry_id'] as int)
+          .toList();
+      
+      // 내가 작성한 일지 중에서 해당 친구와 함께한 일지들만 조회
+      final response = await supabase
+          .from('diary_entries')
+          .select('''
+            *,
+            escape_themes!inner(
+              id, name, difficulty, time_limit_minutes, genre, theme_image_url, cafe_id,
+              escape_cafes!inner(id, name, address, contact, logo_url)
+            )
+          ''')
+          .eq('user_id', currentUserId)
+          .inFilter('id', diaryIds)
+          .order('date', ascending: false);
+
+      List<DiaryEntry> diaryEntries = [];
+      
       for (var json in response as List) {
-        friendDiaries.add(FriendDiaryInfo(
-          userId: json['user_id'],
-          displayName: json['display_name'] ?? '익명',
-          avatarUrl: json['avatar_url'],
-          date: DateTime.parse(json['date']),
-          rating: json['rating']?.toDouble(),
-          memo: json['memo_public'] == true ? json['memo'] : null, // 공개된 메모만
-          escaped: json['escaped'],
+        final entryData = Map<String, dynamic>.from(json);
+        final themeData = entryData['escape_themes'] as Map<String, dynamic>;
+        
+        // EscapeTheme 생성
+        final theme = EscapeTheme(
+          id: themeData['id'],
+          name: themeData['name'],
+          cafeId: themeData['cafe_id'],
+          cafe: EscapeCafe.fromJson(themeData['escape_cafes'] as Map<String, dynamic>),
+          difficulty: themeData['difficulty'],
+          timeLimit: themeData['time_limit_minutes'] != null 
+              ? Duration(minutes: themeData['time_limit_minutes'])
+              : null,
+          genre: themeData['genre'] != null 
+              ? List<String>.from(themeData['genre'])
+              : null,
+          themeImageUrl: themeData['theme_image_url'],
+        );
+
+        // 해당 일지의 참여자 정보 조회
+        final participants = await getDiaryParticipants(entryData['id']);
+
+        // DiaryEntry 생성
+        diaryEntries.add(DiaryEntry(
+          id: entryData['id'],
+          userId: entryData['user_id'],
+          themeId: entryData['theme_id'],
+          theme: theme,
+          date: DateTime.parse(entryData['date']),
+          friends: participants.isNotEmpty ? participants : null,
+          memo: entryData['memo'],
+          memoPublic: entryData['memo_public'] ?? false,
+          rating: entryData['rating']?.toDouble(),
+          escaped: entryData['escaped'],
+          hintUsedCount: entryData['hint_used_count'],
+          timeTaken: entryData['time_taken_minutes'] != null 
+              ? Duration(minutes: entryData['time_taken_minutes'])
+              : null,
+          photos: entryData['photos'] != null 
+              ? List<String>.from(entryData['photos'])
+              : null,
+          createdAt: DateTime.parse(entryData['created_at']),
+          updatedAt: DateTime.parse(entryData['updated_at']),
         ));
       }
 
-      return friendDiaries;
+      return diaryEntries;
     } catch (e) {
       if (kDebugMode) {
-        print('친구 일지 조회 실패: $e');
+        print('친구와 함께한 일지 조회 실패: $e');
       }
       return [];
     }
   }
+
 }
