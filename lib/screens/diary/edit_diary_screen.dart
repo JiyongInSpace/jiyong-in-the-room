@@ -5,6 +5,7 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 
 class EditDiaryScreen extends StatefulWidget {
   final DiaryEntry entry;
@@ -28,6 +29,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   bool isLoadingCafes = true;
   bool isLoadingThemes = false;
   bool isSearchingThemes = false;
+  bool _isSaving = false; // 일지 저장 중인지 표시
   
   // 테마 필드의 포커스 노드
   final FocusNode _themeFocusNode = FocusNode();
@@ -265,17 +267,54 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('일지 수정')),
-      body: Padding(
+      body: LoadingOverlay(
+        isLoading: _isSaving,
+        message: '일지를 수정하는 중...',
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // 날짜 선택 필드 (작성 화면과 동일한 스타일)
               Row(
                 children: [
-                  Expanded(child: Text('탈출 날짜: $selectedDateStr')),
-                  ElevatedButton(
-                    onPressed: _pickDate,
-                    child: const Text('날짜 선택'),
+                  const Text(
+                    '탈출 날짜',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedDateStr,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          InkWell(
+                            onTap: _pickDate,
+                            borderRadius: BorderRadius.circular(20),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.calendar_today,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -815,14 +854,10 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       }
 
                       try {
-                        // 로딩 표시
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) => const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
+                        // 저장 상태 표시
+                        setState(() {
+                          _isSaving = true;
+                        });
 
                         // 수정된 데이터로 DiaryEntry 생성
                         final updatedEntry = DiaryEntry(
@@ -855,8 +890,9 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         );
                         
                         if (mounted) {
-                          // 로딩 다이얼로그 닫기
-                          Navigator.of(context).pop();
+                          setState(() {
+                            _isSaving = false;
+                          });
                           
                           // 성공 메시지
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -868,8 +904,9 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         }
                       } catch (e) {
                         if (mounted) {
-                          // 로딩 다이얼로그 닫기
-                          Navigator.of(context).pop();
+                          setState(() {
+                            _isSaving = false;
+                          });
                           
                           // 에러 메시지
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -885,6 +922,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
             ],
           ),
         ),
+        ), // LoadingOverlay 닫기
       ),
     );
   }
