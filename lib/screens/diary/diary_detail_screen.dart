@@ -301,7 +301,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           ),
                         ] else
                           Text(
-                            '미평가',
+                            '-',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontStyle: FontStyle.italic,
@@ -325,7 +325,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           )
                         else
                           Text(
-                            '미입력',
+                            '-',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontStyle: FontStyle.italic,
@@ -346,7 +346,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           )
                         else
                           Text(
-                            '미입력',
+                            '-',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontStyle: FontStyle.italic,
@@ -367,7 +367,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           )
                         else
                           Text(
-                            '미입력',
+                            '-',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontStyle: FontStyle.italic,

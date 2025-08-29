@@ -37,9 +37,39 @@ class DiaryEntryCard extends StatelessWidget {
                     width: 40,
                     height: 40,
                     child: entry.escaped == true 
-                        ? Image.asset('assets/images/stamp_success.png')
+                        ? Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // 연한 초록 배경
+                              CircleAvatar(
+                                backgroundColor: Colors.green[100],
+                                radius: 20,
+                              ),
+                              // 스탬프 이미지 (위에 덮기)
+                              Image.asset(
+                                'assets/images/stamp_success.png',
+                                width: 40,
+                                height: 40,
+                              ),
+                            ],
+                          )
                         : entry.escaped == false
-                            ? Image.asset('assets/images/stamp_failed.png')
+                            ? Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // 연한 빨강 배경
+                                  CircleAvatar(
+                                    backgroundColor: Colors.red[100],
+                                    radius: 20,
+                                  ),
+                                  // 스탬프 이미지 (위에 덮기)
+                                  Image.asset(
+                                    'assets/images/stamp_failed.png',
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                ],
+                              )
                             : CircleAvatar(
                                 backgroundColor: Colors.grey,
                                 child: Icon(

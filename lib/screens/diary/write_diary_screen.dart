@@ -711,7 +711,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(_rating?.toStringAsFixed(1) ?? '미평가'),
+                    Text(_rating?.toStringAsFixed(1) ?? '-'),
                     if (_rating != null) ...[
                       const SizedBox(width: 10),
                       IconButton(
