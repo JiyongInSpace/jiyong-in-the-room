@@ -43,6 +43,7 @@ class _MyAppState extends State<MyApp> {
   final List<Friend> friendsList = [];
   bool isLoggedIn = false;
   Map<String, dynamic>? userProfile;
+  bool _isInitialLoading = true; // 초기 로딩 상태
   
   void addDiary(DiaryEntry entry) {
     setState(() {
@@ -201,9 +202,31 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkAuthState();
-    _listenToAuthChanges();
-    _handleInitialLink();
+    _initializeApp();
+  }
+
+  // 앱 초기화 메서드
+  Future<void> _initializeApp() async {
+    try {
+      _checkAuthState();
+      _listenToAuthChanges();
+      _handleInitialLink();
+      
+      // 로그인된 상태라면 데이터 로드
+      if (isLoggedIn) {
+        await _loadDiaryEntries();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 앱 초기화 실패: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false; // 로딩 완료
+        });
+      }
+    }
   }
 
   void _handleInitialLink() async {
@@ -359,6 +382,70 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // 초기 로딩 중이라면 로딩 화면 표시
+    if (_isInitialLoading) {
+      return MaterialApp(
+        title: '탈출일지',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFF4D03F), // 지도 느낌의 밝은 노랑
+            primary: const Color(0xFFF39C12), // 따뜻한 오렌지-노랑
+            secondary: const Color(0xFFE67E22), // 연황토색
+            surface: const Color(0xFFFEF9E7), // 매우 연한 크림색
+            background: const Color(0xFFFDF2E9), // 연한 베이지
+          ),
+          useMaterial3: true,
+          fontFamily: 'Pretendard',
+          scaffoldBackgroundColor: const Color(0xFFFDF2E9),
+        ),
+        home: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFFDF2E9), // 앱 배경색과 동일
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 로고 또는 앱 아이콘
+                  Icon(
+                    Icons.lock_clock,
+                    size: 64,
+                    color: Color(0xFFF39C12), // primary 색상
+                  ),
+                  SizedBox(height: 24),
+                  // 앱 제목
+                  Text(
+                    '탈출일지',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF8B4513), // 갈색
+                      fontFamily: 'Pretendard',
+                    ),
+                  ),
+                  SizedBox(height: 32),
+                  // 로딩 인디케이터
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF39C12)),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '데이터를 불러오고 있어요...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF8B4513),
+                      fontFamily: 'Pretendard',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: '탈출일지',
       theme: ThemeData(
