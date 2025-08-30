@@ -1320,4 +1320,37 @@ class DatabaseService {
     }
   }
 
+  /// 친구 연동 해제
+  static Future<Friend> unlinkFriend(Friend friend) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+    try {
+      final currentUserId = AuthService.currentUser!.id;
+      
+      // connected_user_id를 null로 설정하여 연동 해제
+      final response = await supabase
+          .from('friends')
+          .update({'connected_user_id': null})
+          .eq('user_id', currentUserId)
+          .eq('id', friend.id!)
+          .select('id, connected_user_id, nickname, memo, added_at')
+          .single();
+      
+      return Friend(
+        id: response['id'],
+        connectedUserId: response['connected_user_id'],
+        user: null, // 연동 해제로 사용자 정보 제거
+        nickname: response['nickname'],
+        memo: response['memo'],
+        addedAt: DateTime.parse(response['added_at']),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('친구 연동 해제 실패: $e');
+      }
+      rethrow;
+    }
+  }
+
 }

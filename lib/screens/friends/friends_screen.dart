@@ -699,7 +699,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   },
                 ),
                 
-                // 연동되지 않은 친구의 경우에만 "코드 등록" 메뉴 표시
+                // 연동 상태에 따른 메뉴 표시
                 if (!friend.isConnected)
                   _buildContextMenuItem(
                     icon: Icons.link_outlined,
@@ -709,6 +709,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     onTap: () {
                       Navigator.pop(context);
                       _showLinkCodeDialog(friend);
+                    },
+                  )
+                else
+                  _buildContextMenuItem(
+                    icon: Icons.link_off,
+                    iconColor: Colors.orange,
+                    title: '연동 해제',
+                    subtitle: '잘못 연동된 경우 해제하여 수정 가능',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showUnlinkConfirmDialog(friend);
                     },
                   ),
                 
@@ -1121,6 +1132,93 @@ class _FriendsScreenState extends State<FriendsScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddFriendDialog, // 친구 추가 다이얼로그 표시
         child: const Icon(Icons.person_add), // 사람 추가 아이콘
+      ),
+    );
+  }
+
+  // 연동 해제 확인 다이얼로그
+  void _showUnlinkConfirmDialog(Friend friend) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('연동 해제'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${friend.displayName}님과의 연동을 해제하시겠습니까?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        '연동 해제 안내',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '• 프로필 이미지와 실제 이름이 사라집니다\n• 기존 일지 기록은 유지됩니다\n• 나중에 올바른 코드로 다시 연동 가능합니다',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final updatedFriend = await DatabaseService.unlinkFriend(friend);
+                
+                // UI 업데이트를 위해 콜백 호출
+                widget.onUpdate(friend, updatedFriend);
+                Navigator.pop(context);
+                
+                // 목록 새로고침
+                _refreshFriendsList();
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${friend.displayName}님과의 연동이 해제되었습니다')),
+                );
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('연동 해제에 실패했습니다: $e')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('해제'),
+          ),
+        ],
       ),
     );
   }

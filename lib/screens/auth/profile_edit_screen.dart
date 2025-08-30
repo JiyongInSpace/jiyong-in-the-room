@@ -261,15 +261,26 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8B4513), // 갈색 - AppBar 텍스트/아이콘과 동일한 색상
+            ),
             child: _isLoading
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF8B4513), // 갈색 로딩 인디케이터
+                      ),
+                    ),
                   )
                 : const Text(
                     '저장',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
           ),
         ],
