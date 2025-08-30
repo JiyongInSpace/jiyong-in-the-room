@@ -557,7 +557,10 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => WriteDiaryScreen(friends: widget.friends),
+              builder: (context) => WriteDiaryScreen(
+                friends: widget.friends,
+                onAddFriend: widget.onAddFriend,
+              ),
             ),
           );
           

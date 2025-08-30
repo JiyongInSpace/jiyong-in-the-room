@@ -15,8 +15,13 @@ import 'dart:async';
 // 사용자 입력에 따라 화면이 바뀌어야 하므로 StatefulWidget 사용
 class WriteDiaryScreen extends StatefulWidget {
   final List<Friend> friends;
+  final Function(Friend)? onAddFriend;
 
-  const WriteDiaryScreen({super.key, required this.friends});
+  const WriteDiaryScreen({
+    super.key, 
+    required this.friends,
+    this.onAddFriend,
+  });
 
   @override
   State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
@@ -585,19 +590,77 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   }
 
                   final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
-                  return availableFriends.where((f) {
+                  final filteredFriends = availableFriends.where((f) {
                     final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
                     return friendName.contains(searchQuery);
                   }).toList();
+                  
+                  // 검색 결과가 없고 검색어가 2글자 이상이면 "새 친구 추가" 옵션 표시
+                  if (filteredFriends.isEmpty && textEditingValue.text.trim().length >= 2) {
+                    return [
+                      Friend(
+                        id: -1, // 특별한 ID로 구분
+                        nickname: '+ "${textEditingValue.text.trim()}" 친구로 추가',
+                        addedAt: DateTime.now(),
+                      ),
+                    ];
+                  }
+                  
+                  return filteredFriends;
                 },
-                onSelected: (Friend selected) {
-                  setState(() {
-                    selectedFriends.add(selected);
-                    friendSearchController.clear();
-                  });
+                onSelected: (Friend selected) async {
+                  // 새 친구 추가 옵션이 선택된 경우
+                  if (selected.id == -1) {
+                    try {
+                      // 새 친구 생성 - 실제 이름에서 "+" 부분 제거
+                      final friendName = selected.nickname.replaceAll(RegExp(r'^\+ "'), '').replaceAll(RegExp(r'" 친구로 추가$'), '');
+                      final newFriend = Friend(
+                        nickname: friendName,
+                        addedAt: DateTime.now(),
+                        memo: null,
+                      );
+                      
+                      // 친구 추가 콜백 호출 (부모 위젯에서 친구 목록에 추가)
+                      if (widget.onAddFriend != null) {
+                        widget.onAddFriend!(newFriend);
+                      }
+                      
+                      setState(() {
+                        selectedFriends.add(newFriend);
+                        friendSearchController.clear();
+                      });
+                      
+                      // 성공 메시지
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${newFriend.nickname} 친구를 추가했습니다!'),
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('친구 추가 실패: $e'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  } else {
+                    // 기존 친구 선택
+                    setState(() {
+                      selectedFriends.add(selected);
+                      friendSearchController.clear();
+                    });
+                  }
                   _friendSearchFocusNode.unfocus();
                 },
-                displayStringForOption: (friend) => friend.displayName,
+                displayStringForOption: (friend) => friend.id == -1 ? friend.nickname : friend.displayName,
                 suffixIcon: friendSearchController.text.isNotEmpty
                     ? const Icon(Icons.search, color: Colors.orange)
                     : null,
@@ -612,8 +675,43 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           itemCount: options.length,
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
+                            
+                            // 새 친구 추가 옵션인 경우
+                            if (option.id == -1) {
+                              return ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_add,
+                                    size: 16,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                title: Text(
+                                  option.nickname,
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  '새 친구로 추가하기',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                onTap: () => onSelected(option),
+                              );
+                            }
+                            
+                            // 기존 친구 옵션
                             return ListTile(
-                              title: Text(option.displayName),
+                              title: Text(option.nickname),
                               subtitle: option.isConnected && option.realName != null
                                   ? Text(option.realName!)
                                   : null,

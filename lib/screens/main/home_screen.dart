@@ -174,7 +174,10 @@ class HomeScreen extends StatelessWidget {
                 final result = await Navigator.push<DiaryEntry>(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => WriteDiaryScreen(friends: friends),
+                    builder: (context) => WriteDiaryScreen(
+                      friends: friends,
+                      onAddFriend: onAddFriend,
+                    ),
                   ),
                 );
                 
