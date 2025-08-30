@@ -33,11 +33,13 @@ class FriendDetailScreen extends StatefulWidget {
 
 class _FriendDetailScreenState extends State<FriendDetailScreen> {
   late Friend currentFriend;
+  late List<DiaryEntry> sharedEntries;
   
   @override
   void initState() {
     super.initState();
     currentFriend = widget.friend;
+    sharedEntries = _getSharedDiaryEntries();
   }
   
   List<DiaryEntry> _getSharedDiaryEntries() {
@@ -48,6 +50,17 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
         );
       }).toList()
       ..sort((a, b) => b.date.compareTo(a.date)); // 최신순 정렬
+  }
+  
+  void _updateFriend(Friend updatedFriend) {
+    // 친구 정보만 업데이트하고 테마 목록은 유지
+    setState(() {
+      currentFriend = updatedFriend;
+      // displayName이 변경된 경우에만 테마 목록 재계산
+      if (currentFriend.displayName != updatedFriend.displayName) {
+        sharedEntries = _getSharedDiaryEntries();
+      }
+    });
   }
 
   String _formatDate(DateTime date) {
@@ -60,9 +73,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
       context: context,
       friend: currentFriend,
       onUpdateFriend: (oldFriend, updatedFriend) {
-        setState(() {
-          currentFriend = updatedFriend;
-        });
+        _updateFriend(updatedFriend);
         if (widget.onUpdateFriend != null) {
           widget.onUpdateFriend!(oldFriend, updatedFriend);
         }
@@ -118,7 +129,6 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sharedEntries = _getSharedDiaryEntries();
     final totalThemes = sharedEntries.length;
     final successfulEscapes =
         sharedEntries.where((entry) => entry.escaped == true).length;
@@ -427,10 +437,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
           ),
         ),
       ),
-      // 친구 관리 플로팅 액션 버튼 (일지 상세페이지의 수정 버튼과 동일한 스타일)
+      // 친구 관리 플로팅 액션 버튼 (일지 상세페이지와 동일한 스타일)
       floatingActionButton: FloatingActionButton(
         onPressed: _showFriendManagementBottomSheet,
-        child: const Icon(Icons.edit),
+        child: const Icon(Icons.more_vert),
       ),
     );
   }

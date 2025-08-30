@@ -355,10 +355,35 @@ class DatabaseService {
           .select('id, connected_user_id, nickname, memo, added_at')
           .single();
 
+      // 연동된 사용자 정보가 있으면 다시 로드
+      User? connectedUser;
+      if (response['connected_user_id'] != null) {
+        try {
+          final userResponse = await supabase
+              .from('profiles')
+              .select('id, email, display_name, avatar_url, created_at')
+              .eq('id', response['connected_user_id'])
+              .single();
+          
+          connectedUser = User(
+            id: userResponse['id'],
+            email: userResponse['email'] ?? '',
+            name: userResponse['display_name'] ?? '',
+            avatarUrl: userResponse['avatar_url'],
+            joinedAt: userResponse['created_at'] != null 
+                ? DateTime.parse(userResponse['created_at'])
+                : DateTime.now(),
+          );
+        } catch (e) {
+          // 사용자 정보 로드 실패 시 기존 user 정보 유지
+          connectedUser = friend.user;
+        }
+      }
+
       return Friend(
         id: response['id'] as int,
         connectedUserId: response['connected_user_id'],
-        user: null, // 일단 null로 처리
+        user: connectedUser ?? friend.user, // 기존 user 정보 유지
         nickname: response['nickname'],
         memo: response['memo'],
         addedAt: DateTime.parse(response['added_at']),
