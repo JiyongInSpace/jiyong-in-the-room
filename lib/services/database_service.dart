@@ -795,7 +795,7 @@ class DatabaseService {
   }
 
   /// 새 일지 추가
-  static Future<DiaryEntry> addDiaryEntry(DiaryEntry entry, {List<int>? friendIds}) async {
+  static Future<DiaryEntry> addDiaryEntry(DiaryEntry entry, {List<int>? friendIds, bool enableMutualFriendsEntries = true}) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
@@ -862,8 +862,8 @@ class DatabaseService {
             .insert(participantRelations);
       }
 
-      // 🔄 상호 친구에게 일지 자동 생성 
-      if (friendIds != null && friendIds.isNotEmpty) {
+      // 🔄 상호 친구에게 일지 자동 생성 (enableMutualFriendsEntries가 true일 때만)
+      if (enableMutualFriendsEntries && friendIds != null && friendIds.isNotEmpty) {
         await _createMutualFriendsEntries(savedEntry, friendIds, currentUserId);
       }
 

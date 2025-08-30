@@ -674,19 +674,21 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         final friendName = selected.nickname
                             .replaceAll(RegExp(r'^\+ "'), '')
                             .replaceAll(RegExp(r'" 친구로 추가$'), '');
-                        final newFriend = Friend(
+                        
+                        // DatabaseService로 직접 친구 추가하여 실제 ID를 받음
+                        final savedFriend = await DatabaseService.addFriend(Friend(
                           nickname: friendName,
                           addedAt: DateTime.now(),
                           memo: null,
-                        );
+                        ));
 
-                        // 친구 추가 콜백 호출 (부모 위젯에서 친구 목록에 추가)
+                        // 부모 위젯의 친구 목록에도 추가
                         if (widget.onAddFriend != null) {
-                          widget.onAddFriend!(newFriend);
+                          widget.onAddFriend!(savedFriend);
                         }
 
                         setState(() {
-                          selectedFriends.add(newFriend);
+                          selectedFriends.add(savedFriend); // 실제 ID가 있는 객체 사용
                           friendSearchController.clear();
                         });
 
@@ -695,7 +697,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '${newFriend.nickname} 친구를 추가했습니다!',
+                                '${savedFriend.nickname} 친구를 추가했습니다!',
                               ),
                               backgroundColor: Colors.green,
                               duration: const Duration(seconds: 2),
@@ -1102,10 +1104,11 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                               .toList();
 
                       // DB에 저장
-                      // 친구 일지 공유 기능은 현재 비활성화됨 - friendIds는 항상 null
+                      // 작성자의 일지에는 친구들을 참여자로 추가하되, 친구 일지 공유는 비활성화
                       final savedEntry = await DatabaseService.addDiaryEntry(
                         newEntry,
-                        friendIds: null, // 친구 일지 공유 기능 비활성화
+                        friendIds: friendIds.isNotEmpty ? friendIds : null,
+                        enableMutualFriendsEntries: false, // 친구 일지 공유 비활성화
                       );
 
                       if (mounted) {
