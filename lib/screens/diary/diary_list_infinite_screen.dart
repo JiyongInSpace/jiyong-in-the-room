@@ -252,6 +252,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
             entry: entry,
             friends: widget.friends,
             onUpdate: _updateDiary,
+            onAddFriend: widget.onAddFriend,
           ),
         ),
       );

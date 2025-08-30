@@ -506,6 +506,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   (context) => EditDiaryScreen(
                     entry: widget.entry,
                     friends: widget.friends,
+                    onAddFriend: widget.onAddFriend,
                   ),
             ),
           );
