@@ -8,6 +8,7 @@ import 'package:jiyong_in_the_room/services/error_service.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
+import 'package:jiyong_in_the_room/widgets/friend_management_bottom_sheet.dart';
 import 'dart:async';
 
 // 친구 정렬 옵션 열거형
@@ -570,216 +571,31 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   // 길게 눌렀을 때 나타나는 컨텍스트 메뉴
   void _showFriendContextMenu(BuildContext context, Friend friend) {
-    showModalBottomSheet(
+    FriendManagementBottomSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 드래그 핸들
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                
-                // 메뉴 헤더
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      // 친구 아바타
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: friend.isConnected 
-                            ? null
-                            : Colors.grey,
-                        backgroundImage: friend.isConnected && friend.user?.avatarUrl != null
-                            ? NetworkImage(friend.user!.avatarUrl!)
-                            : null,
-                        child: (!friend.isConnected || friend.user?.avatarUrl == null)
-                            ? Text(
-                                friend.displayName[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 16),
-                      // 친구 이름과 정보
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                // 내가 등록한 별명
-                                Text(
-                                  friend.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                
-                                // 연동된 경우 사용자의 실제 닉네임
-                                if (friend.isConnected && friend.realName != null && friend.realName != friend.nickname) ...[
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '(${friend.realName})',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ],
-                                
-                                if (!friend.isConnected) ...[
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.link_off,
-                                    size: 18,
-                                    color: Colors.orange[700],
-                                  ),
-                                ],
-                              ],
-                            ),
-                            if (friend.memo != null && friend.memo!.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                friend.memo!,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const Divider(height: 1, thickness: 0.5),
-                
-                // 메뉴 옵션들
-                _buildContextMenuItem(
-                  icon: Icons.edit_outlined,
-                  iconColor: Colors.blue,
-                  title: '정보 수정',
-                  subtitle: '별명이나 메모를 변경',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showEditFriendDialog(friend);
-                  },
-                ),
-                
-                // 연동 상태에 따른 메뉴 표시
-                if (!friend.isConnected)
-                  _buildContextMenuItem(
-                    icon: Icons.link_outlined,
-                    iconColor: Colors.green,
-                    title: '코드 등록',
-                    subtitle: '실제 사용자와 연동하여 프로필 정보 동기화',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showLinkCodeDialog(friend);
-                    },
-                  )
-                else
-                  _buildContextMenuItem(
-                    icon: Icons.link_off,
-                    iconColor: Colors.orange,
-                    title: '연동 해제',
-                    subtitle: '잘못 연동된 경우 해제하여 수정 가능',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showUnlinkConfirmDialog(friend);
-                    },
-                  ),
-                
-                _buildContextMenuItem(
-                  icon: Icons.delete_outline,
-                  iconColor: Colors.red,
-                  title: '친구 삭제',
-                  subtitle: '친구 목록에서 완전히 제거',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showDeleteConfirmDialog(friend);
-                  },
-                ),
-                
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
+      friend: friend,
+      onUpdateFriend: (oldFriend, updatedFriend) {
+        // 로컬 목록 즉시 업데이트
+        setState(() {
+          final index = _friends.indexWhere((f) => f.id == oldFriend.id);
+          if (index != -1) {
+            _friends[index] = updatedFriend;
+          }
+        });
+        // 상위 콜백 호출
+        widget.onUpdate(oldFriend, updatedFriend);
       },
-    );
-  }
-  
-  // 컨텍스트 메뉴 아이템 빌더
-  Widget _buildContextMenuItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[600],
-        ),
-      ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      onRemoveFriend: (removedFriend) {
+        // 로컬 목록에서 제거
+        setState(() {
+          _friends.removeWhere((f) => f.id == removedFriend.id);
+        });
+        // 상위 콜백 호출
+        widget.onRemove(removedFriend);
+      },
+      onClose: () {
+        // 추가 작업이 필요한 경우 여기에 작성
+      },
     );
   }
 
@@ -1004,8 +820,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   child: GestureDetector(
                     // 전체 카드 영역에서 터치 이벤트 감지
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => FriendDetailScreen(
@@ -1016,10 +832,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             onDelete: null, // 친구 상세에서는 일지 삭제 불가
                             onAddFriend: null, // 친구 상세에서는 친구 추가 불가
                             onRemoveFriend: null, // 친구 상세에서는 친구 삭제 불가
-                            onUpdateFriend: widget.onUpdate,
+                            onUpdateFriend: (oldFriend, updatedFriend) {
+                              // 로컬 목록 업데이트
+                              setState(() {
+                                final index = _friends.indexWhere((f) => f.id == oldFriend.id);
+                                if (index != -1) {
+                                  _friends[index] = updatedFriend;
+                                }
+                              });
+                              // 상위 콜백 호출
+                              widget.onUpdate(oldFriend, updatedFriend);
+                            },
                           ),
                         ),
                       );
+                      // 화면에서 돌아온 후 목록 새로고침
+                      setState(() {});
                     },
                     // 길게 눌렀을 때 컨텍스트 메뉴 표시
                     onLongPress: () {

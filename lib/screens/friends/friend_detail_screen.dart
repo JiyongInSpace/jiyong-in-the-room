@@ -3,6 +3,7 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
+import 'package:jiyong_in_the_room/widgets/friend_management_bottom_sheet.dart';
 
 class FriendDetailScreen extends StatefulWidget {
   final Friend friend;
@@ -31,11 +32,19 @@ class FriendDetailScreen extends StatefulWidget {
 }
 
 class _FriendDetailScreenState extends State<FriendDetailScreen> {
+  late Friend currentFriend;
+  
+  @override
+  void initState() {
+    super.initState();
+    currentFriend = widget.friend;
+  }
+  
   List<DiaryEntry> _getSharedDiaryEntries() {
     return widget.diaryList.where((entry) {
         if (entry.friends == null) return false;
         return entry.friends!.any(
-          (friend) => friend.displayName == widget.friend.displayName,
+          (friend) => friend.displayName == currentFriend.displayName,
         );
       }).toList()
       ..sort((a, b) => b.date.compareTo(a.date)); // 최신순 정렬
@@ -43,6 +52,32 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // 친구 관리 바텀시트 표시
+  void _showFriendManagementBottomSheet() {
+    FriendManagementBottomSheet.show(
+      context: context,
+      friend: currentFriend,
+      onUpdateFriend: (oldFriend, updatedFriend) {
+        setState(() {
+          currentFriend = updatedFriend;
+        });
+        if (widget.onUpdateFriend != null) {
+          widget.onUpdateFriend!(oldFriend, updatedFriend);
+        }
+      },
+      onRemoveFriend: (friend) {
+        if (widget.onRemoveFriend != null) {
+          widget.onRemoveFriend!(friend);
+        }
+        Navigator.of(context).pop(); // 친구 삭제 시 상세 화면 닫기
+      },
+      onClose: () {
+        // 상세페이지에서는 바텀시트가 이미 닫혔으므로 추가 Navigator.pop 불필요
+        // 필요시 여기에 추가 동작 구현
+      },
+    );
   }
 
   Widget _buildStatCard({
@@ -112,18 +147,18 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                       CircleAvatar(
                         radius: 32,
                         backgroundColor:
-                            widget.friend.isConnected ? null : Colors.grey,
+                            currentFriend.isConnected ? null : Colors.grey,
                         backgroundImage:
-                            widget.friend.isConnected &&
-                                    widget.friend.user?.avatarUrl != null
-                                ? NetworkImage(widget.friend.user!.avatarUrl!)
+                            currentFriend.isConnected &&
+                                    currentFriend.user?.avatarUrl != null
+                                ? NetworkImage(currentFriend.user!.avatarUrl!)
                                 : null,
                         child:
-                            (!widget.friend.isConnected ||
-                                    widget.friend.user?.avatarUrl == null)
+                            (!currentFriend.isConnected ||
+                                    currentFriend.user?.avatarUrl == null)
                                 ? Text(
-                                  widget.friend.displayName.isNotEmpty
-                                      ? widget.friend.displayName[0]
+                                  currentFriend.displayName.isNotEmpty
+                                      ? currentFriend.displayName[0]
                                           .toUpperCase()
                                       : '?',
                                   style: const TextStyle(
@@ -143,14 +178,14 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                             Row(
                               children: [
                                 Text(
-                                  widget.friend.displayName,
+                                  currentFriend.displayName,
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                if (!widget.friend.isConnected)
+                                if (!currentFriend.isConnected)
                                   const Icon(
                                     Icons.link_off,
                                     size: 20,
@@ -159,10 +194,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            if (widget.friend.isConnected &&
-                                widget.friend.realName != null) ...[
+                            if (currentFriend.isConnected &&
+                                currentFriend.realName != null) ...[
                               Text(
-                                widget.friend.realName!,
+                                currentFriend.realName!,
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[600],
@@ -170,10 +205,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                             ],
-                            if (widget.friend.memo != null &&
-                                widget.friend.memo!.isNotEmpty) ...[
+                            if (currentFriend.memo != null &&
+                                currentFriend.memo!.isNotEmpty) ...[
                               Text(
-                                widget.friend.memo!,
+                                currentFriend.memo!,
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[600],
@@ -236,7 +271,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               onAddFriend: widget.onAddFriend ?? (friend) {},
                               onRemoveFriend: widget.onRemoveFriend ?? (friend) {},
                               onUpdateFriend: widget.onUpdateFriend ?? (old, updated) {},
-                              initialSelectedFriends: [widget.friend], // 초기 필터 설정
+                              initialSelectedFriends: [currentFriend], // 초기 필터 설정
                             ),
                           ),
                         );
@@ -376,7 +411,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            '${widget.friend.displayName}님과\n함께한 테마가 없습니다.',
+                            '${currentFriend.displayName}님과\n함께한 테마가 없습니다.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[600],
@@ -391,6 +426,11 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
             ],
           ),
         ),
+      ),
+      // 친구 관리 플로팅 액션 버튼 (일지 상세페이지의 수정 버튼과 동일한 스타일)
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showFriendManagementBottomSheet,
+        child: const Icon(Icons.edit),
       ),
     );
   }
