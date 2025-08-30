@@ -325,24 +325,40 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           ? const Icon(Icons.edit, color: Colors.orange)
                           : null,
                   optionsViewBuilder: (context, onSelected, options) {
-                    return Align(
-                      alignment: Alignment.topLeft,
-                      child: Material(
-                        elevation: 4.0,
-                        child: SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            itemCount: options.length,
-                            itemBuilder: (context, index) {
-                              final option = options.elementAt(index);
-                              return ListTile(
-                                title: Text(option.name),
-                                onTap: () => onSelected(option),
-                              );
+                    return Stack(
+                      children: [
+                        // 전체 화면을 덮는 투명한 터치 감지 영역
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                              FocusScope.of(context).unfocus();
                             },
+                            behavior: HitTestBehavior.translucent,
+                            child: Container(),
                           ),
                         ),
-                      ),
+                        // 실제 옵션 리스트
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4.0,
+                            child: SizedBox(
+                              height: 200,
+                              child: ListView.builder(
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final option = options.elementAt(index);
+                                  return ListTile(
+                                    title: Text(option.name),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -455,25 +471,41 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                   _themeFocusNode.unfocus();
                 },
                 optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      child: SizedBox(
-                        height: 200,
-                        child: ListView.builder(
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final option = options.elementAt(index);
-                            return ListTile(
-                              title: Text(option.name),
-                              subtitle: Text(option.cafe?.name ?? ''),
-                              onTap: () => onSelected(option),
-                            );
+                  return Stack(
+                    children: [
+                      // 전체 화면을 덮는 투명한 터치 감지 영역
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: () {
+                            // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                            FocusScope.of(context).unfocus();
                           },
+                          behavior: HitTestBehavior.translucent,
+                          child: Container(),
                         ),
                       ),
-                    ),
+                      // 실제 옵션 리스트
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4.0,
+                          child: SizedBox(
+                            height: 200,
+                            child: ListView.builder(
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return ListTile(
+                                  title: Text(option.name),
+                                  subtitle: Text(option.cafe?.name ?? ''),
+                                  onTap: () => onSelected(option),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -513,32 +545,48 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     ? const Icon(Icons.search, color: Colors.orange)
                     : null,
                 optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      child: SizedBox(
-                        height: 200,
-                        child: ListView.builder(
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final option = options.elementAt(index);
-                            return ListTile(
-                              title: Text(option.displayName),
-                              subtitle: option.isConnected && option.realName != null 
-                                  ? Text(option.realName!) 
-                                  : null,
-                              leading: Icon(
-                                option.isConnected ? Icons.link : Icons.link_off,
-                                size: 16,
-                                color: option.isConnected ? Colors.green : Colors.grey,
-                              ),
-                              onTap: () => onSelected(option),
-                            );
+                  return Stack(
+                    children: [
+                      // 전체 화면을 덮는 투명한 터치 감지 영역
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: () {
+                            // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                            FocusScope.of(context).unfocus();
                           },
+                          behavior: HitTestBehavior.translucent,
+                          child: Container(),
                         ),
                       ),
-                    ),
+                      // 실제 옵션 리스트
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4.0,
+                          child: SizedBox(
+                            height: 200,
+                            child: ListView.builder(
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return ListTile(
+                                  title: Text(option.displayName),
+                                  subtitle: option.isConnected && option.realName != null 
+                                      ? Text(option.realName!) 
+                                      : null,
+                                  leading: Icon(
+                                    option.isConnected ? Icons.link : Icons.link_off,
+                                    size: 16,
+                                    color: option.isConnected ? Colors.green : Colors.grey,
+                                  ),
+                                  onTap: () => onSelected(option),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -844,6 +892,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                             .toList();
                         
                         // 데이터베이스에 수정 사항 저장
+                        // 수정 시에는 기존 참여자 구조 유지하면서 선택된 친구들로 업데이트
                         final savedEntry = await DatabaseService.updateDiaryEntry(
                           updatedEntry,
                           friendIds: friendIds.isNotEmpty ? friendIds : null,

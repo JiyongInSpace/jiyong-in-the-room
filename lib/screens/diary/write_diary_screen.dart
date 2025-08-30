@@ -17,11 +17,7 @@ class WriteDiaryScreen extends StatefulWidget {
   final List<Friend> friends;
   final Function(Friend)? onAddFriend;
 
-  const WriteDiaryScreen({
-    super.key, 
-    required this.friends,
-    this.onAddFriend,
-  });
+  const WriteDiaryScreen({super.key, required this.friends, this.onAddFriend});
 
   @override
   State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
@@ -79,7 +75,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // 상세 정보 표시 여부를 저장하는 변수
   bool _showDetails = false;
   // 메모 공개 여부를 저장하는 변수
-  bool _memoPublic = false;
+  final bool _memoPublic = false;
+  // 친구 일지에도 추가할지 여부 (기본값: false - 안전한 쪽으로)
+  bool _addToFriendsJournal = false;
 
   @override
   void initState() {
@@ -164,7 +162,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
 
         // 테마가 선택되어 있지 않을 때만 UI 갱신을 위한 텍스트 조작 수행
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && selectedTheme == null && _themeController.text.trim() == trimmedQuery) {
+          if (mounted &&
+              selectedTheme == null &&
+              _themeController.text.trim() == trimmedQuery) {
             final currentText = _themeController.text;
             _themeController.text = '$currentText ';
             _themeController.text = currentText;
@@ -357,151 +357,194 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         isLoading: _isSaving,
         message: '일지를 저장하는 중...',
         child: Padding(
-        // 하단 80px + 기본 16px 여백
-        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
-        // SingleChildScrollView: 내용이 화면을 넘을 때 스크롤 가능하게 하는 위젯
-        child: SingleChildScrollView(
-          // Column: 자식 위젯들을 세로로 배치하는 위젯
-          child: Column(
-            children: [
-              CommonDateField(
-                selectedDate: selectedDate,
-                labelText: '탈출 날짜',
-                onTap: _pickDate,
-              ),
-              // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
-              const SizedBox(height: 20),
-              // 카페 로딩 중이면 로딩 인디케이터 표시
-              if (isLoadingCafes)
-                const Center(child: CircularProgressIndicator())
-              else
-                CommonAutocompleteField<EscapeCafe>(
-                  controller: _cafeController,
-                  labelText: '방탈출 카페',
-                  optionsBuilder: (text) {
-                    final searchQuery = text.text.toLowerCase().replaceAll(' ', '');
-                    return cafes.where((cafe) {
-                      final cafeName = cafe.name.toLowerCase().replaceAll(' ', '');
-                      return cafeName.contains(searchQuery);
-                    }).toList();
-                  },
-                  onSelected: (cafe) {
-                    print('Cafe selected: ${cafe.name} (ID: ${cafe.id})');
-                    setState(() {
-                      selectedCafe = cafe;
-                    });
-                    _cafeController.text = cafe.name;
-                    FocusScope.of(context).unfocus();
-                    _loadThemesForCafe(cafe.id);
-                  },
-                  displayStringForOption: (cafe) => cafe.name,
-                  suffixIcon: selectedCafe != null
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : _cafeController.text.isNotEmpty
-                          ? const Icon(Icons.edit, color: Colors.orange)
-                          : null,
-                  optionsViewBuilder: (context, onSelected, options) {
-                    return Align(
-                      alignment: Alignment.topLeft,
-                      child: Material(
-                        elevation: 4.0,
-                        child: SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            itemCount: options.length,
-                            itemBuilder: (context, index) {
-                              final option = options.elementAt(index);
-                              return ListTile(
-                                title: Text(option.name),
-                                onTap: () => onSelected(option),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+          // 하단 80px + 기본 16px 여백
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 96.0),
+          // SingleChildScrollView: 내용이 화면을 넘을 때 스크롤 가능하게 하는 위젯
+          child: SingleChildScrollView(
+            // Column: 자식 위젯들을 세로로 배치하는 위젯
+            child: Column(
+              children: [
+                CommonDateField(
+                  selectedDate: selectedDate,
+                  labelText: '탈출 날짜',
+                  onTap: _pickDate,
                 ),
-              const SizedBox(height: 20),
-              // 테마 선택 영역 - 카페를 먼저 선택하거나 모든 테마에서 직접 검색 가능
-              CommonAutocompleteField<EscapeTheme>(
-                controller: _themeController,
-                focusNode: _themeFocusNode,
-                labelText: '테마 선택',
-                hintText: selectedCafe != null
-                    ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
-                    : '테마를 검색하세요 (2글자 이상 입력)',
-                displayStringForOption: (theme) => theme.name,
-                suffixIcon: selectedTheme != null
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : isSearchingThemes
-                        ? const SizedBox(
+                // SizedBox: 특정 크기의 빈 공간을 만드는 위젯 (여백 용도)
+                const SizedBox(height: 20),
+                // 카페 로딩 중이면 로딩 인디케이터 표시
+                if (isLoadingCafes)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  CommonAutocompleteField<EscapeCafe>(
+                    controller: _cafeController,
+                    labelText: '방탈출 카페',
+                    optionsBuilder: (text) {
+                      final searchQuery = text.text.toLowerCase().replaceAll(
+                        ' ',
+                        '',
+                      );
+                      return cafes.where((cafe) {
+                        final cafeName = cafe.name.toLowerCase().replaceAll(
+                          ' ',
+                          '',
+                        );
+                        return cafeName.contains(searchQuery);
+                      }).toList();
+                    },
+                    onSelected: (cafe) {
+                      print('Cafe selected: ${cafe.name} (ID: ${cafe.id})');
+                      setState(() {
+                        selectedCafe = cafe;
+                      });
+                      _cafeController.text = cafe.name;
+                      FocusScope.of(context).unfocus();
+                      _loadThemesForCafe(cafe.id);
+                    },
+                    displayStringForOption: (cafe) => cafe.name,
+                    suffixIcon:
+                        selectedCafe != null
+                            ? const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                            )
+                            : _cafeController.text.isNotEmpty
+                            ? const Icon(Icons.edit, color: Colors.orange)
+                            : null,
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Stack(
+                        children: [
+                          // 전체 화면을 덮는 투명한 터치 감지 영역
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: () {
+                                // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                                FocusScope.of(context).unfocus();
+                              },
+                              behavior: HitTestBehavior.translucent,
+                              child: Container(),
+                            ),
+                          ),
+                          // 실제 옵션 리스트
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 4.0,
+                              child: SizedBox(
+                                height: 200,
+                                child: ListView.builder(
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final option = options.elementAt(index);
+                                    return ListTile(
+                                      title: Text(option.name),
+                                      onTap: () => onSelected(option),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                const SizedBox(height: 20),
+                // 테마 선택 영역 - 카페를 먼저 선택하거나 모든 테마에서 직접 검색 가능
+                CommonAutocompleteField<EscapeTheme>(
+                  controller: _themeController,
+                  focusNode: _themeFocusNode,
+                  labelText: '테마 선택',
+                  hintText:
+                      selectedCafe != null
+                          ? '${selectedCafe!.name}의 테마를 선택하거나 다른 테마를 검색하세요'
+                          : '테마를 검색하세요 (2글자 이상 입력)',
+                  displayStringForOption: (theme) => theme.name,
+                  suffixIcon:
+                      selectedTheme != null
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : isSearchingThemes
+                          ? const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : _themeController.text.isNotEmpty
-                            ? const Icon(Icons.search, color: Colors.orange)
-                            : null,
-                optionsBuilder: (text) {
-                  final query = text.text.trim();
+                          : _themeController.text.isNotEmpty
+                          ? const Icon(Icons.search, color: Colors.orange)
+                          : null,
+                  optionsBuilder: (text) {
+                    final query = text.text.trim();
 
-                  // 테마가 이미 선택된 경우 빈 목록 반환 (수정하려는 경우 제외)
-                  if (selectedTheme != null) {
-                    if (text.text == selectedTheme!.name) {
-                      return const Iterable<EscapeTheme>.empty();
-                    } else {
-                      // 사용자가 직접 텍스트를 수정하는 경우만 선택 해제
-                      // (검색 결과로 인한 자동 업데이트는 무시)
-                      if (text.text.isNotEmpty && text.text != selectedTheme!.name) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted && _themeController.text != selectedTheme?.name) {
-                            setState(() {
-                              selectedTheme = null;
-                              _lastSearchQuery = null; // 검색 쿼리도 초기화
-                            });
-                          }
-                        });
-                      }
-                    }
-                  }
-
-                  // 검색어가 2글자 이상이면 서버 검색 트리거
-                  if (query.length >= 2) {
-                    print('Query >= 2, checking existing results');
-                    // 이미 같은 검색 결과가 있는지 확인
-                    if (_lastSearchQuery != query || searchedThemes.isEmpty) {
-                      print('Triggering search for: "$query"');
-                      // 비동기 검색 시작
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _searchThemesWithDebounce(query);
-                      });
-                      // 검색 중일 때도 기존 결과가 있으면 보여주기
-                      if (searchedThemes.isEmpty) {
-                        return [
-                          EscapeTheme(id: -1, name: '검색 중...', cafeId: -1),
-                        ];
-                      }
-                    }
-                    // 현재 검색된 결과 반환 - 항상 최신 검색 결과 반환
-                    print('Returning ${searchedThemes.length} searched themes');
-                    return List<EscapeTheme>.from(
-                      searchedThemes,
-                    ); // 새로운 리스트로 반환하여 UI 갱신 보장
-                  }
-
-                  // 텍스트 길이가 2 미만인 경우
-                  if (query.length < 2) {
-                    // 카페가 선택되어 있으면 해당 카페의 테마들 표시
-                    if (selectedCafe != null &&
-                        !isLoadingThemes &&
-                        currentThemes.isNotEmpty) {
-                      if (query.isEmpty) {
-                        return currentThemes;
+                    // 테마가 이미 선택된 경우 빈 목록 반환 (수정하려는 경우 제외)
+                    if (selectedTheme != null) {
+                      if (text.text == selectedTheme!.name) {
+                        return const Iterable<EscapeTheme>.empty();
                       } else {
-                        // 1글자 검색은 로컬에서 필터링
+                        // 사용자가 직접 텍스트를 수정하는 경우만 선택 해제
+                        // (검색 결과로 인한 자동 업데이트는 무시)
+                        if (text.text.isNotEmpty &&
+                            text.text != selectedTheme!.name) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted &&
+                                _themeController.text != selectedTheme?.name) {
+                              setState(() {
+                                selectedTheme = null;
+                                _lastSearchQuery = null; // 검색 쿼리도 초기화
+                              });
+                            }
+                          });
+                        }
+                      }
+                    }
+
+                    // 검색어가 2글자 이상이면 서버 검색 트리거
+                    if (query.length >= 2) {
+                      print('Query >= 2, checking existing results');
+                      // 이미 같은 검색 결과가 있는지 확인
+                      if (_lastSearchQuery != query || searchedThemes.isEmpty) {
+                        print('Triggering search for: "$query"');
+                        // 비동기 검색 시작
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _searchThemesWithDebounce(query);
+                        });
+                        // 검색 중일 때도 기존 결과가 있으면 보여주기
+                        if (searchedThemes.isEmpty) {
+                          return [
+                            EscapeTheme(id: -1, name: '검색 중...', cafeId: -1),
+                          ];
+                        }
+                      }
+                      // 현재 검색된 결과 반환 - 항상 최신 검색 결과 반환
+                      print(
+                        'Returning ${searchedThemes.length} searched themes',
+                      );
+                      return List<EscapeTheme>.from(
+                        searchedThemes,
+                      ); // 새로운 리스트로 반환하여 UI 갱신 보장
+                    }
+
+                    // 텍스트 길이가 2 미만인 경우
+                    if (query.length < 2) {
+                      // 카페가 선택되어 있으면 해당 카페의 테마들 표시
+                      if (selectedCafe != null &&
+                          !isLoadingThemes &&
+                          currentThemes.isNotEmpty) {
+                        if (query.isEmpty) {
+                          return currentThemes;
+                        } else {
+                          // 1글자 검색은 로컬에서 필터링
+                          final filtered =
+                              currentThemes.where((theme) {
+                                final themeName = theme.name.toLowerCase();
+                                return themeName.contains(query.toLowerCase());
+                              }).toList();
+                          return filtered;
+                        }
+                      }
+
+                      // 검색어도 짧고 카페도 선택되지 않았으면 최근 검색 결과라도 보여주자
+                      if (searchedThemes.isNotEmpty && query.length == 1) {
                         final filtered =
-                            currentThemes.where((theme) {
+                            searchedThemes.where((theme) {
                               final themeName = theme.name.toLowerCase();
                               return themeName.contains(query.toLowerCase());
                             }).toList();
@@ -509,516 +552,594 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       }
                     }
 
-                    // 검색어도 짧고 카페도 선택되지 않았으면 최근 검색 결과라도 보여주자
-                    if (searchedThemes.isNotEmpty && query.length == 1) {
-                      final filtered =
-                          searchedThemes.where((theme) {
-                            final themeName = theme.name.toLowerCase();
-                            return themeName.contains(query.toLowerCase());
-                          }).toList();
-                      return filtered;
+                    return const Iterable<EscapeTheme>.empty();
+                  },
+                  onSelected: (theme) {
+                    print(
+                      'Theme onSelected called: ${theme.name} (ID: ${theme.id})',
+                    );
+                    // 더미 로딩 항목 무시
+                    if (theme.id == -1) {
+                      print('Ignoring dummy loading item');
+                      return;
                     }
-                  }
-
-                  return const Iterable<EscapeTheme>.empty();
-                },
-                onSelected: (theme) {
-                  print(
-                    'Theme onSelected called: ${theme.name} (ID: ${theme.id})',
-                  );
-                  // 더미 로딩 항목 무시
-                  if (theme.id == -1) {
-                    print('Ignoring dummy loading item');
-                    return;
-                  }
-                  setState(() {
-                    selectedTheme = theme;
-                    print('Set selectedTheme: ${selectedTheme?.name}');
-                    // 테마가 선택되면 해당 카페도 자동으로 설정
-                    if (selectedCafe?.id != theme.cafe?.id) {
-                      selectedCafe = theme.cafe;
-                      _cafeController.text = theme.cafe?.name ?? '';
-                      print('Auto-selected cafe: ${selectedCafe?.name}');
-                      // 카페가 바뀌었지만 테마는 이미 선택되었으므로 테마 목록만 조용히 업데이트
-                      if (theme.cafe != null) {
-                        _loadThemesForCafeWithoutClearingSelection(
-                          theme.cafe!.id,
-                          theme,
-                        );
+                    setState(() {
+                      selectedTheme = theme;
+                      print('Set selectedTheme: ${selectedTheme?.name}');
+                      // 테마가 선택되면 해당 카페도 자동으로 설정
+                      if (selectedCafe?.id != theme.cafe?.id) {
+                        selectedCafe = theme.cafe;
+                        _cafeController.text = theme.cafe?.name ?? '';
+                        print('Auto-selected cafe: ${selectedCafe?.name}');
+                        // 카페가 바뀌었지만 테마는 이미 선택되었으므로 테마 목록만 조용히 업데이트
+                        if (theme.cafe != null) {
+                          _loadThemesForCafeWithoutClearingSelection(
+                            theme.cafe!.id,
+                            theme,
+                          );
+                        }
                       }
+                    });
+                    _themeController.text = theme.name;
+                    print(
+                      'Set theme controller text: ${_themeController.text}',
+                    );
+                    _themeFocusNode.unfocus();
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Stack(
+                      children: [
+                        // 전체 화면을 덮는 투명한 터치 감지 영역
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                              FocusScope.of(context).unfocus();
+                            },
+                            behavior: HitTestBehavior.translucent,
+                            child: Container(),
+                          ),
+                        ),
+                        // 실제 옵션 리스트
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4.0,
+                            child: SizedBox(
+                              height: 200,
+                              child: ListView.builder(
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final option = options.elementAt(index);
+                                  return ListTile(
+                                    title: Text(option.name),
+                                    subtitle: Text(option.cafe?.name ?? ''),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                CommonAutocompleteField<Friend>(
+                  controller: friendSearchController,
+                  focusNode: _friendSearchFocusNode,
+                  labelText: '친구 검색',
+                  optionsBuilder: (textEditingValue) {
+                    final availableFriends =
+                        widget.friends
+                            .where((f) => !selectedFriends.contains(f))
+                            .toList();
+
+                    if (textEditingValue.text.isEmpty) {
+                      return availableFriends;
                     }
-                  });
-                  _themeController.text = theme.name;
-                  print('Set theme controller text: ${_themeController.text}');
-                  _themeFocusNode.unfocus();
-                },
-                optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      child: SizedBox(
-                        height: 200,
-                        child: ListView.builder(
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final option = options.elementAt(index);
-                            return ListTile(
-                              title: Text(option.name),
-                              subtitle: Text(option.cafe?.name ?? ''),
-                              onTap: () => onSelected(option),
+
+                    final searchQuery = textEditingValue.text
+                        .toLowerCase()
+                        .replaceAll(' ', '');
+                    final filteredFriends =
+                        availableFriends.where((f) {
+                          final friendName = f.displayName
+                              .toLowerCase()
+                              .replaceAll(' ', '');
+                          return friendName.contains(searchQuery);
+                        }).toList();
+
+                    // 검색 결과가 없고 검색어가 2글자 이상이면 "새 친구 추가" 옵션 표시
+                    if (filteredFriends.isEmpty &&
+                        textEditingValue.text.trim().length >= 2) {
+                      return [
+                        Friend(
+                          id: -1, // 특별한 ID로 구분
+                          nickname:
+                              '+ "${textEditingValue.text.trim()}" 친구로 추가',
+                          addedAt: DateTime.now(),
+                        ),
+                      ];
+                    }
+
+                    return filteredFriends;
+                  },
+                  onSelected: (Friend selected) async {
+                    // 새 친구 추가 옵션이 선택된 경우
+                    if (selected.id == -1) {
+                      try {
+                        // 새 친구 생성 - 실제 이름에서 "+" 부분 제거
+                        final friendName = selected.nickname
+                            .replaceAll(RegExp(r'^\+ "'), '')
+                            .replaceAll(RegExp(r'" 친구로 추가$'), '');
+                        final newFriend = Friend(
+                          nickname: friendName,
+                          addedAt: DateTime.now(),
+                          memo: null,
+                        );
+
+                        // 친구 추가 콜백 호출 (부모 위젯에서 친구 목록에 추가)
+                        if (widget.onAddFriend != null) {
+                          widget.onAddFriend!(newFriend);
+                        }
+
+                        setState(() {
+                          selectedFriends.add(newFriend);
+                          friendSearchController.clear();
+                        });
+
+                        // 성공 메시지
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${newFriend.nickname} 친구를 추가했습니다!',
+                              ),
+                              backgroundColor: Colors.green,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('친구 추가 실패: $e'),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    } else {
+                      // 기존 친구 선택
+                      setState(() {
+                        selectedFriends.add(selected);
+                        friendSearchController.clear();
+                      });
+                    }
+                    _friendSearchFocusNode.unfocus();
+                  },
+                  displayStringForOption:
+                      (friend) =>
+                          friend.id == -1
+                              ? friend.nickname
+                              : friend.displayName,
+                  suffixIcon:
+                      friendSearchController.text.isNotEmpty
+                          ? const Icon(Icons.search, color: Colors.orange)
+                          : null,
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Stack(
+                      children: [
+                        // 전체 화면을 덮는 투명한 터치 감지 영역
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                              FocusScope.of(context).unfocus();
+                            },
+                            behavior: HitTestBehavior.translucent,
+                            child: Container(),
+                          ),
+                        ),
+                        // 실제 옵션 리스트
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4.0,
+                            child: SizedBox(
+                              height: 200,
+                              child: ListView.builder(
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final option = options.elementAt(index);
+
+                                  // 새 친구 추가 옵션인 경우
+                                  if (option.id == -1) {
+                                    return ListTile(
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade100,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.person_add,
+                                          size: 16,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        option.nickname,
+                                        style: const TextStyle(
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      subtitle: const Text(
+                                        '새 친구로 추가하기',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      onTap: () => onSelected(option),
+                                    );
+                                  }
+
+                                  // 기존 친구 옵션
+                                  return ListTile(
+                                    title: Text(option.nickname),
+                                    subtitle:
+                                        option.isConnected &&
+                                                option.realName != null
+                                            ? Text(option.realName!)
+                                            : null,
+                                    leading: Icon(
+                                      option.isConnected
+                                          ? Icons.link
+                                          : Icons.link_off,
+                                      size: 16,
+                                      color:
+                                          option.isConnected
+                                              ? Colors.green
+                                              : Colors.grey,
+                                    ),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
+                Wrap(
+                  spacing: 8, // 아이템들 사이의 간격
+                  children:
+                      // map(): 리스트의 각 요소를 다른 형태로 변환
+                      selectedFriends.map((friend) {
+                        // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
+                        return Chip(
+                          label: Text(friend.displayName),
+                          deleteIcon: const Icon(Icons.close),
+                          // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
+                          onDeleted: () {
+                            setState(() {
+                              selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
+                            });
+                          },
+                        );
+                      }).toList(), // map 결과를 List로 변환
+                ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showDetails = !_showDetails;
+                    });
+                  },
+                  icon: Icon(
+                    _showDetails
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                  ),
+                  label: Text(_showDetails ? '간단히' : '자세히'),
+                ),
+                if (_showDetails) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      const Text('평점: '),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTapDown:
+                            (details) =>
+                                _updateRating(details.localPosition.dx),
+                        onPanUpdate:
+                            (details) =>
+                                _updateRating(details.localPosition.dx),
+                        child: Row(
+                          children: List.generate(5, (index) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              child: Stack(
+                                children: [
+                                  Icon(
+                                    Icons.star_border,
+                                    color: Colors.grey[400],
+                                    size: 32,
+                                  ),
+                                  if (_rating != null && _rating! > index) ...[
+                                    if (_rating! >= index + 1)
+                                      const Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 32,
+                                      )
+                                    else
+                                      ClipRect(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          widthFactor: 0.5,
+                                          child: const Icon(
+                                            Icons.star,
+                                            color: Colors.amber,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ],
+                              ),
                             );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(_rating?.toStringAsFixed(1) ?? '-'),
+                      if (_rating != null) ...[
+                        const SizedBox(width: 10),
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _rating = null;
+                            });
+                          },
+                          icon: const Icon(Icons.close, size: 16),
+                          tooltip: '평점 제거',
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(4),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      const Text('탈출 결과: '),
+                      const SizedBox(width: 10),
+                      Row(
+                        children: [
+                          Radio<bool>(
+                            value: true,
+                            groupValue: _escaped,
+                            onChanged: (value) {
+                              setState(() {
+                                _escaped = value;
+                              });
+                            },
+                          ),
+                          const Text('성공'),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Radio<bool>(
+                            value: false,
+                            groupValue: _escaped,
+                            onChanged: (value) {
+                              setState(() {
+                                _escaped = value;
+                              });
+                            },
+                          ),
+                          const Text('실패'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CommonTextField(
+                          controller: _hintController,
+                          labelText: '힌트 사용 횟수',
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            _hintUsedCount = int.tryParse(value);
                           },
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              CommonAutocompleteField<Friend>(
-                controller: friendSearchController,
-                focusNode: _friendSearchFocusNode,
-                labelText: '친구 검색',
-                optionsBuilder: (textEditingValue) {
-                  final availableFriends = widget.friends
-                      .where((f) => !selectedFriends.contains(f))
-                      .toList();
-
-                  if (textEditingValue.text.isEmpty) {
-                    return availableFriends;
-                  }
-
-                  final searchQuery = textEditingValue.text.toLowerCase().replaceAll(' ', '');
-                  final filteredFriends = availableFriends.where((f) {
-                    final friendName = f.displayName.toLowerCase().replaceAll(' ', '');
-                    return friendName.contains(searchQuery);
-                  }).toList();
-                  
-                  // 검색 결과가 없고 검색어가 2글자 이상이면 "새 친구 추가" 옵션 표시
-                  if (filteredFriends.isEmpty && textEditingValue.text.trim().length >= 2) {
-                    return [
-                      Friend(
-                        id: -1, // 특별한 ID로 구분
-                        nickname: '+ "${textEditingValue.text.trim()}" 친구로 추가',
-                        addedAt: DateTime.now(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: CommonTextField(
+                          controller: _timeController,
+                          labelText: '소요시간 (분)',
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            final minutes = int.tryParse(value);
+                            if (minutes != null) {
+                              _timeTaken = Duration(minutes: minutes);
+                            }
+                          },
+                        ),
                       ),
-                    ];
-                  }
-                  
-                  return filteredFriends;
-                },
-                onSelected: (Friend selected) async {
-                  // 새 친구 추가 옵션이 선택된 경우
-                  if (selected.id == -1) {
-                    try {
-                      // 새 친구 생성 - 실제 이름에서 "+" 부분 제거
-                      final friendName = selected.nickname.replaceAll(RegExp(r'^\+ "'), '').replaceAll(RegExp(r'" 친구로 추가$'), '');
-                      final newFriend = Friend(
-                        nickname: friendName,
-                        addedAt: DateTime.now(),
-                        memo: null,
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  CommonTextArea(
+                    controller: _memoController,
+                    labelText: '메모',
+                    maxLines: 3,
+                    onChanged: (value) {
+                      // 메모 내용 변경 시 UI 업데이트 (체크박스 표시/숨김용)
+                      setState(() {});
+                    },
+                  ),
+
+                  // 메모 공개 옵션은 현재 비활성화됨 (기능 제거)
+                  // if (_memoController.text.isNotEmpty) ...[
+                  //   CheckboxListTile(
+                  //     title: const Text(
+                  //       '친구들에게 메모 공개',
+                  //       style: TextStyle(fontSize: 16),
+                  //     ),
+                  //     subtitle: const Text(
+                  //       '같은 테마를 플레이한 친구들이 볼 수 있어요',
+                  //       style: TextStyle(fontSize: 12),
+                  //     ),
+                  //     value: _memoPublic,
+                  //     onChanged: (value) {
+                  //       setState(() {
+                  //         _memoPublic = value ?? false;
+                  //       });
+                  //     },
+                  //     controlAffinity: ListTileControlAffinity.leading,
+                  //     contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  //   ),
+                  // ],
+                  const SizedBox(height: 20),
+
+                  // 친구 일지 추가 기능은 현재 비활성화됨 (더 신중한 검토 필요)
+                  // if (selectedFriends.isNotEmpty) ...[
+                  //   CheckboxListTile(
+                  //     title: const Text(
+                  //       '친구 일지에도 추가하기',
+                  //       style: TextStyle(fontSize: 16),
+                  //     ),
+                  //     subtitle: const Text(
+                  //       '⚠️ 주의: 선택한 친구와 서로 친구 등록이 되어있다면 친구의 일지 목록에도 이 기록을 추가합니다. 날짜와 테마, 탈출 결과가 동일하게 기록되며, 평점과 메모는 공유되지 않습니다.\n과거 날짜 일지 작성 시 신중하게 선택해주세요.',
+                  //       style: TextStyle(fontSize: 12, color: Colors.orange),
+                  //     ),
+                  //     value: _addToFriendsJournal,
+                  //     onChanged: (value) {
+                  //       setState(() {
+                  //         _addToFriendsJournal = value ?? false;
+                  //       });
+                  //     },
+                  //     controlAffinity: ListTileControlAffinity.leading,
+                  //     contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  //   ),
+                  // ],
+                ],
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedCafe == null ||
+                        selectedTheme == null ||
+                        selectedDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('모든 항목을 선택해주세요')),
                       );
-                      
-                      // 친구 추가 콜백 호출 (부모 위젯에서 친구 목록에 추가)
-                      if (widget.onAddFriend != null) {
-                        widget.onAddFriend!(newFriend);
-                      }
-                      
+                      return;
+                    }
+
+                    // 로그인 확인
+                    if (!AuthService.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('로그인이 필요합니다')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      // 저장 상태 표시
                       setState(() {
-                        selectedFriends.add(newFriend);
-                        friendSearchController.clear();
+                        _isSaving = true;
                       });
-                      
-                      // 성공 메시지
+
+                      // DiaryEntry 생성
+                      final now = DateTime.now();
+                      final newEntry = DiaryEntry(
+                        id: 0, // DB에서 자동 생성
+                        userId: AuthService.currentUser!.id,
+                        themeId: selectedTheme!.id,
+                        theme: selectedTheme,
+                        date: selectedDate!,
+                        friends: null, // 별도 테이블로 관리
+                        memo:
+                            _memoController.text.isEmpty
+                                ? null
+                                : _memoController.text,
+                        memoPublic:
+                            _memoController.text.isNotEmpty
+                                ? _memoPublic
+                                : false,
+                        rating: _rating,
+                        escaped: _escaped,
+                        hintUsedCount: _hintUsedCount,
+                        timeTaken: _timeTaken,
+                        photos: null,
+                        createdAt: now,
+                        updatedAt: now,
+                      );
+
+                      // 친구 ID 목록 생성 (모든 선택된 친구)
+                      final friendIds =
+                          selectedFriends
+                              .where((friend) => friend.id != null)
+                              .map((friend) => friend.id!)
+                              .toList();
+
+                      // DB에 저장
+                      // 친구 일지 공유 기능은 현재 비활성화됨 - friendIds는 항상 null
+                      final savedEntry = await DatabaseService.addDiaryEntry(
+                        newEntry,
+                        friendIds: null, // 친구 일지 공유 기능 비활성화
+                      );
+
                       if (mounted) {
+                        setState(() {
+                          _isSaving = false;
+                        });
+
+                        // 성공 메시지
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${newFriend.nickname} 친구를 추가했습니다!'),
-                            backgroundColor: Colors.green,
-                            duration: const Duration(seconds: 2),
-                          ),
+                          const SnackBar(content: Text('일지가 저장되었습니다!')),
                         );
+
+                        // 저장된 일지와 함께 이전 화면으로 돌아가기
+                        Navigator.pop(context, savedEntry);
                       }
                     } catch (e) {
                       if (mounted) {
+                        setState(() {
+                          _isSaving = false;
+                        });
+
+                        // 에러 메시지
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('친구 추가 실패: $e'),
-                            backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 2),
-                          ),
+                          SnackBar(content: Text('일지 저장에 실패했습니다: $e')),
                         );
                       }
                     }
-                  } else {
-                    // 기존 친구 선택
-                    setState(() {
-                      selectedFriends.add(selected);
-                      friendSearchController.clear();
-                    });
-                  }
-                  _friendSearchFocusNode.unfocus();
-                },
-                displayStringForOption: (friend) => friend.id == -1 ? friend.nickname : friend.displayName,
-                suffixIcon: friendSearchController.text.isNotEmpty
-                    ? const Icon(Icons.search, color: Colors.orange)
-                    : null,
-                optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      child: SizedBox(
-                        height: 200,
-                        child: ListView.builder(
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final option = options.elementAt(index);
-                            
-                            // 새 친구 추가 옵션인 경우
-                            if (option.id == -1) {
-                              return ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person_add,
-                                    size: 16,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                title: Text(
-                                  option.nickname,
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                subtitle: const Text(
-                                  '새 친구로 추가하기',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                onTap: () => onSelected(option),
-                              );
-                            }
-                            
-                            // 기존 친구 옵션
-                            return ListTile(
-                              title: Text(option.nickname),
-                              subtitle: option.isConnected && option.realName != null
-                                  ? Text(option.realName!)
-                                  : null,
-                              leading: Icon(
-                                option.isConnected ? Icons.link : Icons.link_off,
-                                size: 16,
-                                color: option.isConnected ? Colors.green : Colors.grey,
-                              ),
-                              onTap: () => onSelected(option),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
-              Wrap(
-                spacing: 8, // 아이템들 사이의 간격
-                children:
-                    // map(): 리스트의 각 요소를 다른 형태로 변환
-                    selectedFriends.map((friend) {
-                      // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
-                      return Chip(
-                        label: Text(friend.displayName),
-                        deleteIcon: const Icon(Icons.close),
-                        // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
-                        onDeleted: () {
-                          setState(() {
-                            selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
-                          });
-                        },
-                      );
-                    }).toList(), // map 결과를 List로 변환
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _showDetails = !_showDetails;
-                  });
-                },
-                icon: Icon(
-                  _showDetails
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                ),
-                label: Text(_showDetails ? '간단히' : '자세히'),
-              ),
-              if (_showDetails) ...[
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Text('평점: '),
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTapDown:
-                          (details) => _updateRating(details.localPosition.dx),
-                      onPanUpdate:
-                          (details) => _updateRating(details.localPosition.dx),
-                      child: Row(
-                        children: List.generate(5, (index) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Stack(
-                              children: [
-                                Icon(
-                                  Icons.star_border,
-                                  color: Colors.grey[400],
-                                  size: 32,
-                                ),
-                                if (_rating != null && _rating! > index) ...[
-                                  if (_rating! >= index + 1)
-                                    const Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 32,
-                                    )
-                                  else
-                                    ClipRect(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        widthFactor: 0.5,
-                                        child: const Icon(
-                                          Icons.star,
-                                          color: Colors.amber,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ],
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(_rating?.toStringAsFixed(1) ?? '-'),
-                    if (_rating != null) ...[
-                      const SizedBox(width: 10),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _rating = null;
-                          });
-                        },
-                        icon: const Icon(Icons.close, size: 16),
-                        tooltip: '평점 제거',
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(4),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Text('탈출 결과: '),
-                    const SizedBox(width: 10),
-                    Row(
-                      children: [
-                        Radio<bool>(
-                          value: true,
-                          groupValue: _escaped,
-                          onChanged: (value) {
-                            setState(() {
-                              _escaped = value;
-                            });
-                          },
-                        ),
-                        const Text('성공'),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Radio<bool>(
-                          value: false,
-                          groupValue: _escaped,
-                          onChanged: (value) {
-                            setState(() {
-                              _escaped = value;
-                            });
-                          },
-                        ),
-                        const Text('실패'),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CommonTextField(
-                        controller: _hintController,
-                        labelText: '힌트 사용 횟수',
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          _hintUsedCount = int.tryParse(value);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: CommonTextField(
-                        controller: _timeController,
-                        labelText: '소요시간 (분)',
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final minutes = int.tryParse(value);
-                          if (minutes != null) {
-                            _timeTaken = Duration(minutes: minutes);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                CommonTextArea(
-                  controller: _memoController,
-                  labelText: '메모',
-                  maxLines: 3,
-                  onChanged: (value) {
-                    // 메모 내용 변경 시 UI 업데이트 (체크박스 표시/숨김용)
-                    setState(() {});
                   },
+                  child: const Text('저장'),
                 ),
-                
-                // 메모 공개 옵션은 현재 비활성화됨 (기능 제거)
-                // if (_memoController.text.isNotEmpty) ...[
-                //   CheckboxListTile(
-                //     title: const Text(
-                //       '친구들에게 메모 공개',
-                //       style: TextStyle(fontSize: 16),
-                //     ),
-                //     subtitle: const Text(
-                //       '같은 테마를 플레이한 친구들이 볼 수 있어요',
-                //       style: TextStyle(fontSize: 12),
-                //     ),
-                //     value: _memoPublic,
-                //     onChanged: (value) {
-                //       setState(() {
-                //         _memoPublic = value ?? false;
-                //       });
-                //     },
-                //     controlAffinity: ListTileControlAffinity.leading,
-                //     contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-                //   ),
-                // ],
               ],
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (selectedCafe == null ||
-                      selectedTheme == null ||
-                      selectedDate == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('모든 항목을 선택해주세요')),
-                    );
-                    return;
-                  }
-
-                  // 로그인 확인
-                  if (!AuthService.isLoggedIn) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다')));
-                    return;
-                  }
-
-                  try {
-                    // 저장 상태 표시
-                    setState(() {
-                      _isSaving = true;
-                    });
-
-                    // DiaryEntry 생성
-                    final now = DateTime.now();
-                    final newEntry = DiaryEntry(
-                      id: 0, // DB에서 자동 생성
-                      userId: AuthService.currentUser!.id,
-                      themeId: selectedTheme!.id,
-                      theme: selectedTheme,
-                      date: selectedDate!,
-                      friends: null, // 별도 테이블로 관리
-                      memo:
-                          _memoController.text.isEmpty
-                              ? null
-                              : _memoController.text,
-                      memoPublic: _memoController.text.isNotEmpty ? _memoPublic : false,
-                      rating: _rating,
-                      escaped: _escaped,
-                      hintUsedCount: _hintUsedCount,
-                      timeTaken: _timeTaken,
-                      photos: null,
-                      createdAt: now,
-                      updatedAt: now,
-                    );
-
-                    // 친구 ID 목록 생성 (모든 선택된 친구)
-                    final friendIds =
-                        selectedFriends
-                            .where((friend) => friend.id != null)
-                            .map((friend) => friend.id!)
-                            .toList();
-
-                    // DB에 저장 (본인 + 선택된 친구들이 participants에 추가됨)
-                    final savedEntry = await DatabaseService.addDiaryEntry(
-                      newEntry,
-                      friendIds: friendIds.isNotEmpty ? friendIds : null,
-                    );
-
-                    if (mounted) {
-                      setState(() {
-                        _isSaving = false;
-                      });
-
-                      // 성공 메시지
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('일지가 저장되었습니다!')),
-                      );
-
-                      // 저장된 일지와 함께 이전 화면으로 돌아가기
-                      Navigator.pop(context, savedEntry);
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      setState(() {
-                        _isSaving = false;
-                      });
-
-                      // 에러 메시지
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('일지 저장에 실패했습니다: $e')),
-                      );
-                    }
-                  }
-                },
-                child: const Text('저장'),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
       ), // LoadingOverlay 닫기
     );
   }

@@ -332,24 +332,40 @@ class CommonAutocompleteField<T extends Object> extends StatelessWidget {
       onSelected: onSelected,
       displayStringForOption: displayStringForOption,
       optionsViewBuilder: optionsViewBuilder ?? (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4.0,
-            child: SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return ListTile(
-                    title: Text(displayStringForOption(option)),
-                    onTap: () => onSelected(option),
-                  );
+        return Stack(
+          children: [
+            // 전체 화면을 덮는 투명한 터치 감지 영역
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {
+                  // 바깥쪽 클릭 시 포커스 해제하여 옵션박스 닫기
+                  FocusScope.of(context).unfocus();
                 },
+                behavior: HitTestBehavior.translucent,
+                child: Container(),
               ),
             ),
-          ),
+            // 실제 옵션 리스트
+            Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4.0,
+                child: SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(displayStringForOption(option)),
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
