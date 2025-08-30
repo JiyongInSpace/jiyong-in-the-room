@@ -5,6 +5,7 @@ import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/widgets/diary_management_bottom_sheet.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;
@@ -496,38 +497,52 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           ],
         ),
       ),
-      // 수정 버튼 (플로팅 액션 버튼)
+      // 관리 버튼 (플로팅 액션 버튼)
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => EditDiaryScreen(
+        onPressed: () {
+          // 일지 관리 바텀시트 표시
+          DiaryManagementBottomSheet.show(
+            context: context,
+            entry: widget.entry,
+            onEdit: () async {
+              // 수정 버튼 클릭 시
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditDiaryScreen(
                     entry: widget.entry,
                     friends: widget.friends,
                     onAddFriend: widget.onAddFriend,
                   ),
-            ),
-          );
+                ),
+              );
 
-          if (result != null && mounted) {
-            if (result == 'deleted') {
-              // 일지가 삭제된 경우 - 콜백 호출 후 메인 화면으로 돌아가면서 삭제 신호 전달
+              if (result != null && mounted) {
+                if (result == 'deleted') {
+                  // 일지가 삭제된 경우
+                  if (widget.onDelete != null) {
+                    widget.onDelete!(widget.entry);
+                  }
+                  Navigator.pop(context, 'deleted');
+                } else if (result is DiaryEntry) {
+                  // 일지가 수정된 경우
+                  if (widget.onUpdate != null) {
+                    widget.onUpdate!(widget.entry, result);
+                  }
+                  Navigator.pop(context, result);
+                }
+              }
+            },
+            onDelete: () {
+              // 삭제 버튼 클릭 시
               if (widget.onDelete != null) {
                 widget.onDelete!(widget.entry);
               }
               Navigator.pop(context, 'deleted');
-            } else if (result is DiaryEntry) {
-              // 일지가 수정된 경우 - 수정된 내용 반영
-              if (widget.onUpdate != null) {
-                widget.onUpdate!(widget.entry, result);
-              }
-              Navigator.pop(context, result);
-            }
-          }
+            },
+          );
         },
-        child: const Icon(Icons.edit),
+        child: const Icon(Icons.more_vert),
       ),
     );
   }
