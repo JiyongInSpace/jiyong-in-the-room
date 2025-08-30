@@ -115,8 +115,12 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           friendsList.add(savedFriend);
         });
+        
+        // 친구 추가 후 일지 데이터도 새로고침
+        await _loadDiaryEntries();
+        
         if (kDebugMode) {
-          print('✅ 친구 "${friend.nickname}" DB에 저장됨');
+          print('✅ 친구 "${friend.nickname}" DB에 저장됨 + 일지 데이터 새로고침');
         }
       } else {
         // 로그인하지 않은 경우 로컬에만 저장
@@ -149,6 +153,10 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         friendsList.remove(friend);
       });
+      
+      // 친구 삭제 후 일지 데이터도 새로고침
+      await _loadDiaryEntries();
+      
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 삭제 실패: $e');
@@ -174,8 +182,12 @@ class _MyAppState extends State<MyApp> {
             friendsList[index] = updatedFriend;
           }
         });
+        
+        // 친구 정보 변경 후 일지 데이터도 새로고침 (친구 정보 실시간 반영)
+        await _loadDiaryEntries();
+        
         if (kDebugMode) {
-          print('✅ 친구 "${oldFriend.nickname}" 정보 DB에서 수정됨');
+          print('✅ 친구 "${oldFriend.nickname}" 정보 DB에서 수정됨 + 일지 데이터 새로고침');
         }
       } else {
         setState(() {

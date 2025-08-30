@@ -424,9 +424,9 @@ class HomeScreen extends StatelessWidget {
                           context: context,
                           title: '친구 관리',
                           message: '친구 기능을 사용하려면 로그인이 필요해요.',
-                          onLoginSuccess: () {
+                          onLoginSuccess: () async {
                             // 로그인 성공 후 자동으로 친구 화면으로 이동
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => FriendsScreen(
@@ -437,12 +437,17 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               ),
                             );
+                            
+                            // 친구 관리 화면에서 돌아왔을 때 데이터 새로고침
+                            if (onDataRefresh != null) {
+                              onDataRefresh!();
+                            }
                           },
                         );
                         return;
                       }
                       
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => FriendsScreen(
@@ -453,6 +458,11 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       );
+                      
+                      // 친구 관리 화면에서 돌아왔을 때 데이터 새로고침
+                      if (onDataRefresh != null) {
+                        onDataRefresh!();
+                      }
                     },
                     child: const Text('더보기'),
                   ),
