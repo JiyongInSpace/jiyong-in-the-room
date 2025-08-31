@@ -359,7 +359,7 @@ CREATE INDEX idx_escape_themes_cafe_id ON escape_themes(cafe_id);
 
 **주요 특징:**
 - **개인별 데이터**: RLS 정책으로 본인이 작성/참여한 일지만 접근 가능
-- **풍부한 메타데이터**: 평점, 탈출 여부, 소요시간, 힌트 사용 등 상세 기록
+- **풍부한 메타데이터**: 만족도, 탈출 여부, 소요시간, 힌트 사용 등 상세 기록
 - **참여자 시스템**: 별도 `diary_entry_participants` 테이블과 연동하여 다중 참여자 지원
 - **INTEGER ID**: UUID에서 SERIAL INTEGER로 변경하여 성능 최적화
 

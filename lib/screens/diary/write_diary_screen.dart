@@ -9,6 +9,7 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'dart:async';
 
@@ -84,7 +85,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   // 메모 공개 여부를 저장하는 변수
   final bool _memoPublic = false;
   // 친구 일지에도 추가할지 여부 (기본값: false - 안전한 쪽으로)
-  bool _addToFriendsJournal = false;
+  final bool _addToFriendsJournal = false;
 
   @override
   void initState() {
@@ -332,7 +333,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     }
   }
 
-  // 별점 드래그/클릭 시 평점을 업데이트하는 메서드
+  // 별점 드래그/클릭 시 만족도를 업데이트하는 메서드
   // position: 사용자가 터치한 가로 위치
   void _updateRating(double position) {
     setState(() {
@@ -902,7 +903,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Text('평점: '),
+                      const Text('만족도: '),
                       const SizedBox(width: 10),
                       GestureDetector(
                         onTapDown:
@@ -951,7 +952,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text(_rating?.toStringAsFixed(1) ?? '-'),
+                      RatingUtils.getRatingWidget(_rating, fontSize: 14),
                       if (_rating != null) ...[
                         const SizedBox(width: 10),
                         IconButton(
@@ -961,7 +962,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                             });
                           },
                           icon: const Icon(Icons.close, size: 16),
-                          tooltip: '평점 제거',
+                          tooltip: '만족도 제거',
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.all(4),
                         ),
@@ -1020,7 +1021,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       Expanded(
                         child: CommonTextField(
                           controller: _timeController,
-                          labelText: '소요시간 (분)',
+                          labelText: '소요 시간 (분)',
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             final minutes = int.tryParse(value);
@@ -1074,7 +1075,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                   //       style: TextStyle(fontSize: 16),
                   //     ),
                   //     subtitle: const Text(
-                  //       '⚠️ 주의: 선택한 친구와 서로 친구 등록이 되어있다면 친구의 일지 목록에도 이 기록을 추가합니다. 날짜와 테마, 탈출 결과가 동일하게 기록되며, 평점과 메모는 공유되지 않습니다.\n과거 날짜 일지 작성 시 신중하게 선택해주세요.',
+                  //       '⚠️ 주의: 선택한 친구와 서로 친구 등록이 되어있다면 친구의 일지 목록에도 이 기록을 추가합니다. 날짜와 테마, 탈출 결과가 동일하게 기록되며, 만족도과 메모는 공유되지 않습니다.\n과거 날짜 일지 작성 시 신중하게 선택해주세요.',
                   //       style: TextStyle(fontSize: 12, color: Colors.orange),
                   //     ),
                   //     value: _addToFriendsJournal,

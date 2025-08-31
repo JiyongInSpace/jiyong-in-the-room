@@ -216,7 +216,7 @@ class DiaryCardSkeleton extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             
-            // 평점과 결과
+            // 만족도와 결과
             const Row(
               children: [
                 SkeletonContainer(width: 80, height: 16),
@@ -341,7 +341,7 @@ class DiaryFormSkeleton extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // 평점 섹션
+          // 만족도 섹션
           const SkeletonContainer(width: 100, height: 20),
           const SizedBox(height: 8),
           Row(

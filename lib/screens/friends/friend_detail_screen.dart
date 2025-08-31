@@ -5,6 +5,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
 import 'package:jiyong_in_the_room/widgets/friend_management_bottom_sheet.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 class FriendDetailScreen extends StatefulWidget {
   final Friend friend;
@@ -384,22 +385,11 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (entry.rating != null) ...[
-                              Icon(
-                                Icons.star,
-                                size: 16,
-                                color: AppColors.amberShade,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                entry.rating!.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
+                            RatingUtils.getRatingWithIcon(
+                              entry.rating,
+                              fontSize: 12,
+                            ),
+                            const SizedBox(width: 8),
                             Icon(Icons.chevron_right, color: AppColors.grey),
                           ],
                         ),

@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 
 class EditDiaryScreen extends StatefulWidget {
@@ -729,7 +730,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    const Text('평점: '),
+                    const Text('만족도: '),
                     const SizedBox(width: 10),
                     GestureDetector(
                       onTapDown: (details) => _updateRating(details.localPosition.dx),
@@ -772,7 +773,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(_rating?.toStringAsFixed(1) ?? '-'),
+                    RatingUtils.getRatingWidget(_rating, fontSize: 14),
                     if (_rating != null) ...[
                       const SizedBox(width: 10),
                       IconButton(
@@ -782,7 +783,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           });
                         },
                         icon: const Icon(Icons.close, size: 16),
-                        tooltip: '평점 제거',
+                        tooltip: '만족도 제거',
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(4),
                       ),
@@ -841,7 +842,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     Expanded(
                       child: CommonTextField(
                         controller: _timeController,
-                        labelText: '소요시간 (분)',
+                        labelText: '소요 시간 (분)',
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final minutes = int.tryParse(value);

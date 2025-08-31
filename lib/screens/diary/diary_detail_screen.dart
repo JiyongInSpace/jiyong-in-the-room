@@ -8,6 +8,7 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/widgets/diary_management_bottom_sheet.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   final DiaryEntry entry;
@@ -327,28 +328,19 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // 평점 정보 (별표 포함)
-                    Row(
-                      children: [
-                        const Text('평점: '),
-                        if (widget.entry.rating != null) ...[
-                          _buildStarRating(widget.entry.rating!),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.entry.rating!.toStringAsFixed(1),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                    // 만족도 정보 (방탈출 은어) - 평점이 있을 때만
+                    if (widget.entry.rating != null) ...[
+                      Row(
+                        children: [
+                          const Text('만족도: '),
+                          RatingUtils.getRatingWithIcon(
+                            widget.entry.rating,
+                            fontSize: 14,
                           ),
-                        ] else
-                          Text(
-                            '-',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
 
                     // 탈출 결과 정보 (글자색으로 표시)
                     Row(
@@ -377,10 +369,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // 소요시간 정보
+                    // 소요 시간 정보
                     Row(
                       children: [
-                        const Text('소요시간: '),
+                        const Text('소요 시간: '),
                         if (widget.entry.timeTaken != null)
                           Text(
                             '${widget.entry.timeTaken!.inMinutes}분',

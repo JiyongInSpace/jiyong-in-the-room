@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/widgets/diary_management_bottom_sheet.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 /// 일지 항목을 표시하는 재사용 가능한 카드 위젯
 class DiaryEntryCard extends StatefulWidget {
@@ -131,22 +132,11 @@ class _DiaryEntryCardState extends State<DiaryEntryCard> {
                       ],
                     ),
                   ),
-                  // 평점 표시
+                  // 만족도 표시 (방탈출 은어) - 평점이 있을 때만
                   if (widget.entry.rating != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.star,
-                          color: Colors.amber,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          widget.entry.rating!.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
+                    RatingUtils.getRatingWithIcon(
+                      widget.entry.rating,
+                      fontSize: 12,
                     ),
                 ],
               ),
