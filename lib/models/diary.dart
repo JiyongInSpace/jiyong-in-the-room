@@ -83,6 +83,8 @@ class DiaryEntry {
       'id': id,
       'user_id': userId,
       'theme_id': themeId,
+      // 로컬 저장을 위해 theme 객체도 포함
+      if (theme != null) 'theme': theme!.toJson(),
       'date': date.toIso8601String().split('T')[0], // YYYY-MM-DD 형태
       'memo': memo,
       'memo_public': memoPublic,
@@ -101,11 +103,14 @@ class DiaryEntry {
       id: json['id'] as int,
       userId: json['user_id'] as String,
       themeId: json['theme_id'] as int,
+      // DB에서 오는 경우 'escape_themes', 로컬에서 오는 경우 'theme'
       theme: json['escape_themes'] != null 
           ? EscapeTheme.fromJson(json['escape_themes'] as Map<String, dynamic>)
-          : null,
+          : json['theme'] != null
+              ? EscapeTheme.fromJson(json['theme'] as Map<String, dynamic>)
+              : null,
       date: DateTime.parse(json['date'] as String),
-      friends: null, // 별도 메서드로 조회
+      friends: null, // 비회원은 친구 기능 사용 불가
       memo: json['memo'] as String?,
       memoPublic: json['memo_public'] as bool? ?? false,
       rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/screens/diary/write_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
@@ -7,6 +8,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -86,18 +88,9 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     }
   }
 
-  // 일지 목록 로딩
+  // 일지 목록 로딩 (회원: DB, 비회원: 로컬)
   Future<void> _loadDiaries({bool reset = false}) async {
     if (_isLoading) return;
-    
-    if (!AuthService.isLoggedIn) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인이 필요합니다')),
-        );
-      }
-      return;
-    }
 
     setState(() {
       _isLoading = true;
@@ -110,21 +103,70 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
         _hasMore = true;
       }
 
-      final diaries = await DatabaseService.getMyDiaryEntriesPaginated(
-        page: _currentPage,
-        limit: _pageSize,
-        searchQuery: _currentSearchQuery,
-        filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
-      );
-
+      List<DiaryEntry> diaries;
+      
+      if (AuthService.isLoggedIn) {
+        // 회원: DB에서 페이징 조회
+        diaries = await DatabaseService.getMyDiaryEntriesPaginated(
+          page: _currentPage,
+          limit: _pageSize,
+          searchQuery: _currentSearchQuery,
+          filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
+        );
+        
+        if (mounted) {
+          setState(() {
+            if (diaries.length < _pageSize) {
+              _hasMore = false;
+            }
+            
+            _diaryList.addAll(diaries);
+            _currentPage++;
+          });
+        }
+      } else {
+        // 비회원: 로컬에서 전체 조회 후 클라이언트 사이드 필터링/페이징
+        var localDiaries = LocalStorageService.getLocalDiaries();
+        
+        // 검색 필터 적용
+        if (_currentSearchQuery != null && _currentSearchQuery!.isNotEmpty) {
+          final query = _currentSearchQuery!.toLowerCase();
+          localDiaries = localDiaries.where((diary) {
+            final themeName = diary.theme?.name?.toLowerCase() ?? '';
+            final cafeName = diary.theme?.cafe?.name?.toLowerCase() ?? '';
+            return themeName.contains(query) || cafeName.contains(query);
+          }).toList();
+        }
+        
+        // 비회원은 친구 필터 무시 (친구 기능 사용 불가)
+        
+        // 클라이언트 사이드 페이징
+        final startIndex = _currentPage * _pageSize;
+        final endIndex = startIndex + _pageSize;
+        
+        if (startIndex < localDiaries.length) {
+          diaries = localDiaries.sublist(
+            startIndex,
+            endIndex > localDiaries.length ? localDiaries.length : endIndex,
+          );
+        } else {
+          diaries = [];
+        }
+        
+        if (mounted) {
+          setState(() {
+            if (diaries.length < _pageSize || startIndex + diaries.length >= localDiaries.length) {
+              _hasMore = false;
+            }
+            
+            _diaryList.addAll(diaries);
+            _currentPage++;
+          });
+        }
+      }
+      
       if (mounted) {
         setState(() {
-          if (diaries.length < _pageSize) {
-            _hasMore = false;
-          }
-          
-          _diaryList.addAll(diaries);
-          _currentPage++;
           _isLoading = false;
         });
       }
@@ -201,7 +243,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
       parts.add('검색: "${_searchController.text}"');
     }
     
-    if (_selectedFriends.isNotEmpty) {
+    // 회원만 친구 필터 표시
+    if (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) {
       final friendNames = _selectedFriends.map((f) => f.displayName).join(', ');
       parts.add('친구: $friendNames');
     }
@@ -214,6 +257,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     setState(() {
       _diaryList.insert(0, newEntry);
     });
+    // 메인 화면 데이터 새로고침
     if (widget.onDataRefresh != null) {
       widget.onDataRefresh!();
     }
@@ -237,6 +281,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     setState(() {
       _diaryList.removeWhere((item) => item.id == entry.id);
     });
+    // 메인 화면 데이터 새로고침
     if (widget.onDataRefresh != null) {
       widget.onDataRefresh!();
     }
@@ -299,8 +344,17 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     ).then((confirmed) async {
       if (confirmed == true) {
         try {
-          // 데이터베이스에서 삭제
-          await DatabaseService.deleteDiaryEntry(entry.id);
+          if (kDebugMode) {
+            print('🗑️ 일지 삭제 시작: ID=${entry.id}, 로그인 여부=${AuthService.isLoggedIn}');
+          }
+          
+          if (AuthService.isLoggedIn) {
+            // 회원: 데이터베이스에서 삭제
+            await DatabaseService.deleteDiaryEntry(entry.id);
+          } else {
+            // 비회원: 로컬에서 삭제
+            await LocalStorageService.deleteDiary(entry.id);
+          }
           
           // UI에서 제거
           _deleteDiary(entry);
@@ -389,35 +443,44 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // 친구 필터 드롭다운
+                    // 친구 필터 드롭다운 (비회원은 비활성화)
                     Row(
                       children: [
-                        const Icon(Icons.person, size: 20),
+                        Icon(Icons.person, 
+                          size: 20,
+                          color: AuthService.isLoggedIn ? null : Colors.grey,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: CommonDropdownField<Friend?>(
                             key: ValueKey(_selectedFriends.length),
                             value: null,
                             labelText: '',
-                            hintText: '같이 한 친구',
-                            items: widget.friends
-                                .where((friend) => !_selectedFriends.contains(friend))
-                                .map((friend) => DropdownMenuItem<Friend?>(
-                                  value: friend,
-                                  child: Text(friend.displayName),
-                                ))
-                                .toList(),
-                            onChanged: (Friend? friend) {
-                              if (friend != null) {
-                                _addFriendFilter(friend);
-                              }
-                            },
+                            hintText: AuthService.isLoggedIn 
+                                ? '같이 한 친구'
+                                : '친구 기능은 로그인 후 이용 가능',
+                            items: AuthService.isLoggedIn
+                                ? widget.friends
+                                    .where((friend) => !_selectedFriends.contains(friend))
+                                    .map((friend) => DropdownMenuItem<Friend?>(
+                                      value: friend,
+                                      child: Text(friend.displayName),
+                                    ))
+                                    .toList()
+                                : [],
+                            onChanged: AuthService.isLoggedIn
+                                ? (Friend? friend) {
+                                    if (friend != null) {
+                                      _addFriendFilter(friend);
+                                    }
+                                  }
+                                : null, // 비회원은 비활성화
                           ),
                         ),
                       ],
                     ),
-                    // 선택된 친구 칩들
-                    if (_selectedFriends.isNotEmpty) ...[
+                    // 선택된 친구 칩들 (회원만 표시)
+                    if (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -439,7 +502,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
             ),
           ),
           // 필터 요약 정보 (한 줄)
-          if (!_showFilters && (_searchController.text.isNotEmpty || _selectedFriends.isNotEmpty))
+          if (!_showFilters && (_searchController.text.isNotEmpty || (AuthService.isLoggedIn && _selectedFriends.isNotEmpty)))
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -546,21 +609,13 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          if (!AuthService.isLoggedIn) {
-            await LoginDialog.show(
-              context: context,
-              title: '일지 작성',
-              message: '일지를 작성하려면 로그인이 필요해요.',
-            );
-            return;
-          }
-          
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => WriteDiaryScreen(
                 friends: widget.friends,
                 onAddFriend: widget.onAddFriend,
+                isLoggedIn: AuthService.isLoggedIn, // 현재 로그인 상태 전달
               ),
             ),
           );

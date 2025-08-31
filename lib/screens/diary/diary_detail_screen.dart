@@ -5,6 +5,8 @@ import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/widgets/diary_management_bottom_sheet.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
@@ -533,12 +535,46 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 }
               }
             },
-            onDelete: () {
+            onDelete: () async {
               // 삭제 버튼 클릭 시
-              if (widget.onDelete != null) {
-                widget.onDelete!(widget.entry);
+              try {
+                if (kDebugMode) {
+                  print('🗑️ 일지 상세페이지에서 삭제 시도: ID=${widget.entry.id}, 로그인 여부=${AuthService.isLoggedIn}');
+                }
+                
+                if (AuthService.isLoggedIn) {
+                  // 회원: 데이터베이스에서 삭제
+                  await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                } else {
+                  // 비회원: 로컬에서 삭제
+                  await LocalStorageService.deleteDiary(widget.entry.id);
+                }
+                
+                // UI 콜백 호출
+                if (widget.onDelete != null) {
+                  widget.onDelete!(widget.entry);
+                }
+                
+                if (kDebugMode) {
+                  print('✅ 일지 상세페이지에서 삭제 성공');
+                }
+                
+                Navigator.pop(context, 'deleted');
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ 일지 상세페이지에서 삭제 실패: $e');
+                }
+                
+                // 에러 메시지 표시
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('일지 삭제에 실패했습니다: $e'),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                }
               }
-              Navigator.pop(context, 'deleted');
             },
           );
         },

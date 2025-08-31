@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'dart:async';
@@ -16,8 +17,14 @@ import 'dart:async';
 class WriteDiaryScreen extends StatefulWidget {
   final List<Friend> friends;
   final Function(Friend)? onAddFriend;
+  final bool isLoggedIn; // 로그인 상태
 
-  const WriteDiaryScreen({super.key, required this.friends, this.onAddFriend});
+  const WriteDiaryScreen({
+    super.key, 
+    required this.friends, 
+    this.onAddFriend,
+    this.isLoggedIn = false, // 기본값 false
+  });
 
   @override
   State<WriteDiaryScreen> createState() => _WriteDiaryScreenState();
@@ -86,6 +93,22 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
 
     // 날짜를 오늘 날짜로 기본 설정
     selectedDate = DateTime.now();
+    
+    // 비회원이 친구 검색 필드에 포커스하려고 할 때 안내 메시지
+    if (!widget.isLoggedIn) {
+      _friendSearchFocusNode.addListener(() {
+        if (_friendSearchFocusNode.hasFocus) {
+          _friendSearchFocusNode.unfocus(); // 포커스 해제
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('친구 기능을 사용하려면 로그인이 필요합니다'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    }
   }
 
   Future<void> _loadCafes() async {
@@ -629,8 +652,14 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 CommonAutocompleteField<Friend>(
                   controller: friendSearchController,
                   focusNode: _friendSearchFocusNode,
-                  labelText: '친구 검색',
+                  labelText: widget.isLoggedIn ? '친구 검색' : '친구 검색 (로그인 필요)',
+                  enabled: widget.isLoggedIn, // 비회원은 비활성화
                   optionsBuilder: (textEditingValue) {
+                    // 비회원은 빈 리스트 반환 (검색 불가)
+                    if (!widget.isLoggedIn) {
+                      return <Friend>[];
+                    }
+                    
                     final availableFriends =
                         widget.friends
                             .where((f) => !selectedFriends.contains(f))
@@ -667,8 +696,23 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     return filteredFriends;
                   },
                   onSelected: (Friend selected) async {
+                    // 비회원은 모든 친구 기능 불가
+                    if (!widget.isLoggedIn) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('친구 기능은 로그인 후 사용할 수 있습니다'),
+                            backgroundColor: Colors.orange,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                    
                     // 새 친구 추가 옵션이 선택된 경우
                     if (selected.id == -1) {
+                      
                       try {
                         // 새 친구 생성 - 실제 이름에서 "+" 부분 제거
                         final friendName = selected.nickname
@@ -716,7 +760,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                         }
                       }
                     } else {
-                      // 기존 친구 선택
+                      // 기존 친구 선택 (비회원도 가능하지만 DB에 있는 친구가 없을 것임)
                       setState(() {
                         selectedFriends.add(selected);
                         friendSearchController.clear();
@@ -821,25 +865,25 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     );
                   },
                 ),
-                // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
-                Wrap(
-                  spacing: 8, // 아이템들 사이의 간격
-                  children:
-                      // map(): 리스트의 각 요소를 다른 형태로 변환
-                      selectedFriends.map((friend) {
-                        // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
-                        return Chip(
-                          label: Text(friend.displayName),
-                          deleteIcon: const Icon(Icons.close),
-                          // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
-                          onDeleted: () {
-                            setState(() {
-                              selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
-                            });
-                          },
-                        );
-                      }).toList(), // map 결과를 List로 변환
-                ),
+                  // Wrap: 자식 위젯들이 한 줄에 다 들어가지 않으면 다음 줄로 넘어가는 위젯
+                  Wrap(
+                    spacing: 8, // 아이템들 사이의 간격
+                    children:
+                        // map(): 리스트의 각 요소를 다른 형태로 변환
+                        selectedFriends.map((friend) {
+                          // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
+                          return Chip(
+                            label: Text(friend.displayName),
+                            deleteIcon: const Icon(Icons.close),
+                            // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
+                            onDeleted: () {
+                              setState(() {
+                                selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
+                              });
+                            },
+                          );
+                        }).toList(), // map 결과를 List로 변환
+                  ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
                   onPressed: () {
@@ -1056,14 +1100,6 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       return;
                     }
 
-                    // 로그인 확인
-                    if (!AuthService.isLoggedIn) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('로그인이 필요합니다')),
-                      );
-                      return;
-                    }
-
                     try {
                       // 저장 상태 표시
                       setState(() {
@@ -1072,57 +1108,101 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
 
                       // DiaryEntry 생성
                       final now = DateTime.now();
-                      final newEntry = DiaryEntry(
-                        id: 0, // DB에서 자동 생성
-                        userId: AuthService.currentUser!.id,
-                        themeId: selectedTheme!.id,
-                        theme: selectedTheme,
-                        date: selectedDate!,
-                        friends: null, // 별도 테이블로 관리
-                        memo:
-                            _memoController.text.isEmpty
-                                ? null
-                                : _memoController.text,
-                        memoPublic:
-                            _memoController.text.isNotEmpty
-                                ? _memoPublic
-                                : false,
-                        rating: _rating,
-                        escaped: _escaped,
-                        hintUsedCount: _hintUsedCount,
-                        timeTaken: _timeTaken,
-                        photos: null,
-                        createdAt: now,
-                        updatedAt: now,
-                      );
-
-                      // 친구 ID 목록 생성 (모든 선택된 친구)
-                      final friendIds =
-                          selectedFriends
-                              .where((friend) => friend.id != null)
-                              .map((friend) => friend.id!)
-                              .toList();
-
-                      // DB에 저장
-                      // 작성자의 일지에는 친구들을 참여자로 추가하되, 친구 일지 공유는 비활성화
-                      final savedEntry = await DatabaseService.addDiaryEntry(
-                        newEntry,
-                        friendIds: friendIds.isNotEmpty ? friendIds : null,
-                        enableMutualFriendsEntries: false, // 친구 일지 공유 비활성화
-                      );
-
-                      if (mounted) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-
-                        // 성공 메시지
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('일지가 저장되었습니다!')),
+                      
+                      // 비회원/회원 분기
+                      if (!widget.isLoggedIn) {
+                        // ========== 비회원: 로컬 저장 ==========
+                        final localEntry = DiaryEntry(
+                          id: 0, // 로컬 저장소에서 자동 생성 (큰 양수로 교체될 예정)
+                          userId: 'local_user', // 로컬 사용자 ID
+                          themeId: selectedTheme!.id,
+                          theme: selectedTheme,
+                          date: selectedDate!,
+                          friends: null, // 비회원은 친구 기능 사용 불가
+                          memo: _memoController.text.isEmpty
+                              ? null
+                              : _memoController.text,
+                          memoPublic: _memoController.text.isNotEmpty
+                              ? _memoPublic
+                              : false,
+                          rating: _rating,
+                          escaped: _escaped,
+                          hintUsedCount: _hintUsedCount,
+                          timeTaken: _timeTaken,
+                          photos: null,
+                          createdAt: now,
+                          updatedAt: now,
                         );
 
-                        // 저장된 일지와 함께 이전 화면으로 돌아가기
-                        Navigator.pop(context, savedEntry);
+                        // 로컬에 저장
+                        final savedEntry = await LocalStorageService.saveDiary(localEntry);
+
+                        if (mounted) {
+                          setState(() {
+                            _isSaving = false;
+                          });
+
+                          // 성공 메시지
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('일지가 기기에 저장되었습니다!'),
+                              backgroundColor: Colors.blue,
+                            ),
+                          );
+
+                          // 저장된 일지와 함께 이전 화면으로 돌아가기
+                          Navigator.pop(context, savedEntry);
+                        }
+                      } else {
+                        // ========== 회원: DB 저장 ==========
+                        final newEntry = DiaryEntry(
+                          id: 0, // DB에서 자동 생성
+                          userId: AuthService.currentUser!.id,
+                          themeId: selectedTheme!.id,
+                          theme: selectedTheme,
+                          date: selectedDate!,
+                          friends: null, // 별도 테이블로 관리
+                          memo: _memoController.text.isEmpty
+                              ? null
+                              : _memoController.text,
+                          memoPublic: _memoController.text.isNotEmpty
+                              ? _memoPublic
+                              : false,
+                          rating: _rating,
+                          escaped: _escaped,
+                          hintUsedCount: _hintUsedCount,
+                          timeTaken: _timeTaken,
+                          photos: null,
+                          createdAt: now,
+                          updatedAt: now,
+                        );
+
+                        // 친구 ID 목록 생성 (모든 선택된 친구)
+                        final friendIds = selectedFriends
+                            .where((friend) => friend.id != null)
+                            .map((friend) => friend.id!)
+                            .toList();
+
+                        // DB에 저장
+                        final savedEntry = await DatabaseService.addDiaryEntry(
+                          newEntry,
+                          friendIds: friendIds.isNotEmpty ? friendIds : null,
+                          enableMutualFriendsEntries: false, // 친구 일지 공유 비활성화
+                        );
+
+                        if (mounted) {
+                          setState(() {
+                            _isSaving = false;
+                          });
+
+                          // 성공 메시지
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('일지가 저장되었습니다!')),
+                          );
+
+                          // 저장된 일지와 함께 이전 화면으로 돌아가기
+                          Navigator.pop(context, savedEntry);
+                        }
                       }
                     } catch (e) {
                       if (mounted) {

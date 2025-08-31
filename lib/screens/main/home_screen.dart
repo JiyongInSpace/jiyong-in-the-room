@@ -167,34 +167,33 @@ class HomeScreen extends StatelessWidget {
         title: const Text(''),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // 로그인 상태에서만 일지 작성 버튼 표시
-          if (isLoggedIn) ...[
-            IconButton(
-              onPressed: () async {
-                final result = await Navigator.push<DiaryEntry>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WriteDiaryScreen(
-                      friends: friends,
-                      onAddFriend: onAddFriend,
-                    ),
+          // 일지 작성 버튼 (비회원도 표시)
+          IconButton(
+            onPressed: () async {
+              final result = await Navigator.push<DiaryEntry>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WriteDiaryScreen(
+                    friends: friends,
+                    onAddFriend: onAddFriend,
+                    isLoggedIn: isLoggedIn, // 로그인 상태 전달
                   ),
-                );
-                
-                // 새로운 일지가 작성되면 홈 화면 데이터 새로고침
-                if (result != null) {
-                  onAdd(result);
-                  if (onDataRefresh != null) {
-                    onDataRefresh!();
-                  }
+                ),
+              );
+              
+              // 새로운 일지가 작성되면 홈 화면 데이터 새로고침
+              if (result != null) {
+                onAdd(result);
+                if (onDataRefresh != null) {
+                  onDataRefresh!();
                 }
-              },
-              icon: const Icon(Icons.edit_outlined),
-              iconSize: 28,
-              tooltip: '일지 작성',
-            ),
-            const SizedBox(width: 8),
-          ],
+              }
+            },
+            icon: const Icon(Icons.edit_outlined),
+            iconSize: 28,
+            tooltip: '일지 작성',
+          ),
+          const SizedBox(width: 8),
           IconButton(
             onPressed: () async {
               final result = await Navigator.push<bool>(
@@ -327,30 +326,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () async {
-                      if (!isLoggedIn) {
-                        await LoginDialog.show(
-                          context: context,
-                          title: '일지 목록 보기',
-                          message: '전체 일지 목록을 보려면 로그인이 필요해요.',
-                          onLoginSuccess: () {
-                            // 로그인 성공 후 자동으로 일지 목록으로 이동
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DiaryListInfiniteScreen(
-                                  friends: friends,
-                                  onAddFriend: onAddFriend,
-                                  onRemoveFriend: onRemoveFriend,
-                                  onUpdateFriend: onUpdateFriend,
-                                  onDataRefresh: onDataRefresh,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                        return;
-                      }
-                      
+                      // 비회원/회원 구분 없이 일지 목록으로 이동
                       Navigator.push(
                         context,
                         MaterialPageRoute(

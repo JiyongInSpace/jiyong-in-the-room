@@ -4,6 +4,7 @@ import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -513,11 +514,12 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               ),
               const SizedBox(height: 20),
               
-              // 친구 선택
+              // 친구 선택 (회원만 사용 가능)
               CommonAutocompleteField<Friend>(
                 controller: friendSearchController,
                 focusNode: _friendSearchFocusNode,
-                labelText: '친구 검색',
+                labelText: AuthService.isLoggedIn ? '친구 검색' : '친구 기능은 로그인 후 이용 가능',
+                enabled: AuthService.isLoggedIn,
                 optionsBuilder: (textEditingValue) {
                   final availableFriends = widget.friends
                       .where((f) => !selectedFriends.contains(f))
@@ -557,35 +559,36 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           .replaceAll(RegExp(r'^\+ "'), '')
                           .replaceAll(RegExp(r'" 친구로 추가$'), '');
                       
-                      // DatabaseService로 직접 친구 추가하여 실제 ID를 받음
-                      final savedFriend = await DatabaseService.addFriend(Friend(
-                        nickname: friendName,
-                        addedAt: DateTime.now(),
-                        memo: null,
-                      ));
-
-                      // 부모 위젯의 친구 목록에도 추가
-                      if (widget.onAddFriend != null) {
-                        widget.onAddFriend!(savedFriend);
-                      }
-
-                      setState(() {
-                        selectedFriends.add(savedFriend); // 실제 ID가 있는 객체 사용
-                        friendSearchController.clear();
-                      });
-
-                      // 성공 메시지
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${savedFriend.nickname} 친구를 추가했습니다!',
+                      // 회원만 친구 추가 가능 (비회원은 친구 기능 사용 불가)
+                      if (AuthService.isLoggedIn) {
+                        final savedFriend = await DatabaseService.addFriend(Friend(
+                          nickname: friendName,
+                          addedAt: DateTime.now(),
+                          memo: null,
+                        ));
+                        
+                        // 저장된 친구를 선택된 친구 목록에 추가
+                        setState(() {
+                          selectedFriends.add(savedFriend);
+                        });
+                        
+                        // 상위 위젯에도 알림
+                        if (widget.onAddFriend != null) {
+                          widget.onAddFriend!(savedFriend);
+                        }
+                        
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${savedFriend.nickname} 친구를 추가했습니다!'),
+                              backgroundColor: Colors.green,
                             ),
-                            backgroundColor: Colors.green,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                          );
+                        }
                       }
+                      
+                      // 입력 필드 정리
+                      friendSearchController.clear();
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -925,7 +928,11 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
                       if (confirmed == true) {
                         try {
-                          await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                          if (AuthService.isLoggedIn) {
+                            await DatabaseService.deleteDiaryEntry(widget.entry.id);
+                          } else {
+                            await LocalStorageService.deleteDiary(widget.entry.id);
+                          }
                           
                           if (mounted) {
                             Navigator.pop(context, 'deleted');
@@ -994,12 +1001,19 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                             .map((friend) => friend.id!)
                             .toList();
                         
-                        // 데이터베이스에 수정 사항 저장
-                        // 수정 시에는 기존 참여자 구조 유지하면서 선택된 친구들로 업데이트
-                        final savedEntry = await DatabaseService.updateDiaryEntry(
-                          updatedEntry,
-                          friendIds: friendIds.isNotEmpty ? friendIds : null,
-                        );
+                        // 회원/비회원에 따라 다른 저장 로직
+                        DiaryEntry savedEntry;
+                        
+                        if (AuthService.isLoggedIn) {
+                          // 회원: 데이터베이스에 수정 사항 저장
+                          savedEntry = await DatabaseService.updateDiaryEntry(
+                            updatedEntry,
+                            friendIds: friendIds.isNotEmpty ? friendIds : null,
+                          );
+                        } else {
+                          // 비회원: 로컬 저장소에 수정 사항 저장
+                          savedEntry = await LocalStorageService.updateDiary(updatedEntry);
+                        }
                         
                         if (mounted) {
                           setState(() {

@@ -11,6 +11,7 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/connectivity_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
 
 void main() async {
@@ -20,6 +21,9 @@ void main() async {
   await dotenv.load(fileName: ".env");
   
   await Hive.initFlutter();
+  
+  // 로컬 저장소 초기화
+  await LocalStorageService.initialize();
   
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -60,14 +64,15 @@ class _MyAppState extends State<MyApp> {
       diaryList.insert(insertIndex, entry);
     });
     
-    // 새 일지 추가 후 전체 데이터 다시 로드하여 참여자 정보 업데이트
+    // 데이터 다시 로드 (회원: DB 참여자 정보 업데이트, 비회원: 로컬 데이터 동기화)
     _loadDiaryEntries();
   }
   
-  // DB에서 일지 목록 로드
+  // 일지 목록 로드 (회원: DB, 비회원: 로컬)
   Future<void> _loadDiaryEntries() async {
     try {
       if (AuthService.isLoggedIn) {
+        // 회원: DB에서 로드
         final entries = await DatabaseService.getMyDiaryEntries();
         if (mounted) {
           setState(() {
@@ -77,7 +82,19 @@ class _MyAppState extends State<MyApp> {
             }
           });
           if (kDebugMode) {
-            print('📋 일지 목록 로드됨: ${entries?.length ?? 0}개');
+            print('📋 DB 일지 목록 로드됨: ${entries?.length ?? 0}개');
+          }
+        }
+      } else {
+        // 비회원: 로컬에서 로드
+        final localEntries = LocalStorageService.getLocalDiaries();
+        if (mounted) {
+          setState(() {
+            diaryList.clear();
+            diaryList.addAll(localEntries);
+          });
+          if (kDebugMode) {
+            print('📋 로컬 일지 목록 로드됨: ${localEntries.length}개');
           }
         }
       }
@@ -225,10 +242,8 @@ class _MyAppState extends State<MyApp> {
       _listenToAuthChanges();
       _handleInitialLink();
       
-      // 로그인된 상태라면 데이터 로드
-      if (isLoggedIn) {
-        await _loadDiaryEntries();
-      }
+      // 데이터 로드 (로그인 여부와 상관없이)
+      await _loadDiaryEntries();
     } catch (e) {
       if (kDebugMode) {
         print('❌ 앱 초기화 실패: $e');
@@ -305,13 +320,31 @@ class _MyAppState extends State<MyApp> {
           isLoggedIn = session != null;
         });
         if (isLoggedIn) {
+          // 로그인 시 비회원 데이터 정리하고 DB 데이터 로드
+          if (kDebugMode) {
+            print('🔄 로그인 감지: 비회원 데이터 정리 중...');
+            print('  - 기존 일지: ${diaryList.length}개');
+            print('  - 기존 친구: ${friendsList.length}명');
+          }
+          
+          setState(() {
+            diaryList.clear(); // 기존 로컬 데이터 정리
+            friendsList.clear(); // 기존 로컬 친구 정리
+          });
+          
+          if (kDebugMode) {
+            print('✅ 비회원 데이터 정리 완료. DB 데이터 로드 시작...');
+          }
+          
           _loadUserProfile();
           _loadUserData();
         } else {
           setState(() {
             userProfile = null;
           });
+          // 로그아웃 시 DB 데이터는 지우고 로컬 데이터 로드
           _clearUserData();
+          _loadDiaryEntries(); // 로컬 데이터 로드
         }
       }
     });
@@ -320,21 +353,23 @@ class _MyAppState extends State<MyApp> {
   // 로그인 시 사용자 데이터 로드
   Future<void> _loadUserData() async {
     try {
-      // 친구 목록 로드
-      final friends = await DatabaseService.getMyFriends();
-      if (mounted) {
-        setState(() {
-          friendsList.clear();
-          if (friends != null) {
-            friendsList.addAll(friends);
+      if (AuthService.isLoggedIn) {
+        // 회원: DB에서 친구 목록 로드
+        final friends = await DatabaseService.getMyFriends();
+        if (mounted) {
+          setState(() {
+            friendsList.clear();
+            if (friends != null) {
+              friendsList.addAll(friends);
+            }
+          });
+          if (kDebugMode) {
+            print('📋 친구 목록 로드됨: ${friends?.length ?? 0}명');
           }
-        });
-        if (kDebugMode) {
-          print('📋 친구 목록 로드됨: ${friends?.length ?? 0}명');
         }
       }
       
-      // 일지 목록 로드
+      // 일지 목록 로드 (회원/비회원 상관없이)
       await _loadDiaryEntries();
     } catch (e) {
       if (kDebugMode) {
@@ -343,15 +378,15 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  // 로그아웃 시 로컬 데이터 정리
+  // 로그아웃 시 DB 데이터만 정리 (로컬 데이터는 유지)
   void _clearUserData() {
     if (mounted) {
       setState(() {
         friendsList.clear();
-        diaryList.clear();
+        // diaryList는 clear하지 않고 로컬 데이터로 교체될 예정
       });
       if (kDebugMode) {
-        print('🧹 로컬 데이터 정리 완료');
+        print('🧹 DB 데이터 정리 완료');
       }
     }
   }
