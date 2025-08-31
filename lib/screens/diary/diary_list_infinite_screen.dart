@@ -12,6 +12,7 @@ import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 // 인피니트 스크롤이 적용된 일지 목록 화면
 class DiaryListInfiniteScreen extends StatefulWidget {
@@ -49,6 +50,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   // 검색 및 필터 관련 변수들
   final TextEditingController _searchController = TextEditingController();
   final List<Friend> _selectedFriends = [];
+  final List<RatingFilter> _selectedRatingFilters = [];
   String? _currentSearchQuery;
   Timer? _searchTimer;
   bool _showFilters = false;
@@ -112,6 +114,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
           limit: _pageSize,
           searchQuery: _currentSearchQuery,
           filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
+          ratingFilters: _selectedRatingFilters.isNotEmpty ? _selectedRatingFilters : null,
         );
         
         if (mounted) {
@@ -135,6 +138,18 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
             final themeName = diary.theme?.name?.toLowerCase() ?? '';
             final cafeName = diary.theme?.cafe?.name?.toLowerCase() ?? '';
             return themeName.contains(query) || cafeName.contains(query);
+          }).toList();
+        }
+        
+        // 만족도 필터 적용
+        if (_selectedRatingFilters.isNotEmpty) {
+          localDiaries = localDiaries.where((diary) {
+            for (final filter in _selectedRatingFilters) {
+              if (filter.matches(diary.rating)) {
+                return true;
+              }
+            }
+            return false;
           }).toList();
         }
         
@@ -224,12 +239,31 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     });
     _loadDiaries(reset: true);
   }
+  
+  // 만족도 필터 추가
+  void _addRatingFilter(RatingFilter filter) {
+    if (!_selectedRatingFilters.contains(filter)) {
+      setState(() {
+        _selectedRatingFilters.add(filter);
+      });
+      _loadDiaries(reset: true);
+    }
+  }
+
+  // 만족도 필터 제거
+  void _removeRatingFilter(RatingFilter filter) {
+    setState(() {
+      _selectedRatingFilters.remove(filter);
+    });
+    _loadDiaries(reset: true);
+  }
 
   // 필터 초기화
   void _clearFilters() {
     _searchController.clear();
     setState(() {
       _selectedFriends.clear();
+      _selectedRatingFilters.clear();
       _currentSearchQuery = null;
     });
     _loadDiaries(reset: true);
@@ -247,6 +281,12 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     if (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) {
       final friendNames = _selectedFriends.map((f) => f.displayName).join(', ');
       parts.add('친구: $friendNames');
+    }
+    
+    // 만족도 필터 표시
+    if (_selectedRatingFilters.isNotEmpty) {
+      final ratingNames = _selectedRatingFilters.map((f) => f.name).join(', ');
+      parts.add('만족도: $ratingNames');
     }
     
     return parts.join(' • ');
@@ -430,7 +470,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                             controller: _searchController,
                             labelText: '',
                             hintText: '테마명, 카페명',
-                            suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty
+                            suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty || _selectedRatingFilters.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),
                                     onPressed: _clearFilters,
@@ -479,6 +519,40 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    // 만족도 필터 드롭다운
+                    Row(
+                      children: [
+                        const Icon(Icons.sentiment_very_satisfied, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: CommonDropdownField<RatingFilter?>(
+                            key: ValueKey(_selectedRatingFilters.length),
+                            value: null,
+                            labelText: '',
+                            hintText: '만족도별 필터',
+                            items: RatingUtils.ratingFilters
+                                .where((filter) => !_selectedRatingFilters.contains(filter))
+                                .map((filter) => DropdownMenuItem<RatingFilter?>(
+                                  value: filter,
+                                  child: Row(
+                                    children: [
+                                      Text(filter.icon, style: const TextStyle(fontSize: 16)),
+                                      const SizedBox(width: 8),
+                                      Text(filter.name),
+                                    ],
+                                  ),
+                                ))
+                                .toList(),
+                            onChanged: (RatingFilter? filter) {
+                              if (filter != null) {
+                                _addRatingFilter(filter);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     // 선택된 친구 칩들 (회원만 표시)
                     if (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -496,13 +570,37 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                         }).toList(),
                       ),
                     ],
+                    // 선택된 만족도 필터 칩들
+                    if (_selectedRatingFilters.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: _selectedRatingFilters.map((filter) {
+                          return Chip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(filter.icon, style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 4),
+                                Text(filter.name),
+                              ],
+                            ),
+                            onDeleted: () => _removeRatingFilter(filter),
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            backgroundColor: Colors.orange[50],
+                            deleteIconColor: Colors.orange[700],
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
           ),
           // 필터 요약 정보 (한 줄)
-          if (!_showFilters && (_searchController.text.isNotEmpty || (AuthService.isLoggedIn && _selectedFriends.isNotEmpty)))
+          if (!_showFilters && (_searchController.text.isNotEmpty || (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) || _selectedRatingFilters.isNotEmpty))
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -560,7 +658,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                       padding: EdgeInsets.fromLTRB(
                         16, 
                         // 필터가 완전히 숨겨져 있을 때만 상단 여백 추가
-                        !_showFilters && _searchController.text.isEmpty && _selectedFriends.isEmpty ? 16 : 0, 
+                        !_showFilters && _searchController.text.isEmpty && _selectedFriends.isEmpty && _selectedRatingFilters.isEmpty ? 16 : 0, 
                         16, 
                         96
                       ), // 하단 80px + 기본 16px 여백

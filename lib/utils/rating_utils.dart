@@ -2,6 +2,20 @@ import 'package:flutter/material.dart';
 
 /// 방탈출 은어 별점 표시 유틸리티
 class RatingUtils {
+  /// 필터링을 위한 평점 범위 정의
+  static const List<RatingFilter> ratingFilters = [
+    RatingFilter('인생테마', 5.0, 5.0, '👑'),
+    RatingFilter('꽃밭길', 4.5, 4.9, '🌸'),
+    RatingFilter('꽃길', 4.0, 4.4, '🌺'),
+    RatingFilter('풀꽃길', 3.5, 3.9, '🌿'),
+    RatingFilter('풀길', 3.0, 3.4, '🌱'),
+    RatingFilter('풀흙길', 2.5, 2.9, '🌾'),
+    RatingFilter('흙길', 2.0, 2.4, '🏔️'),
+    RatingFilter('진흙길', 1.5, 1.9, '🕳️'),
+    RatingFilter('똥길', 1.0, 1.4, '💩'),
+    RatingFilter('왜했지', 0.5, 0.9, '😭'),
+    RatingFilter('미평가', null, null, '❓'),
+  ];
   /// 숫자 별점을 방탈출 은어로 변환
   static String getRatingText(double? rating) {
     if (rating == null) return '미평가';
@@ -94,4 +108,47 @@ class RatingUtils {
       ],
     );
   }
+}
+
+/// 평점 필터를 위한 데이터 클래스
+class RatingFilter {
+  final String name;
+  final double? minRating;
+  final double? maxRating;
+  final String icon;
+
+  const RatingFilter(this.name, this.minRating, this.maxRating, this.icon);
+
+  /// 주어진 평점이 이 필터 범위에 포함되는지 확인
+  bool matches(double? rating) {
+    // 미평가 필터
+    if (name == '미평가') {
+      return rating == null;
+    }
+    
+    // 평점이 null인 경우
+    if (rating == null) {
+      return false;
+    }
+    
+    // 범위 체크
+    if (minRating != null && rating < minRating!) {
+      return false;
+    }
+    if (maxRating != null && rating > maxRating!) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RatingFilter &&
+          runtimeType == other.runtimeType &&
+          name == other.name;
+
+  @override
+  int get hashCode => name.hashCode;
 }

@@ -5,6 +5,7 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/error_service.dart';
+import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 class DatabaseService {
   // 테마 관련 메서드들
@@ -504,6 +505,7 @@ class DatabaseService {
     int limit = 10,
     String? searchQuery,
     List<int>? filterFriendIds,
+    List<RatingFilter>? ratingFilters,
   }) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -560,20 +562,48 @@ class DatabaseService {
       
       final query = queryBuilder.order('date', ascending: false);
       
-      // 검색어와 페이징 적용
+      // 검색어 및 만족도 필터 적용
       final List<dynamic> response;
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        // 검색어가 있는 경우: 모든 데이터를 가져온 후 필터링
+      final bool needsClientSideFiltering = 
+          (searchQuery != null && searchQuery.isNotEmpty) ||
+          (ratingFilters != null && ratingFilters.isNotEmpty);
+          
+      if (needsClientSideFiltering) {
+        // 필터가 있는 경우: 모든 데이터를 가져온 후 클라이언트 사이드 필터링
         final allResponse = await query;
-        final searchLower = searchQuery.toLowerCase();
         final filteredResponse = (allResponse as List).where((item) {
-          final themeData = item['escape_themes'] as Map<String, dynamic>;
-          final cafeData = themeData['escape_cafes'] as Map<String, dynamic>;
+          // 검색어 필터링
+          if (searchQuery != null && searchQuery.isNotEmpty) {
+            final themeData = item['escape_themes'] as Map<String, dynamic>;
+            final cafeData = themeData['escape_cafes'] as Map<String, dynamic>;
+            
+            final searchLower = searchQuery.toLowerCase();
+            final themeName = (themeData['name'] as String).toLowerCase();
+            final cafeName = (cafeData['name'] as String).toLowerCase();
+            
+            if (!themeName.contains(searchLower) && !cafeName.contains(searchLower)) {
+              return false;
+            }
+          }
           
-          final themeName = (themeData['name'] as String).toLowerCase();
-          final cafeName = (cafeData['name'] as String).toLowerCase();
+          // 만족도 필터링
+          if (ratingFilters != null && ratingFilters.isNotEmpty) {
+            final rating = item['rating'] as double?;
+            bool matchesAnyRatingFilter = false;
+            
+            for (final filter in ratingFilters) {
+              if (filter.matches(rating)) {
+                matchesAnyRatingFilter = true;
+                break;
+              }
+            }
+            
+            if (!matchesAnyRatingFilter) {
+              return false;
+            }
+          }
           
-          return themeName.contains(searchLower) || cafeName.contains(searchLower);
+          return true;
         }).toList();
         
         // 페이징 적용
@@ -584,7 +614,7 @@ class DatabaseService {
           endIndex
         );
       } else {
-        // 검색어가 없는 경우: DB 레벨에서 페이징
+        // 필터가 없는 경우: DB 레벨에서 페이징
         response = await query.range(page * limit, (page + 1) * limit - 1);
       }
 
