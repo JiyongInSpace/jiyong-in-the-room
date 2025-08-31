@@ -319,6 +319,11 @@ class LocalStorageService {
     return _diaryBox.isNotEmpty || _friendBox.isNotEmpty;
   }
   
+  /// 로컬 일지만 존재하는지 확인 (마이그레이션용)
+  static bool hasLocalDiaries() {
+    return _diaryBox.isNotEmpty;
+  }
+  
   /// 로컬 데이터 통계
   static Map<String, int> getLocalDataStats() {
     return {

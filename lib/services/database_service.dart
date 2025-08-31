@@ -834,6 +834,8 @@ class DatabaseService {
       entryData.remove('id'); // DB에서 자동 생성 (SERIAL)
       entryData.remove('created_at'); // DB에서 자동 생성
       entryData.remove('updated_at'); // DB에서 자동 생성
+      entryData.remove('theme'); // theme 객체 제거 (theme_id만 사용)
+      entryData.remove('friends'); // friends 객체 제거 (participants 테이블 사용)
       
       // 일지 저장
       final response = await supabase
@@ -921,6 +923,8 @@ class DatabaseService {
       entryData.remove('user_id');
       entryData.remove('created_at');
       entryData.remove('updated_at'); // DB에서 자동 갱신
+      entryData.remove('theme'); // theme 객체 제거 (theme_id만 사용)
+      entryData.remove('friends'); // friends 객체 제거 (participants 테이블 사용)
       
       // 일지 수정
       final response = await supabase
@@ -1376,6 +1380,92 @@ class DatabaseService {
       }
       rethrow;
     }
+  }
+
+  // ============ 마이그레이션 관련 메서드 ============
+  
+  /// 로컬 데이터를 DB로 안전하게 마이그레이션
+  /// 실패 시 롤백하여 로컬 데이터 보존
+  static Future<Map<String, dynamic>> migrateLocalDataToDatabase(List<DiaryEntry> localDiaries) async {
+    if (!AuthService.isLoggedIn) {
+      throw Exception('로그인이 필요합니다');
+    }
+    
+    final currentUserId = AuthService.currentUser?.id;
+    if (currentUserId == null) {
+      throw Exception('사용자 정보를 찾을 수 없습니다');
+    }
+    
+    int successCount = 0;
+    final List<String> errors = [];
+    final List<DiaryEntry> migratedEntries = [];
+    final List<int> migratedLocalIds = [];
+    
+    if (kDebugMode) {
+      print('🔄 로컬 데이터 마이그레이션 시작: ${localDiaries.length}개 일지');
+    }
+    
+    // 각 일지를 개별적으로 마이그레이션 (실패한 것만 제외하고 계속 진행)
+    for (final localEntry in localDiaries) {
+      try {
+        if (kDebugMode) {
+          print('📝 일지 마이그레이션 중: ${localEntry.theme?.name} (로컬 ID: ${localEntry.id})');
+        }
+        
+        // 로컬 일지를 DB 형식으로 변환 (friends는 null로, userId는 현재 사용자로)
+        final dbEntry = DiaryEntry(
+          id: 0, // DB에서 자동 생성될 예정
+          userId: currentUserId,
+          themeId: localEntry.themeId,
+          theme: null, // DB 저장 시에는 theme 객체 제외 (theme_id만 사용)
+          date: localEntry.date,
+          friends: null, // 비회원 일지는 친구 정보 없음
+          memo: localEntry.memo,
+          memoPublic: localEntry.memoPublic,
+          rating: localEntry.rating,
+          escaped: localEntry.escaped,
+          hintUsedCount: localEntry.hintUsedCount,
+          timeTaken: localEntry.timeTaken,
+          photos: localEntry.photos,
+          createdAt: localEntry.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        
+        // DB에 저장 (친구 없이)
+        final savedEntry = await addDiaryEntry(dbEntry, friendIds: null);
+        migratedEntries.add(savedEntry);
+        migratedLocalIds.add(localEntry.id);
+        successCount++;
+        
+        if (kDebugMode) {
+          print('✅ 일지 마이그레이션 성공: DB ID ${savedEntry.id}');
+        }
+        
+      } catch (e) {
+        errors.add('${localEntry.theme?.name ?? "일지"}: $e');
+        if (kDebugMode) {
+          print('❌ 일지 마이그레이션 실패: ${localEntry.theme?.name} - $e');
+        }
+        continue; // 실패한 항목은 건너뛰고 계속 진행
+      }
+    }
+    
+    final result = {
+      'successCount': successCount,
+      'totalCount': localDiaries.length,
+      'errors': errors,
+      'migratedEntries': migratedEntries,
+      'migratedLocalIds': migratedLocalIds,
+    };
+    
+    if (kDebugMode) {
+      print('🏁 마이그레이션 완료: $successCount/${localDiaries.length}개 성공');
+      if (errors.isNotEmpty) {
+        print('⚠️ 실패한 항목들: ${errors.join(", ")}');
+      }
+    }
+    
+    return result;
   }
 
 }

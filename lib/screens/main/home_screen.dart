@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_list_infinite_screen.dart';
@@ -208,7 +209,12 @@ class HomeScreen extends StatelessWidget {
               
               // 프로필이 변경되면 홈 화면 데이터 새로고침
               if (result == true && onDataRefresh != null) {
+                if (kDebugMode) {
+                  print('🏠 HomeScreen: 설정 페이지에서 데이터 변경 감지, 새로고침 시작');
+                }
                 onDataRefresh!(); // 메인 앱에서 일지 데이터 새로고침
+              } else if (kDebugMode) {
+                print('🏠 HomeScreen: 데이터 변경 없음 (result: $result)');
               }
             },
             icon: CircleAvatar(

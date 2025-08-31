@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:jiyong_in_the_room/screens/misc/contact_screen.dart';
 import 'package:jiyong_in_the_room/screens/auth/profile_edit_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
@@ -107,6 +109,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(_currentUserProfile?['email'] ?? ''),
             onTap: () => _editProfile(context),
           ),
+          // 마이그레이션 버튼 (로컬 데이터가 있을 때만 표시)
+          if (LocalStorageService.hasLocalDiaries()) ...[
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined, color: Colors.blue),
+              title: const Text('로컬 데이터 가져오기'),
+              subtitle: const Text('비회원 시절 저장한 일지를 클라우드로 이동'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => _showMigrationDialog(context),
+            ),
+          ],
         ],
         const Divider(),
       ],
@@ -297,6 +309,226 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return const CircleAvatar(
       child: Icon(Icons.person),
+    );
+  }
+
+  // 마이그레이션 확인 다이얼로그 표시
+  Future<void> _showMigrationDialog(BuildContext context) async {
+    final stats = LocalStorageService.getLocalDataStats();
+    final diariesCount = stats['diaries'] ?? 0;
+    
+    if (diariesCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('가져올 로컬 데이터가 없습니다'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('로컬 데이터 마이그레이션'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('비회원 시절 저장한 일지 ${diariesCount}개를 클라우드로 이동하시겠습니까?'),
+            const SizedBox(height: 16),
+            const Text(
+              '⚠️ 주의사항:',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            ),
+            const Text('• 마이그레이션 후 로컬 데이터는 삭제됩니다'),
+            const Text('• 실패한 항목은 로컬에 보존됩니다'),
+            const Text('• 인터넷 연결이 필요합니다'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await _performMigration(context);
+    }
+  }
+
+  // 실제 마이그레이션 수행
+  Future<void> _performMigration(BuildContext context) async {
+    // 진행률 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('데이터 마이그레이션 중'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text('로컬 데이터를 클라우드로 이동하고 있습니다...'),
+            const SizedBox(height: 8),
+            const Text(
+              '잠시만 기다려주세요',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // 로컬 데이터 가져오기
+      final localDiaries = LocalStorageService.getLocalDiaries();
+      
+      if (localDiaries.isEmpty) {
+        if (context.mounted) {
+          Navigator.of(context).pop(); // 진행률 다이얼로그 닫기
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('마이그레이션할 데이터가 없습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // DB로 마이그레이션
+      final result = await DatabaseService.migrateLocalDataToDatabase(localDiaries);
+      
+      // 진행률 다이얼로그 닫기
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // 결과 확인
+      final successCount = result['successCount'] as int;
+      final errors = result['errors'] as List<String>;
+      final migratedLocalIds = result['migratedLocalIds'] as List<int>;
+      
+      if (successCount > 0) {
+        // 성공한 항목들만 로컬에서 삭제
+        for (var localId in migratedLocalIds) {
+          try {
+            await LocalStorageService.deleteDiary(localId);
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ 로컬 데이터 삭제 실패: ID=$localId, 에러: $e');
+            }
+          }
+        }
+        
+        // 메인 화면 데이터 새로고침 요청
+        setState(() {
+          _profileChanged = true; // 데이터 변경됨을 알림
+        });
+        
+        if (kDebugMode) {
+          print('🔄 마이그레이션 완료: 메인화면 새로고침 요청됨');
+        }
+      }
+      
+      // 결과 다이얼로그 표시
+      if (context.mounted) {
+        _showMigrationResultDialog(context, successCount, errors, localDiaries.length);
+      }
+      
+    } catch (e) {
+      // 진행률 다이얼로그 닫기
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      if (kDebugMode) {
+        print('❌ 마이그레이션 실패: $e');
+      }
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('마이그레이션 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 마이그레이션 결과 다이얼로그
+  void _showMigrationResultDialog(
+    BuildContext context, 
+    int successCount, 
+    List<String> errors, 
+    int totalCount
+  ) {
+    final failedCount = totalCount - successCount;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          successCount == totalCount ? '✅ 마이그레이션 완료' : '⚠️ 부분 성공',
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('총 ${totalCount}개 중 ${successCount}개가 성공적으로 이동되었습니다.'),
+            if (failedCount > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                '실패한 ${failedCount}개 항목:',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+              const SizedBox(height: 8),
+              ...errors.take(3).map((error) => Text(
+                '• $error',
+                style: const TextStyle(fontSize: 12, color: Colors.red),
+              )),
+              if (errors.length > 3) 
+                Text(
+                  '• 그 외 ${errors.length - 3}개...',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+            ],
+            if (successCount > 0) ...[
+              const SizedBox(height: 12),
+              const Text(
+                '✅ 성공한 데이터는 로컬에서 삭제되었습니다',
+                style: TextStyle(fontSize: 12, color: Colors.green),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 결과 다이얼로그 닫을 때도 데이터 변경 표시
+              setState(() {
+                _profileChanged = true;
+              });
+              if (kDebugMode) {
+                print('✅ 마이그레이션 결과 다이얼로그 닫힘: 데이터 변경 상태 유지');
+              }
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
     );
   }
 
