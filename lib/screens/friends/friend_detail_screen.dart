@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jiyong_in_the_room/constants/app_colors.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
@@ -118,7 +119,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
               title,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -157,7 +158,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                       CircleAvatar(
                         radius: 32,
                         backgroundColor:
-                            currentFriend.isConnected ? null : Colors.grey,
+                            currentFriend.isConnected ? null : AppColors.grey,
                         backgroundImage:
                             currentFriend.isConnected &&
                                     currentFriend.user?.avatarUrl != null
@@ -171,8 +172,8 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                       ? currentFriend.displayName[0]
                                           .toUpperCase()
                                       : '?',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: AppColors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 24,
                                   ),
@@ -196,10 +197,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 if (!currentFriend.isConnected)
-                                  const Icon(
+                                  Icon(
                                     Icons.link_off,
                                     size: 20,
-                                    color: Colors.grey,
+                                    color: AppColors.grey,
                                   ),
                               ],
                             ),
@@ -210,7 +211,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                 currentFriend.realName!,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.grey[600],
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -221,7 +222,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                 currentFriend.memo!,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey[600],
+                                  color: AppColors.textSecondary,
                                   fontStyle: FontStyle.italic,
                                 ),
                                 maxLines: 2,
@@ -245,7 +246,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                       icon: Icons.games,
                       title: '총 테마 수',
                       value: '$totalThemes개',
-                      color: Colors.blue[600]!,
+                      color: AppColors.secondary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -254,7 +255,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                       icon: Icons.check_circle,
                       title: '탈출 성공률',
                       value: '$successRate%',
-                      color: Colors.green[600]!,
+                      color: AppColors.success,
                     ),
                   ),
                 ],
@@ -325,7 +326,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                   children: [
                                     // 연한 초록 배경
                                     CircleAvatar(
-                                      backgroundColor: Colors.green[100],
+                                      backgroundColor: AppColors.stampSuccessBackground,
                                       radius: 20,
                                     ),
                                     // 스탬프 이미지 (위에 덮기)
@@ -342,7 +343,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                       children: [
                                         // 연한 빨강 배경
                                         CircleAvatar(
-                                          backgroundColor: Colors.red[100],
+                                          backgroundColor: AppColors.stampFailBackground,
                                           radius: 20,
                                         ),
                                         // 스탬프 이미지 (위에 덮기)
@@ -354,10 +355,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                                       ],
                                     )
                                   : CircleAvatar(
-                                      backgroundColor: Colors.grey[100],
+                                      backgroundColor: AppColors.stampUnknownBackground,
                                       child: Icon(
                                         Icons.help_outline,
-                                        color: Colors.grey[600],
+                                        color: AppColors.textSecondary,
                                         size: 20,
                                       ),
                                     ),
@@ -375,7 +376,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               _formatDate(entry.date),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -387,19 +388,19 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                               Icon(
                                 Icons.star,
                                 size: 16,
-                                color: Colors.amber[600],
+                                color: AppColors.amberShade,
                               ),
                               const SizedBox(width: 2),
                               Text(
                                 entry.rating!.toStringAsFixed(1),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 8),
                             ],
-                            const Icon(Icons.chevron_right, color: Colors.grey),
+                            Icon(Icons.chevron_right, color: AppColors.grey),
                           ],
                         ),
                       ),
@@ -417,14 +418,14 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                           Icon(
                             Icons.groups_outlined,
                             size: 48,
-                            color: Colors.grey[400],
+                            color: AppColors.textDisabled,
                           ),
                           const SizedBox(height: 12),
                           Text(
                             '${currentFriend.displayName}님과\n함께한 테마가 없습니다.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                               fontSize: 16,
                             ),
                           ),

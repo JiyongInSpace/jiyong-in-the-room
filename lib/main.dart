@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:jiyong_in_the_room/constants/app_colors.dart';
 import 'package:jiyong_in_the_room/screens/main/home_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
@@ -400,20 +401,20 @@ class _MyAppState extends State<MyApp> {
         title: '탈출일지',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFF4D03F), // 지도 느낌의 밝은 노랑
-            primary: const Color(0xFFF39C12), // 따뜻한 오렌지-노랑
-            secondary: const Color(0xFFE67E22), // 연황토색
-            surface: const Color(0xFFFEF9E7), // 매우 연한 크림색
-            background: const Color(0xFFFDF2E9), // 연한 베이지
+            seedColor: AppColors.primary,
+            primary: AppColors.secondary,
+            secondary: AppColors.tertiary,
+            surface: AppColors.surface,
+            background: AppColors.backgroundLight,
           ),
           useMaterial3: true,
           fontFamily: 'Pretendard',
-          scaffoldBackgroundColor: const Color(0xFFFDF2E9),
+          scaffoldBackgroundColor: AppColors.backgroundLight,
         ),
         home: Scaffold(
           body: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFFDF2E9), // 앱 배경색과 동일
+            decoration: BoxDecoration(
+              color: AppColors.backgroundLight,
             ),
             child: const Center(
               child: Column(
@@ -423,7 +424,7 @@ class _MyAppState extends State<MyApp> {
                   Icon(
                     Icons.lock_clock,
                     size: 64,
-                    color: Color(0xFFF39C12), // primary 색상
+                    color: AppColors.secondary,
                   ),
                   SizedBox(height: 24),
                   // 앱 제목
@@ -432,21 +433,21 @@ class _MyAppState extends State<MyApp> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF8B4513), // 갈색
+                      color: AppColors.textPrimary,
                       fontFamily: 'Pretendard',
                     ),
                   ),
                   SizedBox(height: 32),
                   // 로딩 인디케이터
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF39C12)),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
                   ),
                   SizedBox(height: 16),
                   Text(
                     '데이터를 불러오고 있어요...',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF8B4513),
+                      color: AppColors.textSecondary,
                       fontFamily: 'Pretendard',
                     ),
                   ),
@@ -462,18 +463,18 @@ class _MyAppState extends State<MyApp> {
       title: '탈출일지',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF4D03F), // 지도 느낌의 밝은 노랑
-          primary: const Color(0xFFF39C12), // 따뜻한 오렌지-노랑
-          secondary: const Color(0xFFE67E22), // 연황토색
-          surface: const Color(0xFFFEF9E7), // 매우 연한 크림색
-          background: const Color(0xFFFDF2E9), // 연한 베이지
+          seedColor: AppColors.primary, // 지도 느낌의 밝은 노랑
+          primary: AppColors.secondary, // 따뜻한 오렌지-노랑
+          secondary: AppColors.tertiary, // 연황토색
+          surface: AppColors.surface, // 매우 연한 크림색
+          background: AppColors.backgroundLight, // 연한 베이지
         ),
         useMaterial3: true,
         fontFamily: 'Pretendard',
-        scaffoldBackgroundColor: const Color(0xFFFDF2E9), // 전체 배경색
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF4D03F), // AppBar 노랑색
-          foregroundColor: Color(0xFF8B4513), // 갈색 텍스트
+        scaffoldBackgroundColor: AppColors.backgroundLight,
+        appBarTheme: AppBarTheme(
+          backgroundColor: AppColors.appBarBackground,
+          foregroundColor: AppColors.appBarText,
           elevation: 2,
         ),
       ),
