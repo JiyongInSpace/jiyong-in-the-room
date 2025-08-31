@@ -1145,7 +1145,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           // 성공 메시지
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('일지가 기기에 저장되었습니다!'),
+                              content: Text('일지가 저장되었습니다!'),
                               backgroundColor: Colors.blue,
                             ),
                           );

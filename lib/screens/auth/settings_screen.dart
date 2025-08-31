@@ -113,8 +113,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (LocalStorageService.hasLocalDiaries()) ...[
             ListTile(
               leading: const Icon(Icons.cloud_upload_outlined, color: Colors.blue),
-              title: const Text('로컬 데이터 가져오기'),
-              subtitle: const Text('비회원 시절 저장한 일지를 클라우드로 이동'),
+              title: const Text('기기에 저장된 일지 가져오기'),
+              subtitle: const Text('로그인 전에 작성한 일지를 계정에 연결'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => _showMigrationDialog(context),
             ),
@@ -320,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (diariesCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('가져올 로컬 데이터가 없습니다'),
+          content: Text('가져올 일지가 없습니다'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -331,19 +331,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('로컬 데이터 마이그레이션'),
+        title: const Text('일지 가져오기'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('비회원 시절 저장한 일지 ${diariesCount}개를 클라우드로 이동하시겠습니까?'),
+            Text('기기에 저장된 일지 ${diariesCount}개를 계정에 연결하시겠습니까?'),
             const SizedBox(height: 16),
             const Text(
-              '⚠️ 주의사항:',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+              '📱 안내:',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
             ),
-            const Text('• 마이그레이션 후 로컬 데이터는 삭제됩니다'),
-            const Text('• 실패한 항목은 로컬에 보존됩니다'),
+            const Text('• 연결 완료 후 기기 데이터는 정리됩니다'),
+            const Text('• 연결 실패 시 해당 일지는 유지됩니다'),
             const Text('• 인터넷 연결이 필요합니다'),
           ],
         ),
@@ -372,13 +372,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('데이터 마이그레이션 중'),
+        title: const Text('일지 가져오는 중'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            const Text('로컬 데이터를 클라우드로 이동하고 있습니다...'),
+            const Text('기기에 저장된 일지를 계정에 연결하고 있어요...'),
             const SizedBox(height: 8),
             const Text(
               '잠시만 기다려주세요',
@@ -398,7 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Navigator.of(context).pop(); // 진행률 다이얼로그 닫기
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('마이그레이션할 데이터가 없습니다'),
+              content: Text('가져올 일지가 없습니다'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -459,7 +459,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('마이그레이션 실패: $e'),
+            content: Text('일지 가져오기 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -480,13 +480,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          successCount == totalCount ? '✅ 마이그레이션 완료' : '⚠️ 부분 성공',
+          successCount == totalCount ? '✅ 일지 가져오기 완료' : '⚠️ 일부 가져오기 완료',
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('총 ${totalCount}개 중 ${successCount}개가 성공적으로 이동되었습니다.'),
+            Text('총 ${totalCount}개 중 ${successCount}개가 성공적으로 연결되었습니다.'),
             if (failedCount > 0) ...[
               const SizedBox(height: 12),
               Text(
@@ -507,7 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (successCount > 0) ...[
               const SizedBox(height: 12),
               const Text(
-                '✅ 성공한 데이터는 로컬에서 삭제되었습니다',
+                '✅ 연결된 일지는 정리되었습니다',
                 style: TextStyle(fontSize: 12, color: Colors.green),
               ),
             ],
