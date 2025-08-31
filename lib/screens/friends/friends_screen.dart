@@ -9,6 +9,7 @@ import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 import 'package:jiyong_in_the_room/widgets/friend_management_bottom_sheet.dart';
+import 'package:jiyong_in_the_room/widgets/friend_filter_dialog.dart';
 import 'dart:async';
 
 // 친구 정렬 옵션 열거형
@@ -73,9 +74,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
   
   // 정렬 옵션
   FriendSortOption _sortOption = FriendSortOption.name;
-  
-  // 필터 표시 상태
-  bool _showFilters = false;
   @override
   void initState() {
     super.initState();
@@ -671,89 +669,56 @@ class _FriendsScreenState extends State<FriendsScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
-            color: _showFilters ? null : Colors.grey,
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
+            icon: Icon(
+              Icons.filter_list,
+              color: _hasActiveFilters 
+                  ? Theme.of(context).primaryColor 
+                  : null,
+            ),
+            onPressed: _showFilterDialog,
           ),
         ],
       ),
       body: Column(
         children: [
-          // 애니메이션이 적용된 필터 영역
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            height: _showFilters ? null : 0,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: _showFilters ? 1.0 : 0.0,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // 검색 입력창
-                    Row(
-                      children: [
-                        const Icon(Icons.search, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CommonTextField(
-                            controller: _searchController,
-                            labelText: '',
-                            hintText: '친구 이름이나 메모로 검색...',
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                    },
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ],
+          // 필터 요약 정보
+          if (_hasActiveFilters)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.filter_alt, size: 16, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _buildFilterSummary(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 12),
-                    
-                    // 정렬 옵션
-                    Row(
-                      children: [
-                        const Icon(Icons.sort, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CommonDropdownField<FriendSortOption>(
-                            value: _sortOption,
-                            labelText: '',
-                            items: FriendSortOption.values.map((option) {
-                              return DropdownMenuItem(
-                                value: option,
-                                child: Row(
-                                  children: [
-                                    Icon(option.icon, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(option.label),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                _changeSortOption(value);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                        _sortOption = FriendSortOption.name;
+                      });
+                      _refreshFriendsList();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  ],
-                ),
+                    child: const Text('초기화', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
               ),
             ),
-          ),
           
           // 친구 목록
           Expanded(
@@ -1049,6 +1014,46 @@ class _FriendsScreenState extends State<FriendsScreen> {
         ],
       ),
     );
+  }
+
+  // 필터 팝업 표시
+  Future<void> _showFilterDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => FriendFilterDialog(
+        initialSearchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+        initialSortOption: _sortOption,
+      ),
+    );
+    
+    if (result != null) {
+      setState(() {
+        _searchQuery = result['searchQuery'] ?? '';
+        _sortOption = result['sortOption'] ?? FriendSortOption.name;
+        _searchController.text = _searchQuery;
+      });
+      _refreshFriendsList();
+    }
+  }
+
+  // 필터가 적용되어 있는지 확인
+  bool get _hasActiveFilters => 
+      _searchQuery.isNotEmpty ||
+      _sortOption != FriendSortOption.name;
+
+  // 필터 요약 텍스트 생성
+  String _buildFilterSummary() {
+    List<String> parts = [];
+    
+    if (_searchQuery.isNotEmpty) {
+      parts.add('검색: "$_searchQuery"');
+    }
+    
+    if (_sortOption != FriendSortOption.name) {
+      parts.add('정렬: ${_sortOption.label}');
+    }
+    
+    return parts.join(' • ');
   }
 
 }
