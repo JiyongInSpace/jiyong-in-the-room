@@ -11,7 +11,7 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
-import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
+import 'package:jiyong_in_the_room/widgets/diary_filter_dialog.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 // 인피니트 스크롤이 적용된 일지 목록 화면
@@ -48,12 +48,11 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   final int _pageSize = 10;
   
   // 검색 및 필터 관련 변수들
-  final TextEditingController _searchController = TextEditingController();
+  String? _currentSearchQuery;
   final List<Friend> _selectedFriends = [];
   final List<RatingFilter> _selectedRatingFilters = [];
-  String? _currentSearchQuery;
-  Timer? _searchTimer;
-  bool _showFilters = false;
+  DateTime? _startDate;
+  DateTime? _endDate;
   
 
   @override
@@ -63,7 +62,6 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     // 초기 선택된 친구들 설정
     if (widget.initialSelectedFriends != null) {
       _selectedFriends.addAll(widget.initialSelectedFriends!);
-      _showFilters = false; // 초기에는 필터 영역을 숨긴 상태로 시작
     }
     
     _loadDiaries(reset: true);
@@ -75,8 +73,6 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchTimer?.cancel();
     super.dispose();
   }
 
@@ -115,6 +111,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
           searchQuery: _currentSearchQuery,
           filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
           ratingFilters: _selectedRatingFilters.isNotEmpty ? _selectedRatingFilters : null,
+          startDate: _startDate,
+          endDate: _endDate,
         );
         
         if (mounted) {
@@ -150,6 +148,23 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
               }
             }
             return false;
+          }).toList();
+        }
+        
+        // 날짜 필터 적용
+        if (_startDate != null || _endDate != null) {
+          localDiaries = localDiaries.where((diary) {
+            if (_startDate != null && diary.date.isBefore(_startDate!)) {
+              return false;
+            }
+            if (_endDate != null) {
+              // endDate의 23:59:59까지 포함
+              final adjustedEndDate = _endDate!.add(const Duration(days: 1));
+              if (diary.date.isAfter(adjustedEndDate) || diary.date.isAtSameMomentAs(adjustedEndDate)) {
+                return false;
+              }
+            }
+            return true;
           }).toList();
         }
         
@@ -201,70 +216,43 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   Future<void> _onRefresh() async {
     await _loadDiaries(reset: true);
   }
-
-  // 검색 실행 (즉시)
-  void _performSearch() {
-    final searchText = _searchController.text.trim();
-    _currentSearchQuery = searchText.isEmpty ? null : searchText;
-    _loadDiaries(reset: true);
-  }
-
-  // 딜레이된 검색 (타이핑 중 실시간 검색)
-  void _onSearchChanged(String value) {
-    setState(() {}); // suffixIcon 업데이트를 위해
-    
-    // 기존 타이머 취소
-    _searchTimer?.cancel();
-    
-    // 새 타이머 설정 (500ms 후 검색 실행)
-    _searchTimer = Timer(const Duration(milliseconds: 500), () {
-      _performSearch();
-    });
-  }
-
-  // 친구 추가
-  void _addFriendFilter(Friend friend) {
-    if (!_selectedFriends.contains(friend)) {
-      setState(() {
-        _selectedFriends.add(friend);
-      });
-      _loadDiaries(reset: true);
-    }
-  }
-
-  // 친구 제거
-  void _removeFriendFilter(Friend friend) {
-    setState(() {
-      _selectedFriends.remove(friend);
-    });
-    _loadDiaries(reset: true);
-  }
   
-  // 만족도 필터 추가
-  void _addRatingFilter(RatingFilter filter) {
-    if (!_selectedRatingFilters.contains(filter)) {
+  // 필터 팝업 표시
+  Future<void> _showFilterDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => DiaryFilterDialog(
+        initialSearchQuery: _currentSearchQuery,
+        initialSelectedFriends: _selectedFriends,
+        initialSelectedRatings: _selectedRatingFilters,
+        availableFriends: widget.friends,
+        initialStartDate: _startDate,
+        initialEndDate: _endDate,
+      ),
+    );
+    
+    if (result != null) {
       setState(() {
-        _selectedRatingFilters.add(filter);
+        _currentSearchQuery = result['searchQuery'];
+        _selectedFriends.clear();
+        _selectedFriends.addAll(result['selectedFriends'] ?? []);
+        _selectedRatingFilters.clear();
+        _selectedRatingFilters.addAll(result['selectedRatings'] ?? []);
+        _startDate = result['startDate'];
+        _endDate = result['endDate'];
       });
       _loadDiaries(reset: true);
     }
-  }
-
-  // 만족도 필터 제거
-  void _removeRatingFilter(RatingFilter filter) {
-    setState(() {
-      _selectedRatingFilters.remove(filter);
-    });
-    _loadDiaries(reset: true);
   }
 
   // 필터 초기화
   void _clearFilters() {
-    _searchController.clear();
     setState(() {
       _selectedFriends.clear();
       _selectedRatingFilters.clear();
       _currentSearchQuery = null;
+      _startDate = null;
+      _endDate = null;
     });
     _loadDiaries(reset: true);
   }
@@ -273,8 +261,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
   String _buildFilterSummary() {
     List<String> parts = [];
     
-    if (_searchController.text.isNotEmpty) {
-      parts.add('검색: "${_searchController.text}"');
+    if (_currentSearchQuery != null && _currentSearchQuery!.isNotEmpty) {
+      parts.add('검색: "$_currentSearchQuery"');
     }
     
     // 회원만 친구 필터 표시
@@ -289,8 +277,40 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
       parts.add('만족도: $ratingNames');
     }
     
+    // 날짜 필터 표시
+    if (_startDate != null || _endDate != null) {
+      String dateText = '';
+      if (_startDate != null && _endDate != null) {
+        final start = _formatDate(_startDate!);
+        final end = _formatDate(_endDate!);
+        if (start == end) {
+          dateText = start;
+        } else {
+          dateText = '$start ~ $end';
+        }
+      } else if (_startDate != null) {
+        dateText = '${_formatDate(_startDate!)} 이후';
+      } else if (_endDate != null) {
+        dateText = '${_formatDate(_endDate!)} 이전';
+      }
+      parts.add('기간: $dateText');
+    }
+    
     return parts.join(' • ');
   }
+  
+  // 날짜 포맷팅
+  String _formatDate(DateTime date) {
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+  }
+  
+  // 필터가 적용되어 있는지 확인
+  bool get _hasActiveFilters => 
+      (_currentSearchQuery != null && _currentSearchQuery!.isNotEmpty) ||
+      _selectedFriends.isNotEmpty ||
+      _selectedRatingFilters.isNotEmpty ||
+      _startDate != null ||
+      _endDate != null;
 
   // 일지 추가
   void _addDiary(DiaryEntry newEntry) {
@@ -436,171 +456,20 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
-            color: _showFilters ? null : Colors.grey,
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
+            icon: Icon(
+              Icons.filter_list,
+              color: _hasActiveFilters 
+                  ? Theme.of(context).primaryColor 
+                  : null,
+            ),
+            onPressed: _showFilterDialog,
           ),
         ],
       ),
       body: Column(
         children: [
-          // 애니메이션이 적용된 필터 영역
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            height: _showFilters ? null : 0,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: _showFilters ? 1.0 : 0.0,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // 검색 입력창 (아이콘 외부로 이동)
-                    Row(
-                      children: [
-                        const Icon(Icons.search, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CommonTextField(
-                            controller: _searchController,
-                            labelText: '',
-                            hintText: '테마명, 카페명',
-                            suffixIcon: _searchController.text.isNotEmpty || _selectedFriends.isNotEmpty || _selectedRatingFilters.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: _clearFilters,
-                                  )
-                                : null,
-                            onSubmitted: (value) => _performSearch(),
-                            onChanged: _onSearchChanged,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // 친구 필터 드롭다운 (비회원은 비활성화)
-                    Row(
-                      children: [
-                        Icon(Icons.person, 
-                          size: 20,
-                          color: AuthService.isLoggedIn ? null : Colors.grey,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CommonDropdownField<Friend?>(
-                            key: ValueKey(_selectedFriends.length),
-                            value: null,
-                            labelText: '',
-                            hintText: AuthService.isLoggedIn 
-                                ? '같이 한 친구'
-                                : '친구 기능은 로그인 후 이용 가능',
-                            items: AuthService.isLoggedIn
-                                ? widget.friends
-                                    .where((friend) => !_selectedFriends.contains(friend))
-                                    .map((friend) => DropdownMenuItem<Friend?>(
-                                      value: friend,
-                                      child: Text(friend.displayName),
-                                    ))
-                                    .toList()
-                                : [],
-                            onChanged: AuthService.isLoggedIn
-                                ? (Friend? friend) {
-                                    if (friend != null) {
-                                      _addFriendFilter(friend);
-                                    }
-                                  }
-                                : null, // 비회원은 비활성화
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // 만족도 필터 드롭다운
-                    Row(
-                      children: [
-                        const Icon(Icons.sentiment_very_satisfied, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CommonDropdownField<RatingFilter?>(
-                            key: ValueKey(_selectedRatingFilters.length),
-                            value: null,
-                            labelText: '',
-                            hintText: '만족도별 필터',
-                            items: RatingUtils.ratingFilters
-                                .where((filter) => !_selectedRatingFilters.contains(filter))
-                                .map((filter) => DropdownMenuItem<RatingFilter?>(
-                                  value: filter,
-                                  child: Row(
-                                    children: [
-                                      Text(filter.icon, style: const TextStyle(fontSize: 16)),
-                                      const SizedBox(width: 8),
-                                      Text(filter.name),
-                                    ],
-                                  ),
-                                ))
-                                .toList(),
-                            onChanged: (RatingFilter? filter) {
-                              if (filter != null) {
-                                _addRatingFilter(filter);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    // 선택된 친구 칩들 (회원만 표시)
-                    if (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: _selectedFriends.map((friend) {
-                          return Chip(
-                            label: Text(friend.displayName),
-                            onDeleted: () => _removeFriendFilter(friend),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            backgroundColor: Colors.blue[50],
-                            deleteIconColor: Colors.blue[700],
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                    // 선택된 만족도 필터 칩들
-                    if (_selectedRatingFilters.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: _selectedRatingFilters.map((filter) {
-                          return Chip(
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(filter.icon, style: const TextStyle(fontSize: 14)),
-                                const SizedBox(width: 4),
-                                Text(filter.name),
-                              ],
-                            ),
-                            onDeleted: () => _removeRatingFilter(filter),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            backgroundColor: Colors.orange[50],
-                            deleteIconColor: Colors.orange[700],
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 필터 요약 정보 (한 줄)
-          if (!_showFilters && (_searchController.text.isNotEmpty || (AuthService.isLoggedIn && _selectedFriends.isNotEmpty) || _selectedRatingFilters.isNotEmpty))
+          // 필터 요약 정보
+          if (_hasActiveFilters)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -655,10 +524,9 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
                     )
                   : ListView.builder(
                       controller: _scrollController,
-                      padding: EdgeInsets.fromLTRB(
+                      padding: const EdgeInsets.fromLTRB(
                         16, 
-                        // 필터가 완전히 숨겨져 있을 때만 상단 여백 추가
-                        !_showFilters && _searchController.text.isEmpty && _selectedFriends.isEmpty && _selectedRatingFilters.isEmpty ? 16 : 0, 
+                        16, 
                         16, 
                         96
                       ), // 하단 80px + 기본 16px 여백

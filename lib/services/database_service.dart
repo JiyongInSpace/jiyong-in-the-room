@@ -506,6 +506,8 @@ class DatabaseService {
     String? searchQuery,
     List<int>? filterFriendIds,
     List<RatingFilter>? ratingFilters,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
@@ -560,6 +562,16 @@ class DatabaseService {
         queryBuilder = queryBuilder.inFilter('id', filteredDiaryIds.toList());
       }
       
+      // 날짜 필터 적용
+      if (startDate != null) {
+        queryBuilder = queryBuilder.gte('date', startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        // endDate의 23:59:59까지 포함하도록 하루를 더함
+        final adjustedEndDate = endDate.add(const Duration(days: 1));
+        queryBuilder = queryBuilder.lt('date', adjustedEndDate.toIso8601String());
+      }
+      
       final query = queryBuilder.order('date', ascending: false);
       
       // 검색어 및 만족도 필터 적용
@@ -600,6 +612,24 @@ class DatabaseService {
             
             if (!matchesAnyRatingFilter) {
               return false;
+            }
+          }
+          
+          // 날짜 필터링
+          if (startDate != null || endDate != null) {
+            final dateStr = item['date'] as String;
+            final date = DateTime.parse(dateStr);
+            
+            if (startDate != null && date.isBefore(startDate)) {
+              return false;
+            }
+            
+            if (endDate != null) {
+              // endDate의 23:59:59까지 포함
+              final adjustedEndDate = endDate.add(const Duration(days: 1));
+              if (date.isAfter(adjustedEndDate) || date.isAtSameMomentAs(adjustedEndDate)) {
+                return false;
+              }
             }
           }
           
