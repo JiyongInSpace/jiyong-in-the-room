@@ -151,7 +151,7 @@ dependencies:
 
 ### 최근 구현 완료
 
-#### 🚀 2025-01-02 최신 업데이트 (비회원 친구 시스템 + 게임화 요소)
+#### 🚀 2025-09-02 최신 업데이트 (비회원 친구 시스템 + 게임화 요소)
 - **👥 완전한 비회원 친구 시스템**:
   - **로컬 친구 관리**: Hive를 사용한 친구 추가/수정/삭제
   - **FriendService 통합**: 회원/비회원 자동 구분 서비스 계층
@@ -344,7 +344,7 @@ dependencies:
 - `lib/models/escape_cafe.dart` - EscapeCafe, EscapeTheme 모델 
 - `lib/models/user.dart` - User, Friend 모델
 
-### 핵심 로직 (업데이트: 2025-01-02)
+### 핵심 로직 (업데이트: 2025-09-02)
 - `lib/services/auth_service.dart` - **Google Sign-In 플러그인 인증** (네이티브 + 웹 하이브리드)
   - 모바일: google_sign_in 플러그인 → ID토큰 → Supabase 인증
   - 웹: 기존 Supabase OAuth 유지 
