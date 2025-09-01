@@ -9,7 +9,6 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/diary_filter_dialog.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';

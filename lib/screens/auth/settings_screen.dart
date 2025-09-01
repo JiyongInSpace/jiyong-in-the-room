@@ -6,6 +6,7 @@ import 'package:jiyong_in_the_room/screens/auth/profile_edit_screen.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/widgets/migration_guide_dialog.dart';
 import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
@@ -45,10 +46,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _listenToAuthChanges() {
     _authSubscription = AuthService.authStateChanges.listen((data) async {
       final newIsLoggedIn = data.session != null;
+      final wasLoggedOut = !_currentIsLoggedIn;
       Map<String, dynamic>? newUserProfile;
       
       if (newIsLoggedIn) {
         newUserProfile = await AuthService.getCurrentUserProfile();
+        
+        // 로그아웃 상태에서 로그인 상태로 변경되었을 때만 마이그레이션 팝업 확인
+        if (wasLoggedOut && mounted) {
+          _checkAndShowMigrationDialog();
+        }
       }
       
       if (mounted) {
@@ -58,6 +65,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     });
+  }
+  
+  // 마이그레이션 팝업 확인 및 표시
+  void _checkAndShowMigrationDialog() async {
+    // 약간의 지연을 두고 실행 (UI가 안정화된 후)
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (!mounted) return;
+    
+    // 로컬 데이터가 있는지 확인
+    final localDiaries = LocalStorageService.getLocalDiaries();
+    if (localDiaries.isNotEmpty) {
+      // 마이그레이션 안내 팝업 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false, // 외부 클릭으로 닫기 방지
+        builder: (context) => MigrationGuideDialog(
+          onMigrationComplete: () {
+            // 마이그레이션 완료 시 프로필 변경 플래그 설정
+            setState(() {
+              _profileChanged = true;
+            });
+          },
+        ),
+      );
+    }
   }
 
   @override

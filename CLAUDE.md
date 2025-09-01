@@ -118,7 +118,7 @@ dependencies:
   connectivity_plus: ^6.0.5  # 네트워크 연결 상태 모니터링
 ```
 
-### 현재 작동하는 기능 (업데이트: 2025-08-27)
+### 현재 작동하는 기능 (업데이트: 2025-08-31)
 1. **Google Sign-In 네이티브 로그인** - 모바일 최적화된 UX ✅
 2. **실시간 인증 상태 관리** - 설정화면 즉시 업데이트 ✅  
 3. **프로필 이미지 업로드** - 갤러리/카메라 → Supabase Storage ✅
@@ -143,10 +143,31 @@ dependencies:
 22. **네트워크 연결 관리** - 오프라인 모드 안내, 실시간 연결 상태 모니터링 ✅
 23. **사용자 친화적 에러 처리** - 지능형 에러 인식 및 맞춤 메시지 제공 ✅
 24. **Skeleton UI 로딩** - 페이지별 최적화된 로딩 스켈레톤 적용 ✅
+25. **완전한 비회원 시스템** - Hive 로컬 저장소 기반 오프라인 일지 작성/조회 ✅
+26. **자동 데이터 마이그레이션** - 로그인 시 로컬 데이터 클라우드 이전 안내 ✅
 
 ### 최근 구현 완료
 
-#### 🚀 2025-08-27 최신 업데이트 (에러 처리 및 로딩 UX 개선)
+#### 🚀 2025-08-31 최신 업데이트 (비회원 시스템 + 마이그레이션)
+- **📱 완전한 비회원 사용자 기능**:
+  - **Hive 로컬 저장소**: 비회원도 일지 작성/저장/조회 가능
+  - **오프라인 데이터 관리**: 로컬 ID 시스템 (음수 ID로 구분)
+  - **상태 기반 UI**: 로그인 여부에 따른 데이터 소스 자동 전환 (DB vs 로컬)
+- **🔄 자동 데이터 마이그레이션 시스템**:
+  - **LoginDialog 연동**: 친구목록 더보기 등에서 로그인 시 마이그레이션 팝업 자동 표시
+  - **main.dart 상태 관리**: AuthService 상태 변화 감지하여 MaterialLocalizations 에러 해결
+  - **플래그 기반 처리**: `_shouldShowMigrationDialog` 플래그로 HomeScreen에서 안전한 다이얼로그 표시
+  - **사용자 친화적 UI**: "일지 가져오기" 제목으로 개발자 용어 제거
+- **🎯 UX 개선**:
+  - **페이지 이동 방지**: 로그인 팝업에서 로그인해도 메인 페이지에 그대로 유지
+  - **실시간 마이그레이션 안내**: 로그인 즉시 로컬 데이터 존재 시 안내 팝업
+  - **진행률 표시**: 마이그레이션 중 로딩 오버레이 + 상세 진행 메시지
+- **🏗️ 아키텍처 개선**:
+  - **HomeScreen StatefulWidget 전환**: 마이그레이션 다이얼로그 상태 관리
+  - **MaterialLocalizations 호환**: main.dart에서 직접 showDialog 호출 방지
+  - **디버깅 로그 강화**: 마이그레이션 과정 각 단계별 상세 로그
+
+#### 🚀 2025-08-27 이전 업데이트 (에러 처리 및 로딩 UX 개선)
 - **🌐 네트워크 연결 관리 시스템**:
   - **ConnectivityService**: `connectivity_plus` 패키지 활용한 실시간 네트워크 모니터링
   - **OfflineBanner**: 연결 끊김 시 상단 애니메이션 배너 + 재시도 기능
@@ -304,22 +325,28 @@ dependencies:
 - `lib/models/escape_cafe.dart` - EscapeCafe, EscapeTheme 모델 
 - `lib/models/user.dart` - User, Friend 모델
 
-### 핵심 로직 (업데이트: 2025-08-24)
+### 핵심 로직 (업데이트: 2025-08-31)
 - `lib/services/auth_service.dart` - **Google Sign-In 플러그인 인증** (네이티브 + 웹 하이브리드)
   - 모바일: google_sign_in 플러그인 → ID토큰 → Supabase 인증
   - 웹: 기존 Supabase OAuth 유지 
   - 개선된 로그아웃 (단계별 에러 핸들링)
-- `lib/services/database_service.dart` - **사용자 코드 시스템** + 친구 연동 로직
+- `lib/services/database_service.dart` - **사용자 코드 시스템** + 친구 연동 + **마이그레이션 로직**
   - **사용자 코드 관리**: `getMyUserCode()`, `findUserByCode()`, `addFriendByCode()`
   - **친구 연동**: `linkFriendWithCode()` - 기존 친구를 실제 사용자와 연결
   - **개인 일지 조회**: `getMyDiaryEntries()` - 단순화된 쿼리
+  - **데이터 마이그레이션**: `migrateLocalDataToDatabase()` - 로컬 데이터를 DB로 이전
+- `lib/services/local_storage_service.dart` - **Hive 로컬 저장소 관리**
+  - **비회원 데이터**: 로컬 일지 저장/조회/삭제
+  - **마이그레이션 지원**: 로컬 데이터 통계 및 DB 이전 준비
 - `lib/services/profile_service.dart` - **프로필 이미지 업로드**
   - Supabase Storage 연동 (avatars 버킷)
   - 이미지 업로드/삭제, 프로필 정보 업데이트
 - `lib/services/escape_room_service.dart` - **Supabase 데이터 조회** (카페/테마 지연 로딩)
 - `lib/services/connectivity_service.dart` - **네트워크 연결 모니터링** + 오프라인 기능 관리
 - `lib/services/error_service.dart` - **사용자 친화적 에러 처리** + 커스텀 예외 클래스
-- `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적 + 오프라인 배너 적용
+- `lib/main.dart` - 앱 진입점 + 전역 상태 관리 + 인증 상태 추적 + **마이그레이션 팝업 트리거**
+  - **비회원/회원 데이터 전환**: 로그인 시 로컬 → DB 데이터 자동 전환
+  - **AuthService 리스너**: 상태 변화 감지하여 마이그레이션 플래그 설정
 - `lib/screens/auth/settings_screen.dart` - **단순화된 설정 페이지**
   - 친구 코드/로그아웃 기능 → 프로필 편집으로 이동
 - `lib/screens/auth/profile_edit_screen.dart` - **프로필 편집** + 친구 코드 관리 + 로그아웃
@@ -330,12 +357,22 @@ dependencies:
   - **코드 기반 친구 추가**: 선택지 제공 (코드 vs 직접입력)
   - **기존 친구 연동**: 팝업 메뉴에 "코드 등록" 옵션
   - **연동 상태 UI**: 프로필 이미지 vs 미연동 아이콘
-- `lib/screens/main/home_screen.dart` - **홈 화면** (연동 친구 프로필 이미지 표시)
+- `lib/screens/main/home_screen.dart` - **홈 화면** (StatefulWidget) + **마이그레이션 다이얼로그 처리**
+  - **연동 친구 프로필 이미지 표시**: 실제 사용자 프로필 이미지 연동
+  - **마이그레이션 플래그 감지**: main.dart에서 설정한 플래그 기반 다이얼로그 표시
+  - **MaterialLocalizations 호환**: 안전한 showDialog 호출 환경 제공
 - `lib/screens/diary/diary_list_infinite_screen.dart` - **인피니트 스크롤** + 검색/필터
 - `lib/screens/diary/write_diary_screen.dart` - **일지 작성** + 개선된 테마 검색 UX + 로딩 오버레이
 - `lib/widgets/diary_entry_card.dart` - **재사용 일지 카드 컴포넌트**
 - `lib/widgets/offline_banner.dart` - **오프라인 상태 알림 배너** + 애니메이션
 - `lib/widgets/skeleton_widgets.dart` - **페이지별 맞춤 스켈레톤 UI** (8가지 유형)
+- `lib/widgets/migration_guide_dialog.dart` - **마이그레이션 안내 다이얼로그**
+  - **사용자 친화적 UI**: "일지 가져오기" 제목으로 개발자 용어 제거
+  - **로딩 오버레이**: 마이그레이션 진행 중 상태 표시
+  - **결과 피드백**: 성공/실패 개수 및 에러 상세 정보 제공
+- `lib/widgets/login_dialog.dart` - **로그인 안내 다이얼로그**
+  - **기능 안내**: 로그인 시 사용 가능한 기능들 상세 설명
+  - **Google 로그인 연동**: AuthService와 완전 통합
 
 ### 환경변수 및 설정
 - `.env` - Supabase 환경변수 (URL, API 키 등)
