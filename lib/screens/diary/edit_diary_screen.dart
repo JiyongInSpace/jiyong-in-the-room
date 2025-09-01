@@ -515,12 +515,12 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               ),
               const SizedBox(height: 20),
               
-              // 친구 선택 (회원만 사용 가능)
+              // 친구 선택
               CommonAutocompleteField<Friend>(
                 controller: friendSearchController,
                 focusNode: _friendSearchFocusNode,
-                labelText: AuthService.isLoggedIn ? '친구 검색' : '친구 기능은 로그인 후 이용 가능',
-                enabled: AuthService.isLoggedIn,
+                labelText: '친구 검색',
+                enabled: true,
                 optionsBuilder: (textEditingValue) {
                   final availableFriends = widget.friends
                       .where((f) => !selectedFriends.contains(f))
@@ -562,11 +562,10 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       
                       // 회원만 친구 추가 가능 (비회원은 친구 기능 사용 불가)
                       if (AuthService.isLoggedIn) {
-                        final savedFriend = await DatabaseService.addFriend(Friend(
+                        final savedFriend = await DatabaseService.addFriend(
                           nickname: friendName,
-                          addedAt: DateTime.now(),
                           memo: null,
-                        ));
+                        );
                         
                         // 저장된 친구를 선택된 친구 목록에 추가
                         setState(() {
@@ -984,7 +983,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           themeId: selectedTheme!.id,
                           theme: selectedTheme,
                           date: selectedDate!,
-                          friends: null, // 별도 테이블로 관리
+                          friends: AuthService.isLoggedIn ? null : selectedFriends, // 비회원: 직접 저장, 회원: 별도 테이블
                           memo: _memoController.text.isEmpty ? null : _memoController.text,
                           memoPublic: _memoController.text.isNotEmpty ? _memoPublic : false,
                           rating: _rating,

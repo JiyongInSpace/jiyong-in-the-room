@@ -12,6 +12,7 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/connectivity_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/friend_service.dart';
 import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
 
 void main() async {
@@ -126,48 +127,22 @@ class _MyAppState extends State<MyApp> {
     _loadDiaryEntries();
   }
 
-  Future<void> addFriend(Friend friend) async {
-    try {
-      if (AuthService.isLoggedIn) {
-        final savedFriend = await DatabaseService.addFriend(friend);
-        setState(() {
-          friendsList.add(savedFriend);
-        });
-        
-        // 친구 추가 후 일지 데이터도 새로고침
-        await _loadDiaryEntries();
-        
-        if (kDebugMode) {
-          print('✅ 친구 "${friend.nickname}" DB에 저장됨 + 일지 데이터 새로고침');
-        }
-      } else {
-        // 로그인하지 않은 경우 로컬에만 저장
-        setState(() {
-          friendsList.add(friend);
-        });
-        if (kDebugMode) {
-          print('📱 친구 "${friend.nickname}" 로컬에만 저장됨 (로그인 필요)');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ 친구 추가 실패: $e');
-      }
-      // 실패 시에도 로컬에 추가 (오프라인 기능)
-      setState(() {
-        friendsList.add(friend);
-      });
+  void addFriend(Friend friend) {
+    // 친구는 이미 저장된 상태로 전달됨 - UI 상태만 업데이트
+    setState(() {
+      friendsList.add(friend);
+    });
+    
+    if (kDebugMode) {
+      print('✅ 친구 "${friend.nickname}" UI에 추가됨');
     }
   }
 
   Future<void> removeFriend(Friend friend) async {
     try {
-      if (AuthService.isLoggedIn) {
-        await DatabaseService.deleteFriend(friend);
-        if (kDebugMode) {
-          print('✅ 친구 "${friend.nickname}" DB에서 삭제됨');
-        }
-      }
+      // 통합 친구 서비스 사용
+      await FriendService.deleteFriend(friend);
+      
       setState(() {
         friendsList.remove(friend);
       });
@@ -175,6 +150,9 @@ class _MyAppState extends State<MyApp> {
       // 친구 삭제 후 일지 데이터도 새로고침
       await _loadDiaryEntries();
       
+      if (kDebugMode) {
+        print('✅ 친구 "${friend.nickname}" 삭제됨');
+      }
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 삭제 실패: $e');
@@ -188,32 +166,25 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> updateFriend(Friend oldFriend, Friend newFriend) async {
     try {
-      if (AuthService.isLoggedIn) {
-        final updatedFriend = await DatabaseService.updateFriend(
-          oldFriend,
-          newNickname: newFriend.nickname,
-          newMemo: newFriend.memo,
-        );
-        setState(() {
-          final index = friendsList.indexOf(oldFriend);
-          if (index != -1) {
-            friendsList[index] = updatedFriend;
-          }
-        });
-        
-        // 친구 정보 변경 후 일지 데이터도 새로고침 (친구 정보 실시간 반영)
-        await _loadDiaryEntries();
-        
-        if (kDebugMode) {
-          print('✅ 친구 "${oldFriend.nickname}" 정보 DB에서 수정됨 + 일지 데이터 새로고침');
+      // 통합 친구 서비스 사용
+      final updatedFriend = await FriendService.updateFriend(
+        oldFriend,
+        nickname: newFriend.nickname,
+        memo: newFriend.memo,
+      );
+      
+      setState(() {
+        final index = friendsList.indexOf(oldFriend);
+        if (index != -1) {
+          friendsList[index] = updatedFriend;
         }
-      } else {
-        setState(() {
-          final index = friendsList.indexOf(oldFriend);
-          if (index != -1) {
-            friendsList[index] = newFriend;
-          }
-        });
+      });
+      
+      // 친구 정보 변경 후 일지 데이터도 새로고침 (친구 정보 실시간 반영)
+      await _loadDiaryEntries();
+      
+      if (kDebugMode) {
+        print('✅ 친구 "${oldFriend.nickname}" → "${newFriend.nickname}" 수정됨');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -365,6 +336,18 @@ class _MyAppState extends State<MyApp> {
           });
           if (kDebugMode) {
             print('📋 친구 목록 로드됨: ${friends?.length ?? 0}명');
+          }
+        }
+      } else {
+        // 비회원: 로컬에서 친구 목록 로드
+        final friends = await FriendService.getFriends();
+        if (mounted) {
+          setState(() {
+            friendsList.clear();
+            friendsList.addAll(friends);
+          });
+          if (kDebugMode) {
+            print('📋 친구 목록 로드됨: ${friends.length}명');
           }
         }
       }

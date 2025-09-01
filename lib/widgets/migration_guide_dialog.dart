@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 
 /// 로그인 후 로컬 데이터 마이그레이션 안내 다이얼로그
@@ -20,6 +19,7 @@ class MigrationGuideDialog extends StatefulWidget {
 class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
   bool _isLoading = false;
   int _localDiaryCount = 0;
+  int _localFriendCount = 0;
   
   @override
   void initState() {
@@ -29,8 +29,10 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
   
   void _loadLocalDiaryCount() {
     final localDiaries = LocalStorageService.getLocalDiaries();
+    final localFriends = LocalStorageService.getLocalFriends();
     setState(() {
       _localDiaryCount = localDiaries.length;
+      _localFriendCount = localFriends.length;
     });
   }
   
@@ -43,13 +45,14 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
     try {
       // 로컬 데이터 가져오기
       final localDiaries = LocalStorageService.getLocalDiaries();
+      final localFriends = LocalStorageService.getLocalFriends();
       
-      if (localDiaries.isEmpty) {
+      if (localDiaries.isEmpty && localFriends.isEmpty) {
         if (mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('가져올 일지가 없습니다'),
+              content: Text('가져올 데이터가 없습니다'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -57,8 +60,22 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
         return;
       }
       
-      // 마이그레이션 실행
-      final result = await DatabaseService.migrateLocalDataToDatabase(localDiaries);
+      // 마이그레이션 실행 (친구 포함)
+      final result = await DatabaseService.migrateLocalDataToDatabase(
+        localDiaries,
+        localFriends,
+      );
+      
+      // 마이그레이션 성공한 로컬 데이터 삭제
+      if (result['diarySuccessCount'] > 0 || result['friendSuccessCount'] > 0) {
+        // 성공한 항목들만 삭제
+        for (final localId in result['migratedDiaryLocalIds'] ?? []) {
+          await LocalStorageService.deleteDiary(localId);
+        }
+        for (final localId in result['migratedFriendLocalIds'] ?? []) {
+          await LocalStorageService.deleteFriend(localId);
+        }
+      }
       
       if (mounted) {
         Navigator.of(context).pop();
@@ -72,7 +89,7 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${result['totalMigrated']}개의 일지를 성공적으로 가져왔습니다!',
+                    '친구 ${result['friendSuccessCount']}명, 일지 ${result['diarySuccessCount']}개를 성공적으로 가져왔습니다!',
                   ),
                 ),
               ],
@@ -153,7 +170,8 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '로그인 전에 작성한 $_localDiaryCount개의 일지를 계정에 연결할 수 있습니다.',
+                        '로그인 전에 저장한 데이터를 계정에 연결할 수 있습니다.\n'
+                        '친구 $_localFriendCount명, 일지 $_localDiaryCount개',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.blue[600],
@@ -172,13 +190,21 @@ class _MigrationGuideDialogState extends State<MigrationGuideDialog> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '• 작성한 일지',
-                  style: TextStyle(
+                Text(
+                  '• 작성한 일지 ($_localDiaryCount개)',
+                  style: const TextStyle(
                     fontSize: 13,
                     height: 1.4,
                   ),
                 ),
+                if (_localFriendCount > 0)
+                  Text(
+                    '• 등록한 친구 ($_localFriendCount명)',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 
                 Container(

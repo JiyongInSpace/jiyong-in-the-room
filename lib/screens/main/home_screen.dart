@@ -401,34 +401,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () async {
-                      if (!isLoggedIn) {
-                        await LoginDialog.show(
-                          context: context,
-                          title: '친구 관리',
-                          message: '친구 기능을 사용하려면 로그인이 필요해요.',
-                          onLoginSuccess: () async {
-                            // 로그인 성공 후 자동으로 친구 화면으로 이동
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FriendsScreen(
-                                  diaryList: diaryList,
-                                  onAdd: onAddFriend,
-                                  onRemove: onRemoveFriend,
-                                  onUpdate: onUpdateFriend,
-                                ),
-                              ),
-                            );
-                            
-                            // 친구 관리 화면에서 돌아왔을 때 데이터 새로고침
-                            if (onDataRefresh != null) {
-                              onDataRefresh!();
-                            }
-                          },
-                        );
-                        return;
-                      }
-                      
+                      // 비회원도 친구 기능 사용 가능
                       await Navigator.push(
                         context,
                         MaterialPageRoute(

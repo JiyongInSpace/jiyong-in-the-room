@@ -439,8 +439,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // DB로 마이그레이션
-      final result = await DatabaseService.migrateLocalDataToDatabase(localDiaries);
+      // 로컬 친구 목록도 가져오기
+      final localFriends = LocalStorageService.getLocalFriends();
+      
+      // DB로 마이그레이션 (친구 포함)
+      final result = await DatabaseService.migrateLocalDataToDatabase(
+        localDiaries,
+        localFriends,
+      );
       
       // 진행률 다이얼로그 닫기
       if (context.mounted) {

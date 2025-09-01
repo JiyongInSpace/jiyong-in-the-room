@@ -8,6 +8,7 @@ import 'package:jiyong_in_the_room/services/escape_room_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/friend_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -95,21 +96,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     // 날짜를 오늘 날짜로 기본 설정
     selectedDate = DateTime.now();
     
-    // 비회원이 친구 검색 필드에 포커스하려고 할 때 안내 메시지
-    if (!widget.isLoggedIn) {
-      _friendSearchFocusNode.addListener(() {
-        if (_friendSearchFocusNode.hasFocus) {
-          _friendSearchFocusNode.unfocus(); // 포커스 해제
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('친구 기능을 사용하려면 로그인이 필요합니다'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      });
-    }
+    // 비회원도 친구 기능 사용 가능
   }
 
   Future<void> _loadCafes() async {
@@ -653,14 +640,9 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                 CommonAutocompleteField<Friend>(
                   controller: friendSearchController,
                   focusNode: _friendSearchFocusNode,
-                  labelText: widget.isLoggedIn ? '친구 검색' : '친구 검색 (로그인 필요)',
-                  enabled: widget.isLoggedIn, // 비회원은 비활성화
+                  labelText: '친구 검색',
+                  enabled: true, // 비회원도 사용 가능
                   optionsBuilder: (textEditingValue) {
-                    // 비회원은 빈 리스트 반환 (검색 불가)
-                    if (!widget.isLoggedIn) {
-                      return <Friend>[];
-                    }
-                    
                     final availableFriends =
                         widget.friends
                             .where((f) => !selectedFriends.contains(f))
@@ -697,19 +679,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     return filteredFriends;
                   },
                   onSelected: (Friend selected) async {
-                    // 비회원은 모든 친구 기능 불가
-                    if (!widget.isLoggedIn) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('친구 기능은 로그인 후 사용할 수 있습니다'),
-                            backgroundColor: Colors.orange,
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                      return;
-                    }
+                    // 비회원도 친구 선택 가능
                     
                     // 새 친구 추가 옵션이 선택된 경우
                     if (selected.id == -1) {
@@ -720,12 +690,13 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                             .replaceAll(RegExp(r'^\+ "'), '')
                             .replaceAll(RegExp(r'" 친구로 추가$'), '');
                         
-                        // DatabaseService로 직접 친구 추가하여 실제 ID를 받음
-                        final savedFriend = await DatabaseService.addFriend(Friend(
+                        Friend savedFriend;
+                        
+                        // 통합 친구 서비스 사용
+                        savedFriend = await FriendService.addFriend(
                           nickname: friendName,
-                          addedAt: DateTime.now(),
                           memo: null,
-                        ));
+                        );
 
                         // 부모 위젯의 친구 목록에도 추가
                         if (widget.onAddFriend != null) {
@@ -1119,7 +1090,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           themeId: selectedTheme!.id,
                           theme: selectedTheme,
                           date: selectedDate!,
-                          friends: null, // 비회원은 친구 기능 사용 불가
+                          friends: selectedFriends, // 비회원도 친구 기능 사용 가능
                           memo: _memoController.text.isEmpty
                               ? null
                               : _memoController.text,

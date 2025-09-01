@@ -292,20 +292,35 @@ class DatabaseService {
     );
   }
 
-  /// 새 친구 추가
-  static Future<Friend> addFriend(Friend friend) async {
+  /// 새 친구 추가 (Friend 객체 또는 개별 매개변수 지원)
+  static Future<Friend> addFriend({
+    Friend? friend,
+    String? nickname,
+    String? memo,
+  }) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
+    }
+    
+    // Friend 객체가 전달된 경우
+    if (friend != null) {
+      nickname = friend.nickname;
+      memo = friend.memo;
+    }
+    
+    // nickname은 필수
+    if (nickname == null || nickname.isEmpty) {
+      throw Exception('친구 이름은 필수입니다');
     }
 
     try {
       final currentUserId = AuthService.currentUser!.id;
       final friendData = {
         'user_id': currentUserId,
-        'connected_user_id': friend.connectedUserId,
-        'nickname': friend.nickname,
-        'memo': friend.memo,
-        'added_at': friend.addedAt.toUtc().toIso8601String(),
+        'connected_user_id': null,
+        'nickname': nickname,
+        'memo': memo,
+        'added_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       final response = await supabase
@@ -1258,7 +1273,7 @@ class DatabaseService {
         addedAt: DateTime.now(),
       );
       
-      return await addFriend(friend);
+      return await addFriend(friend: friend);
     } catch (e) {
       if (kDebugMode) {
         print('코드로 친구 추가 실패: $e');
@@ -1444,9 +1459,12 @@ class DatabaseService {
 
   // ============ 마이그레이션 관련 메서드 ============
   
-  /// 로컬 데이터를 DB로 안전하게 마이그레이션
+  /// 로컬 데이터를 DB로 안전하게 마이그레이션 (친구 포함)
   /// 실패 시 롤백하여 로컬 데이터 보존
-  static Future<Map<String, dynamic>> migrateLocalDataToDatabase(List<DiaryEntry> localDiaries) async {
+  static Future<Map<String, dynamic>> migrateLocalDataToDatabase(
+    List<DiaryEntry> localDiaries, 
+    List<Friend> localFriends,
+  ) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
@@ -1456,30 +1474,80 @@ class DatabaseService {
       throw Exception('사용자 정보를 찾을 수 없습니다');
     }
     
-    int successCount = 0;
+    int diarySuccessCount = 0;
+    int friendSuccessCount = 0;
     final List<String> errors = [];
     final List<DiaryEntry> migratedEntries = [];
-    final List<int> migratedLocalIds = [];
+    final List<int> migratedDiaryLocalIds = [];
+    final List<int> migratedFriendLocalIds = [];
+    
+    // 친구 ID 매핑 테이블 (로컬 ID -> DB ID)
+    final Map<int, int> friendIdMapping = {};
     
     if (kDebugMode) {
-      print('🔄 로컬 데이터 마이그레이션 시작: ${localDiaries.length}개 일지');
+      print('🔄 로컬 데이터 마이그레이션 시작');
+      print('  - 친구: ${localFriends.length}명');
+      print('  - 일지: ${localDiaries.length}개');
     }
     
-    // 각 일지를 개별적으로 마이그레이션 (실패한 것만 제외하고 계속 진행)
+    // 1. 먼저 친구들을 마이그레이션
+    for (final localFriend in localFriends) {
+      try {
+        if (kDebugMode) {
+          print('👥 친구 마이그레이션 중: ${localFriend.nickname} (로컬 ID: ${localFriend.id})');
+        }
+        
+        // DB에 친구 추가
+        final dbFriend = await addFriend(
+          nickname: localFriend.nickname,
+          memo: localFriend.memo,
+        );
+        
+        // ID 매핑 저장
+        if (localFriend.id != null && dbFriend.id != null) {
+          friendIdMapping[localFriend.id!] = dbFriend.id!;
+          migratedFriendLocalIds.add(localFriend.id!);
+        }
+        
+        friendSuccessCount++;
+        
+        if (kDebugMode) {
+          print('✅ 친구 마이그레이션 성공: ${localFriend.nickname} (DB ID: ${dbFriend.id})');
+        }
+      } catch (e) {
+        errors.add('친구 ${localFriend.nickname}: $e');
+        if (kDebugMode) {
+          print('❌ 친구 마이그레이션 실패: ${localFriend.nickname} - $e');
+        }
+      }
+    }
+    
+    // 2. 일지 마이그레이션 (친구 ID 매핑 적용)
     for (final localEntry in localDiaries) {
       try {
         if (kDebugMode) {
           print('📝 일지 마이그레이션 중: ${localEntry.theme?.name} (로컬 ID: ${localEntry.id})');
         }
         
-        // 로컬 일지를 DB 형식으로 변환 (friends는 null로, userId는 현재 사용자로)
+        // 로컬 친구 ID를 DB 친구 ID로 매핑
+        List<int>? mappedFriendIds;
+        if (localEntry.friends != null && localEntry.friends!.isNotEmpty) {
+          mappedFriendIds = [];
+          for (final friend in localEntry.friends!) {
+            if (friend.id != null && friendIdMapping.containsKey(friend.id)) {
+              mappedFriendIds.add(friendIdMapping[friend.id]!);
+            }
+          }
+        }
+        
+        // 로컬 일지를 DB 형식으로 변환
         final dbEntry = DiaryEntry(
           id: 0, // DB에서 자동 생성될 예정
           userId: currentUserId,
           themeId: localEntry.themeId,
           theme: null, // DB 저장 시에는 theme 객체 제외 (theme_id만 사용)
           date: localEntry.date,
-          friends: null, // 비회원 일지는 친구 정보 없음
+          friends: null, // 친구 객체는 별도로 처리
           memo: localEntry.memo,
           memoPublic: localEntry.memoPublic,
           rating: localEntry.rating,
@@ -1491,11 +1559,11 @@ class DatabaseService {
           updatedAt: DateTime.now(),
         );
         
-        // DB에 저장 (친구 없이)
-        final savedEntry = await addDiaryEntry(dbEntry, friendIds: null);
+        // DB에 저장 (매핑된 친구 ID와 함께)
+        final savedEntry = await addDiaryEntry(dbEntry, friendIds: mappedFriendIds);
         migratedEntries.add(savedEntry);
-        migratedLocalIds.add(localEntry.id);
-        successCount++;
+        migratedDiaryLocalIds.add(localEntry.id);
+        diarySuccessCount++;
         
         if (kDebugMode) {
           print('✅ 일지 마이그레이션 성공: DB ID ${savedEntry.id}');
@@ -1511,15 +1579,20 @@ class DatabaseService {
     }
     
     final result = {
-      'successCount': successCount,
-      'totalCount': localDiaries.length,
+      'diarySuccessCount': diarySuccessCount,
+      'diaryTotalCount': localDiaries.length,
+      'friendSuccessCount': friendSuccessCount,
+      'friendTotalCount': localFriends.length,
       'errors': errors,
       'migratedEntries': migratedEntries,
-      'migratedLocalIds': migratedLocalIds,
+      'migratedDiaryLocalIds': migratedDiaryLocalIds,
+      'migratedFriendLocalIds': migratedFriendLocalIds,
     };
     
     if (kDebugMode) {
-      print('🏁 마이그레이션 완료: $successCount/${localDiaries.length}개 성공');
+      print('🏁 마이그레이션 완료');
+      print('  - 친구: $friendSuccessCount/${localFriends.length}개 성공');
+      print('  - 일지: $diarySuccessCount/${localDiaries.length}개 성공');
       if (errors.isNotEmpty) {
         print('⚠️ 실패한 항목들: ${errors.join(", ")}');
       }

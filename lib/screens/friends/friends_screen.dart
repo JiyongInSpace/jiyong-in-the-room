@@ -4,6 +4,8 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/friend_service.dart';
 import 'package:jiyong_in_the_room/services/error_service.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
@@ -122,7 +124,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     });
   }
   
-  // 친구 목록 로드
+  // 친구 목록 로드 (로그인 여부에 따라 DB 또는 로컬에서 로드)
   Future<void> _loadFriends() async {
     if (_isLoading) return;
     
@@ -131,7 +133,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
     });
     
     try {
-      final friends = await DatabaseService.getMyFriendsPaginated(
+      List<Friend> friends;
+      
+      // 통합 친구 서비스 사용 (회원/비회원 자동 구분)
+      friends = await FriendService.getFriendsPaginated(
         page: _currentPage,
         limit: _pageSize,
         searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
@@ -205,16 +210,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   // 통합 친구 추가 다이얼로그
   void _showAddFriendDialog() {
-    // 로그인 확인
-    if (!AuthService.isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('친구 추가 기능을 사용하려면 로그인이 필요합니다'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
+    // 로그인 상태에 따라 다른 다이얼로그 표시
     
     _userCodeController.clear();
     _nicknameController.clear();
@@ -237,26 +233,28 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 친구 코드 입력 (선택사항)
-                  CommonTextField(
-                    controller: _userCodeController,
-                    labelText: '친구 코드 (선택사항)',
-                    hintText: '친구 코드가 있으면 입력하세요',
-                    helperText: '6자리 영숫자 코드',
-                    textCapitalization: TextCapitalization.characters,
-                    maxLength: 6,
-                    onChanged: (value) {
-                      // 코드 입력 상태가 변경될 때 다이얼로그 UI 업데이트
-                      setDialogState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                  // 친구 코드 입력 (로그인한 경우에만 표시)
+                  if (AuthService.isLoggedIn) ...[
+                    CommonTextField(
+                      controller: _userCodeController,
+                      labelText: '친구 코드 (선택사항)',
+                      hintText: '친구 코드가 있으면 입력하세요',
+                      helperText: '6자리 영숫자 코드',
+                      textCapitalization: TextCapitalization.characters,
+                      maxLength: 6,
+                      onChanged: (value) {
+                        // 코드 입력 상태가 변경될 때 다이얼로그 UI 업데이트
+                        setDialogState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   
                   // 별명 입력 (조건부 필수)
                   CommonTextField(
                     controller: _nicknameController,
-                    labelText: hasUserCode ? '별명 (선택사항)' : '별명 (필수)',
-                    hintText: hasUserCode 
+                    labelText: (AuthService.isLoggedIn && hasUserCode) ? '별명 (선택사항)' : '별명 (필수)',
+                    hintText: (AuthService.isLoggedIn && hasUserCode) 
                         ? '비워두면 상대방 이름을 사용합니다' 
                         : '이 친구를 부르는 이름을 입력하세요',
                   ),
@@ -288,8 +286,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   final memo = _memoController.text.trim();
                   
                   // 밸리데이션
-                  if (hasUserCode) {
-                    // 친구 코드가 있는 경우
+                  if (AuthService.isLoggedIn && hasUserCode) {
+                    // 로그인 상태에서 친구 코드가 있는 경우
                     if (userCode.length != 6) {
                       setDialogState(() {
                         errorMessage = '6자리 코드를 입력해주세요';
@@ -308,7 +306,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       widget.onAdd(friend);
                       Navigator.pop(context);
                       
-                      // 목록 새로고침
+                      // 목록 새로고침 (UI 업데이트용)
                       _refreshFriendsList();
                       
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -321,7 +319,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       });
                     }
                   } else {
-                    // 친구 코드가 없는 경우
+                    // 비로그인 또는 코드가 없는 경우
                     if (nickname.isEmpty) {
                       setDialogState(() {
                         errorMessage = '별명을 입력해주세요';
@@ -329,24 +327,28 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       return;
                     }
                     
-                    // 직접 입력으로 친구 추가
-                    final friend = Friend(
-                      connectedUserId: null, // 연결되지 않은 친구로 추가
-                      user: null,
-                      addedAt: DateTime.now(),
-                      nickname: nickname,
-                      memo: memo.isEmpty ? null : memo,
-                    );
+                    try {
+                      // 통합 친구 서비스 사용
+                      final friend = await FriendService.addFriend(
+                        nickname: nickname,
+                        memo: memo.isEmpty ? null : memo,
+                      );
 
-                    widget.onAdd(friend);
-                    Navigator.pop(context);
-                    
-                    // 목록 새로고침
-                    _refreshFriendsList();
-                    
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('친구가 추가되었습니다')),
-                    );
+                      widget.onAdd(friend);
+                      Navigator.pop(context);
+                      
+                      // 목록 새로고침 (UI 업데이트용)
+                      _refreshFriendsList();
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('친구가 추가되었습니다')),
+                      );
+                    } catch (e) {
+                      final errorInfo = ErrorService.parseError(e);
+                      setDialogState(() {
+                        errorMessage = errorInfo.message;
+                      });
+                    }
                   }
                 },
                 child: const Text('추가'),
@@ -631,37 +633,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   // 친구 화면의 UI를 구성하는 메서드
   @override
   Widget build(BuildContext context) {
-    // 로그인 상태 확인
-    if (!AuthService.isLoggedIn) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text(''),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.people_outline,
-                size: 64,
-                color: Colors.grey,
-              ),
-              SizedBox(height: 16),
-              Text(
-                '친구 기능을 사용하려면\n로그인이 필요합니다',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-      
+    // 비회원도 친구 기능 사용 가능
     return Scaffold(
       appBar: AppBar(
         title: const Text(''),

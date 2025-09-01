@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
+import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/friend_service.dart';
 import 'package:jiyong_in_the_room/services/error_service.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 
@@ -347,23 +349,24 @@ class _FriendManagementBottomSheetState extends State<FriendManagementBottomShee
               onTap: _showEditFriendDialog,
             ),
             
-            // 연동 상태에 따른 메뉴 표시
-            if (!currentFriend.isConnected)
-              _buildContextMenuItem(
-                icon: Icons.link_outlined,
-                iconColor: Colors.green,
-                title: '코드 등록',
-                subtitle: '실제 사용자와 연동하여 프로필 정보 동기화',
-                onTap: _showLinkCodeDialog,
-              )
-            else
-              _buildContextMenuItem(
-                icon: Icons.link_off,
-                iconColor: Colors.orange,
-                title: '연동 해제',
-                subtitle: '잘못 연동된 경우 해제하여 수정 가능',
-                onTap: _showUnlinkConfirmDialog,
-              ),
+            // 연동 상태에 따른 메뉴 표시 (로그인 상태에서만)
+            if (AuthService.isLoggedIn)
+              if (!currentFriend.isConnected)
+                _buildContextMenuItem(
+                  icon: Icons.link_outlined,
+                  iconColor: Colors.green,
+                  title: '코드 등록',
+                  subtitle: '실제 사용자와 연동하여 프로필 정보 동기화',
+                  onTap: _showLinkCodeDialog,
+                )
+              else
+                _buildContextMenuItem(
+                  icon: Icons.link_off,
+                  iconColor: Colors.orange,
+                  title: '연동 해제',
+                  subtitle: '잘못 연동된 경우 해제하여 수정 가능',
+                  onTap: _showUnlinkConfirmDialog,
+                ),
             
             _buildContextMenuItem(
               icon: Icons.delete_outline,
@@ -453,10 +456,11 @@ class _EditFriendDialogState extends State<_EditFriendDialog> {
             }
             
             try {
-              final updatedFriend = await DatabaseService.updateFriend(
+              // 통합 친구 서비스 사용
+              final updatedFriend = await FriendService.updateFriend(
                 widget.friend,
-                newNickname: nickname,
-                newMemo: memoController.text.trim(),
+                nickname: nickname,
+                memo: memoController.text.trim(),
               );
               
               Navigator.of(context).pop();

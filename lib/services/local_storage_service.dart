@@ -1,6 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
-import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:flutter/foundation.dart';
 
@@ -44,6 +43,23 @@ class LocalStorageService {
     // 가장 큰 ID + 1
     final maxId = existingIds.reduce((a, b) => a > b ? a : b);
     return maxId + 1;
+  }
+  
+  /// 로컬 친구 ID 생성 (Hive 32비트 범위 내에서 생성)
+  static int _generateLocalFriendId() {
+    final existingIds = _friendBox.keys.cast<int>().toList();
+    if (existingIds.isEmpty) return 2000000; // 2백만부터 시작 (일지ID와 구분)
+    
+    // 가장 큰 ID + 1 (단, 32비트 부호 있는 정수 범위 내에서)
+    final maxId = existingIds.reduce((a, b) => a > b ? a : b);
+    final nextId = maxId + 1;
+    
+    // 32비트 부호 있는 정수 최대값 확인 (2,147,483,647)
+    if (nextId > 2147483647) {
+      throw Exception('로컬 친구 ID 한계 초과');
+    }
+    
+    return nextId;
   }
   
   
@@ -192,8 +208,8 @@ class LocalStorageService {
   /// 로컬에 친구 저장
   static Future<Friend> saveFriend(Friend friend) async {
     try {
-      // 로컬 친구는 ID를 문자열로 생성
-      final localId = DateTime.now().millisecondsSinceEpoch;
+      // 로컬 친구 ID 생성 (32비트 범위 내)
+      final localId = _generateLocalFriendId();
       
       // 로컬용 친구 생성
       final localFriend = Friend(
@@ -246,6 +262,9 @@ class LocalStorageService {
         }
       }
       
+      // 이름순 정렬
+      friends.sort((a, b) => a.nickname.compareTo(b.nickname));
+      
       if (kDebugMode) {
         print('📋 로컬 친구 ${friends.length}명 조회');
       }
@@ -259,6 +278,57 @@ class LocalStorageService {
     }
   }
   
+  /// 로컬 친구 수정
+  static Future<Friend> updateFriend(Friend friend) async {
+    try {
+      if (friend.id == null) {
+        throw Exception('친구 ID가 없습니다');
+      }
+      
+      final data = {
+        'id': friend.id,
+        'nickname': friend.nickname,
+        'memo': friend.memo,
+        'connected_user_id': friend.connectedUserId,
+        'added_at': friend.addedAt.toIso8601String(),
+      };
+      
+      await _friendBox.put(friend.id!, data);
+      
+      if (kDebugMode) {
+        print('✏️ 로컬 친구 수정 완료: ${friend.id}');
+      }
+      
+      return friend;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 로컬 친구 수정 실패: $e');
+      }
+      throw Exception('로컬 수정 실패: $e');
+    }
+  }
+  
+  /// 로컬 친구 삭제
+  static Future<void> deleteFriend(int friendId) async {
+    try {
+      await _friendBox.delete(friendId);
+      
+      if (kDebugMode) {
+        print('🗑️ 로컬 친구 삭제 완료: $friendId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 로컬 친구 삭제 실패: $e');
+      }
+      throw Exception('로컬 삭제 실패: $e');
+    }
+  }
+  
+  /// 로컬 친구만 존재하는지 확인
+  static bool hasLocalFriends() {
+    return _friendBox.isNotEmpty;
+  }
+  
   // ============ 마이그레이션 관련 메서드 ============
   
   /// 마이그레이션을 위한 로컬 데이터 준비
@@ -268,18 +338,34 @@ class LocalStorageService {
       final diaries = getLocalDiaries();
       final friends = getLocalFriends();
       
+      // 친구 ID 매핑을 위한 Map 생성 (일지와 친구 연결에 사용)
+      final friendsWithMapping = <Map<String, dynamic>>[];
+      for (final friend in friends) {
+        friendsWithMapping.add({
+          'local_id': friend.id,
+          'nickname': friend.nickname,
+          'memo': friend.memo,
+          'connected_user_id': friend.connectedUserId,
+          'added_at': friend.addedAt.toIso8601String(),
+        });
+      }
+      
+      // 일지 데이터 준비 (친구 ID는 로컬 ID 그대로 유지)
+      final diariesWithMapping = <Map<String, dynamic>>[];
+      for (final diary in diaries) {
+        final diaryJson = diary.toJson();
+        diariesWithMapping.add({
+          ...diaryJson,
+          'local_id': diary.id, // 원본 로컬 ID 보존
+          'id': null, // DB에서 새로 생성될 ID
+          // friends 배열은 로컬 ID 그대로 유지 (나중에 매핑)
+        });
+      }
+      
       // DB 형식으로 변환
       final migrationData = {
-        'diaries': diaries.map((d) => {
-          ...d.toJson(),
-          'local_id': d.id, // 원본 로컬 ID 보존
-          'id': null, // DB에서 새로 생성될 ID
-        }).toList(),
-        'friends': friends.map((f) => {
-          'local_id': f.id,
-          'nickname': f.nickname,
-          'memo': f.memo,
-        }).toList(),
+        'diaries': diariesWithMapping,
+        'friends': friendsWithMapping,
       };
       
       if (kDebugMode) {
