@@ -7,6 +7,7 @@ import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/widgets/migration_guide_dialog.dart';
+import 'package:jiyong_in_the_room/widgets/terms_agreement_dialog.dart';
 import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
@@ -263,10 +264,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-      final success = await AuthService.signInWithGoogle();
+      final result = await AuthService.signInWithGoogle();
       
       if (kDebugMode) {
-        print('🚀 OAuth 시작 결과: $success');
+        print('🚀 OAuth 시작 결과: $result');
       }
       
       // 로딩 다이얼로그 닫기
@@ -274,14 +275,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Navigator.of(context).pop();
       }
 
+      final success = result['success'] as bool? ?? false;
+      final isNewUser = result['isNewUser'] as bool? ?? false;
+      final needsTermsAgreement = result['needsTermsAgreement'] as bool? ?? false;
+
       if (success) {
+        // 신규 사용자이고 약관 동의가 필요한 경우
+        if (isNewUser && needsTermsAgreement && context.mounted) {
+          final termsResult = await showDialog<Map<String, dynamic>>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const TermsAgreementDialog(),
+          );
+          
+          if (termsResult != null && (termsResult['agreed'] as bool? ?? false)) {
+            // 약관 동의 저장
+            await AuthService.saveTermsAgreement(
+              isOver14: termsResult['isOver14'] as bool,
+              agreeToTerms: termsResult['agreeToTerms'] as bool,
+              agreeToPrivacy: termsResult['agreeToPrivacy'] as bool,
+            );
+            
+            // 약관 동의 완료 후 프로필 생성
+            try {
+              await AuthService.completeSignUp();
+              
+              if (kDebugMode) {
+                print('📝 신규 사용자 약관 동의 및 프로필 생성 완료 (설정 화면)');
+              }
+              
+              // 프로필 생성 완료 후 잠시 대기 (상태 동기화)
+              await Future.delayed(const Duration(milliseconds: 500));
+            } catch (signupError) {
+              if (kDebugMode) {
+                print('❌ completeSignUp 오류 (설정 화면): $signupError');
+              }
+              
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('회원가입 처리 중 오류: $signupError'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+              return;
+            }
+          } else {
+            // 약관 동의하지 않으면 로그아웃
+            await AuthService.signOut();
+            
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('약관 동의가 필요합니다'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            return;
+          }
+        }
+        
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('로그인 완료!'),
+            SnackBar(
+              content: Text(isNewUser ? '회원가입 완료!' : '로그인 완료!'),
               backgroundColor: Colors.green,
             ),
           );
+          
+          // 로그인 완료 후 이전 화면으로 돌아가면서 데이터 새로고침 신호 전달
+          Navigator.of(context).pop(true); // true 반환으로 데이터 새로고침 요청
         }
       }
     } catch (e) {

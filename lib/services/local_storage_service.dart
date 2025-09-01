@@ -417,4 +417,74 @@ class LocalStorageService {
       'friends': _friendBox.length,
     };
   }
+  
+  // ============ 약관 동의 관련 메서드 ============
+  
+  /// 약관 동의 상태 저장
+  static Future<void> saveTermsAgreement({
+    required bool isOver14,
+    required bool agreeToTerms,
+    required bool agreeToPrivacy,
+  }) async {
+    try {
+      final agreementData = {
+        'is_over_14': isOver14,
+        'agree_to_terms': agreeToTerms,
+        'agree_to_privacy': agreeToPrivacy,
+        'agreed_at': DateTime.now().toIso8601String(),
+      };
+      
+      await _settingsBox.put('terms_agreement', agreementData);
+      
+      if (kDebugMode) {
+        print('📝 약관 동의 상태 저장 완료');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 약관 동의 상태 저장 실패: $e');
+      }
+      throw Exception('약관 동의 저장 실패: $e');
+    }
+  }
+  
+  /// 약관 동의 상태 조회
+  static Map<String, dynamic>? getTermsAgreement() {
+    try {
+      final data = _settingsBox.get('terms_agreement');
+      if (data != null) {
+        return Map<String, dynamic>.from(data);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 약관 동의 상태 조회 실패: $e');
+      }
+      return null;
+    }
+  }
+  
+  /// 필수 약관에 동의했는지 확인
+  static bool hasAgreedToRequiredTerms() {
+    final agreement = getTermsAgreement();
+    if (agreement == null) return false;
+    
+    return (agreement['is_over_14'] as bool? ?? false) &&
+           (agreement['agree_to_terms'] as bool? ?? false) &&
+           (agreement['agree_to_privacy'] as bool? ?? false);
+  }
+  
+  /// 약관 동의 상태 삭제 (로그아웃 시)
+  static Future<void> clearTermsAgreement() async {
+    try {
+      await _settingsBox.delete('terms_agreement');
+      
+      if (kDebugMode) {
+        print('🧹 약관 동의 상태 삭제 완료');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 약관 동의 상태 삭제 실패: $e');
+      }
+    }
+  }
 }

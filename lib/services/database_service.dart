@@ -443,6 +443,9 @@ class DatabaseService {
 
     try {
       final currentUserId = AuthService.currentUser!.id;
+      if (kDebugMode) {
+        print('🔍 일지 조회 - currentUserId: $currentUserId');
+      }
       
       // 내가 작성한 일지만 조회 (단순화)
       final response = await supabase
@@ -456,6 +459,14 @@ class DatabaseService {
           ''')
           .eq('user_id', currentUserId)
           .order('date', ascending: false);
+
+      if (kDebugMode) {
+        print('🔍 쿼리 결과 개수: ${(response as List).length}');
+        if ((response as List).isNotEmpty) {
+          final firstEntry = (response as List).first;
+          print('🔍 첫 번째 일지: id=${firstEntry['id']}, user_id=${firstEntry['user_id']}, theme=${firstEntry['escape_themes']['name']}');
+        }
+      }
 
       List<DiaryEntry> diaryEntries = [];
       
