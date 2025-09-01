@@ -11,6 +11,8 @@ import 'package:jiyong_in_the_room/screens/auth/settings_screen.dart';
 import 'package:jiyong_in_the_room/widgets/login_dialog.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
+import 'package:jiyong_in_the_room/widgets/title_progress_dialog.dart';
+import 'package:jiyong_in_the_room/widgets/team_stats_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<DiaryEntry> diaryList;
@@ -132,6 +134,24 @@ class HomeScreen extends StatelessWidget {
         return Colors.grey[600]!;
     }
   }
+  
+  // 칭호별 아이콘 반환
+  IconData _getTitleIcon(String title) {
+    switch (title) {
+      case '방알못':
+        return Icons.sentiment_very_dissatisfied;
+      case '방린이':
+        return Icons.child_care;
+      case '방청년':
+        return Icons.person;
+      case '고인물':
+        return Icons.water_drop;
+      case '썩은물':
+        return Icons.whatshot;
+      default:
+        return Icons.emoji_events;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,73 +267,95 @@ class HomeScreen extends StatelessWidget {
                     // 왼쪽 카드: 방탈 횟수 & 칭호
                     Expanded(
                       flex: 1,
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.emoji_events,
-                                size: 32,
-                                color: _getTitleColor(_getEscapeTitle(totalThemes)),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _getEscapeTitle(totalThemes),
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                      child: GestureDetector(
+                        onTap: () {
+                          // 칭호 진행 상황 팝업 표시
+                          showDialog(
+                            context: context,
+                            builder: (context) => TitleProgressDialog(
+                              currentCount: totalThemes,
+                            ),
+                          );
+                        },
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  _getTitleIcon(_getEscapeTitle(totalThemes)),
+                                  size: 32,
                                   color: _getTitleColor(_getEscapeTitle(totalThemes)),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '방탈 $totalThemes회',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
+                                const SizedBox(height: 8),
+                                Text(
+                                  _getEscapeTitle(totalThemes),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getTitleColor(_getEscapeTitle(totalThemes)),
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '방탈 $totalThemes회',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     
-                    // 오른쪽 카드: 향후 추가 예정
+                    // 오른쪽 카드: 팀 통계
                     Expanded(
                       flex: 1,
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.group,
-                                size: 32,
-                                color: Colors.blue[600],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '함께한 친구들',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                      child: GestureDetector(
+                        onTap: () {
+                          // 팀 통계 팝업 표시
+                          showDialog(
+                            context: context,
+                            builder: (context) => TeamStatsDialog(
+                              diaryList: diaryList,
+                            ),
+                          );
+                        },
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.group,
+                                  size: 32,
                                   color: Colors.blue[600],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                totalFriendsCount > 0 
-                                    ? '총 $totalFriendsCount명'
-                                    : '혼자 진행',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
+                                const SizedBox(height: 8),
+                                Text(
+                                  '함께한 친구들',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[600],
                                 ),
-                              ),
-                            ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  totalFriendsCount > 0 
+                                      ? '총 $totalFriendsCount명'
+                                      : '혼자 진행',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
