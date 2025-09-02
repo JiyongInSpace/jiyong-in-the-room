@@ -14,6 +14,8 @@ import 'package:jiyong_in_the_room/services/connectivity_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/friend_service.dart';
 import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
+import 'package:jiyong_in_the_room/widgets/onboarding_dialog.dart';
+import 'package:jiyong_in_the_room/services/onboarding_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +52,8 @@ class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
   Map<String, dynamic>? userProfile;
   bool _isInitialLoading = true; // 초기 로딩 상태
+  bool _shouldShowMigrationDialog = false; // 마이그레이션 다이얼로그 표시 플래그
+  bool _hasShownOnboarding = false; // 온보딩 표시 여부
   
   void addDiary(DiaryEntry entry) {
     setState(() {
@@ -224,6 +228,9 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _isInitialLoading = false; // 로딩 완료
         });
+        
+        // 로딩 완료 후 온보딩 체크 (MaterialApp이 빌드된 후)
+        _checkAndScheduleOnboarding();
       }
     }
   }
@@ -409,6 +416,55 @@ class _MyAppState extends State<MyApp> {
     if (kDebugMode) {
       print('✅ 전체 데이터 새로고침 완료');
     }
+  }
+  
+  // 온보딩 체크 및 스케줄링
+  void _checkAndScheduleOnboarding() {
+    if (!mounted || _isInitialLoading) return;
+    
+    // 초기 로딩이 완료되고 MaterialApp이 빌드된 후 온보딩 확인
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      
+      // MaterialApp이 완전히 빌드될 때까지 잠시 대기
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      if (!mounted) return;
+      
+      try {
+        final hasSeenOnboarding = await OnboardingService.hasSeenOnboarding();
+        if (kDebugMode) {
+          print('📋 온보딩 확인: hasSeenOnboarding=$hasSeenOnboarding, _hasShownOnboarding=$_hasShownOnboarding');
+        }
+        
+        // 아직 온보딩을 보지 않았고, 이번 세션에서도 보여주지 않았다면
+        if (!hasSeenOnboarding && !_hasShownOnboarding && mounted) {
+          setState(() {
+            _hasShownOnboarding = true;
+          });
+          
+          // context가 MaterialApp 내부에 있는지 확인
+          final BuildContext? materialContext = context;
+          if (materialContext != null && mounted) {
+            await showDialog(
+              context: materialContext,
+              barrierDismissible: false,
+              builder: (dialogContext) => const OnboardingDialog(),
+            );
+            
+            // 온보딩 완료 표시
+            await OnboardingService.markOnboardingAsSeen();
+            if (kDebugMode) {
+              print('✅ 온보딩 완료 처리됨');
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ 온보딩 처리 실패: $e');
+        }
+      }
+    });
   }
 
   @override
