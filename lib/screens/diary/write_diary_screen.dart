@@ -843,12 +843,17 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     children:
                         // map(): 리스트의 각 요소를 다른 형태로 변환
                         selectedFriends.map((friend) {
+                          // 현재 사용자 ID 확인
+                          final currentUserId = AuthService.currentUser?.id;
+                          final isCurrentUser = currentUserId != null && 
+                                               friend.connectedUserId == currentUserId;
+                          
                           // Chip: 작은 정보 조각을 표시하는 위젯 (삭제 버튼 포함)
                           return Chip(
                             label: Text(friend.displayName),
-                            deleteIcon: const Icon(Icons.close),
-                            // onDeleted: X 버튼을 눌렀을 때 실행되는 함수
-                            onDeleted: () {
+                            deleteIcon: isCurrentUser ? null : const Icon(Icons.close),
+                            // onDeleted: X 버튼을 눌렀을 때 실행되는 함수 (본인은 삭제 불가)
+                            onDeleted: isCurrentUser ? null : () {
                               setState(() {
                                 selectedFriends.remove(friend); // 선택된 친구 목록에서 제거
                               });

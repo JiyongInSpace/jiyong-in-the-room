@@ -701,10 +701,15 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               Wrap(
                 spacing: 8,
                 children: selectedFriends.map((friend) {
+                  // 현재 사용자 ID 확인
+                  final currentUserId = AuthService.currentUser?.id;
+                  final isCurrentUser = currentUserId != null && 
+                                       friend.connectedUserId == currentUserId;
+                  
                   return Chip(
                     label: Text(friend.displayName),
-                    deleteIcon: const Icon(Icons.close),
-                    onDeleted: () {
+                    deleteIcon: isCurrentUser ? null : const Icon(Icons.close),
+                    onDeleted: isCurrentUser ? null : () {
                       setState(() {
                         selectedFriends.remove(friend);
                       });
@@ -995,12 +1000,6 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           updatedAt: DateTime.now(),
                         );
 
-                        // 친구 ID 목록 생성
-                        final friendIds = selectedFriends
-                            .where((friend) => friend.id != null)
-                            .map((friend) => friend.id!)
-                            .toList();
-                        
                         // 회원/비회원에 따라 다른 저장 로직
                         DiaryEntry savedEntry;
                         
@@ -1008,7 +1007,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                           // 회원: 데이터베이스에 수정 사항 저장
                           savedEntry = await DatabaseService.updateDiaryEntry(
                             updatedEntry,
-                            friendIds: friendIds.isNotEmpty ? friendIds : null,
+                            selectedFriends: selectedFriends.isNotEmpty ? selectedFriends : null,
                           );
                         } else {
                           // 비회원: 로컬 저장소에 수정 사항 저장

@@ -1038,7 +1038,7 @@ class DatabaseService {
   }
 
   /// 일지 수정
-  static Future<DiaryEntry> updateDiaryEntry(DiaryEntry entry, {List<int>? friendIds}) async {
+  static Future<DiaryEntry> updateDiaryEntry(DiaryEntry entry, {List<int>? friendIds, List<Friend>? selectedFriends}) async {
     if (!AuthService.isLoggedIn) {
       throw Exception('로그인이 필요합니다');
     }
@@ -1094,44 +1094,75 @@ class DatabaseService {
       // 참여자 관계 재구성
       List<Map<String, dynamic>> participantRelations = [];
       
-      // 1. 본인(작성자)을 참여자로 추가
-      participantRelations.add({
-        'diary_entry_id': updatedEntry.id,
-        'user_id': currentUserId,
-        'friend_id': null,
-      });
+      // selectedFriends에 본인이 포함되어 있는지 확인
+      bool authorIncludedInFriends = false;
+      if (selectedFriends != null) {
+        authorIncludedInFriends = selectedFriends.any((friend) => 
+          friend.connectedUserId == currentUserId);
+      }
       
-      if (kDebugMode) {
-        print('👤 작성자 추가: $currentUserId');
+      // 1. 본인(작성자)을 참여자로 추가 (selectedFriends에 포함되지 않은 경우만)
+      if (!authorIncludedInFriends) {
+        participantRelations.add({
+          'diary_entry_id': updatedEntry.id,
+          'user_id': currentUserId,
+          'friend_id': null,
+        });
+        
+        if (kDebugMode) {
+          print('👤 작성자 자동 추가: $currentUserId');
+        }
+      } else {
+        if (kDebugMode) {
+          print('👤 작성자가 이미 selectedFriends에 포함되어 있음, 자동 추가 생략');
+        }
       }
       
       // 2. 선택된 친구들을 참여자로 추가
-      if (friendIds != null && friendIds.isNotEmpty) {
+      if (selectedFriends != null && selectedFriends.isNotEmpty) {
         if (kDebugMode) {
-          print('👥 친구 추가 시작: ${friendIds.length}명');
+          print('👥 친구 추가 시작: ${selectedFriends.length}명');
         }
         
-        for (int friendId in friendIds) {
-          final friend = await supabase
-              .from('friends')
-              .select('id, connected_user_id')
-              .eq('id', friendId)
-              .eq('user_id', currentUserId)  // 본인의 친구만 조회
-              .maybeSingle();
+        for (Friend selectedFriend in selectedFriends) {
+          if (selectedFriend.id != null) {
+            // 기존 방식: friend_id가 있는 친구 (연동 안된 친구 또는 친구로 저장된 연동 친구)
+            final friend = await supabase
+                .from('friends')
+                .select('id, connected_user_id')
+                .eq('id', selectedFriend.id!)
+                .eq('user_id', currentUserId)
+                .maybeSingle();
+                
+            if (friend != null) {
+              participantRelations.add({
+                'diary_entry_id': updatedEntry.id,
+                'user_id': friend['connected_user_id'],
+                'friend_id': friend['id'],
+              });
               
-          if (friend != null) {
+              if (kDebugMode) {
+                print('👥 친구 추가 (friend_id): ${selectedFriend.displayName}, ID=${selectedFriend.id}');
+              }
+            } else {
+              if (kDebugMode) {
+                print('⚠️ 친구를 찾을 수 없음: ID=${selectedFriend.id}');
+              }
+            }
+          } else if (selectedFriend.connectedUserId != null) {
+            // 새로운 방식: friend_id가 없지만 connectedUserId가 있는 친구 (직접 참여자로 표시된 코드 연결 친구)
             participantRelations.add({
               'diary_entry_id': updatedEntry.id,
-              'user_id': friend['connected_user_id'],
-              'friend_id': friend['id'],
+              'user_id': selectedFriend.connectedUserId,
+              'friend_id': null, // 직접 참여자로 저장
             });
             
             if (kDebugMode) {
-              print('👥 친구 추가: ID=$friendId, user_id=${friend['connected_user_id']}');
+              print('👥 친구 추가 (direct): ${selectedFriend.displayName}, connectedUserId=${selectedFriend.connectedUserId}');
             }
           } else {
             if (kDebugMode) {
-              print('⚠️ 친구를 찾을 수 없음: ID=$friendId');
+              print('⚠️ 처리할 수 없는 친구: ${selectedFriend.displayName} (id=${selectedFriend.id}, connectedUserId=${selectedFriend.connectedUserId})');
             }
           }
         }
