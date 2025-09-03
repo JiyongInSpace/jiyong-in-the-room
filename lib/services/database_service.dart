@@ -676,7 +676,7 @@ class DatabaseService {
 
       List<DiaryEntry> diaryEntries = [];
       
-      for (var json in response as List) {
+      for (var json in response) {
         final entryData = Map<String, dynamic>.from(json);
         final themeData = entryData['escape_themes'] as Map<String, dynamic>;
         
@@ -763,6 +763,28 @@ class DatabaseService {
           connectedUserId = json['user_id'];
           friendId = null;
           
+          // 먼저 내 친구 목록에서 해당 사용자의 nickname을 찾아본다
+          String? friendNickname;
+          try {
+            final friendResponse = await supabase
+                .from('friends')
+                .select('nickname')
+                .eq('connected_user_id', json['user_id'])
+                .eq('user_id', AuthService.currentUser!.id) // 내 친구 목록에서만
+                .maybeSingle();
+            
+            if (friendResponse != null) {
+              friendNickname = friendResponse['nickname'];
+              if (kDebugMode) {
+                print('🔍 직접 참여자 친구 nickname 발견: $friendNickname (user_id: ${json['user_id']})');
+              }
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('직접 참여자 친구 nickname 조회 실패: $e');
+            }
+          }
+          
           // 프로필 정보 조회
           try {
             final profileResponse = await supabase
@@ -771,10 +793,16 @@ class DatabaseService {
                 .eq('id', json['user_id'])
                 .single();
             
-            displayName = profileResponse['display_name'] ?? '알 수 없는 사용자';
+            // 친구 목록에서 찾은 nickname을 우선 사용, 없으면 프로필 display_name 사용
+            displayName = friendNickname ?? profileResponse['display_name'] ?? '알 수 없는 사용자';
+            
+            if (kDebugMode) {
+              // print('📌 직접 참여자 이름 결정: nickname=$friendNickname, display_name=${profileResponse['display_name']}, 최종=$displayName');
+            }
+            
             user = User(
               id: json['user_id'],
-              name: displayName,
+              name: profileResponse['display_name'] ?? '', // User는 실제 프로필 이름
               email: profileResponse['email'] ?? '',
               avatarUrl: profileResponse['avatar_url'],
               joinedAt: DateTime.now(),
@@ -795,6 +823,10 @@ class DatabaseService {
                 .eq('id', json['friend_id'])
                 .single();
             
+            if (kDebugMode) {
+              // print('🔍 친구 정보 조회 - ID: ${json['friend_id']}, nickname: ${friendResponse['nickname']}, connected_user_id: ${friendResponse['connected_user_id']}');
+            }
+            
             displayName = friendResponse['nickname'] ?? '알 수 없는 친구';
             connectedUserId = friendResponse['connected_user_id'];
             
@@ -807,9 +839,15 @@ class DatabaseService {
                     .eq('id', connectedUserId)
                     .single();
                 
+                if (kDebugMode) {
+                  print('📌 연결된 친구 프로필 - display_name: ${profileResponse['display_name']}, 하지만 nickname 사용: $displayName');
+                }
+                
+                // User 객체에는 실제 프로필 이름을 저장하되,
+                // Friend의 displayName(nickname)은 사용자가 지정한 이름을 유지
                 user = User(
                   id: connectedUserId,
-                  name: profileResponse['display_name'] ?? displayName,
+                  name: profileResponse['display_name'] ?? '',  // 프로필의 실제 이름
                   email: profileResponse['email'] ?? '',
                   avatarUrl: profileResponse['avatar_url'],
                   joinedAt: DateTime.now(),
@@ -825,6 +863,10 @@ class DatabaseService {
               print('친구 정보 조회 실패: $e');
             }
           }
+        }
+        
+        if (kDebugMode) {
+          // print('📝 참여자 추가: nickname=$displayName, friendId=$friendId, connectedUserId=$connectedUserId');
         }
         
         participants.add(Friend(
@@ -871,7 +913,7 @@ class DatabaseService {
         final mutualFriendId = mutualFriend['mutual_friend_id'] as int;
         
         if (kDebugMode) {
-          print('📝 ${friendUserId}에게 일지 자동 생성 중...');
+          print('📝 $friendUserId에게 일지 자동 생성 중...');
         }
 
         // SECURITY DEFINER 함수로 친구 일지 생성 (RLS 우회)
@@ -890,7 +932,7 @@ class DatabaseService {
         ) as int;
 
         if (kDebugMode) {
-          print('✅ ${friendUserId}에게 일지 자동 생성 완료 (ID: $friendEntryId)');
+          print('✅ $friendUserId에게 일지 자동 생성 완료 (ID: $friendEntryId)');
         }
       }
 
@@ -956,6 +998,7 @@ class DatabaseService {
               .from('friends')
               .select('id, connected_user_id')
               .eq('id', friendId)
+              .eq('user_id', currentUserId)  // 본인의 친구만 조회
               .maybeSingle();
               
           if (friend != null) {
@@ -1003,6 +1046,11 @@ class DatabaseService {
     try {
       final currentUserId = AuthService.currentUser!.id;
       
+      if (kDebugMode) {
+        print('📝 일지 수정 시작 - ID: ${entry.id}');
+        print('📝 전달받은 friendIds: $friendIds');
+      }
+      
       // 일지 데이터 준비
       final entryData = entry.toJson();
       entryData.remove('id');
@@ -1030,10 +1078,18 @@ class DatabaseService {
       final updatedEntry = DiaryEntry.fromJson(response);
       
       // 기존 참여자 관계 삭제 후 새로 추가
+      if (kDebugMode) {
+        print('🗑️ 기존 참여자 삭제 중...');
+      }
+      
       await supabase
           .from('diary_entry_participants')
           .delete()
           .eq('diary_entry_id', entry.id);
+      
+      if (kDebugMode) {
+        print('✅ 기존 참여자 삭제 완료');
+      }
           
       // 참여자 관계 재구성
       List<Map<String, dynamic>> participantRelations = [];
@@ -1045,13 +1101,22 @@ class DatabaseService {
         'friend_id': null,
       });
       
+      if (kDebugMode) {
+        print('👤 작성자 추가: $currentUserId');
+      }
+      
       // 2. 선택된 친구들을 참여자로 추가
       if (friendIds != null && friendIds.isNotEmpty) {
+        if (kDebugMode) {
+          print('👥 친구 추가 시작: ${friendIds.length}명');
+        }
+        
         for (int friendId in friendIds) {
           final friend = await supabase
               .from('friends')
               .select('id, connected_user_id')
               .eq('id', friendId)
+              .eq('user_id', currentUserId)  // 본인의 친구만 조회
               .maybeSingle();
               
           if (friend != null) {
@@ -1060,15 +1125,36 @@ class DatabaseService {
               'user_id': friend['connected_user_id'],
               'friend_id': friend['id'],
             });
+            
+            if (kDebugMode) {
+              print('👥 친구 추가: ID=$friendId, user_id=${friend['connected_user_id']}');
+            }
+          } else {
+            if (kDebugMode) {
+              print('⚠️ 친구를 찾을 수 없음: ID=$friendId');
+            }
           }
+        }
+      } else {
+        if (kDebugMode) {
+          print('ℹ️ 추가할 친구가 없습니다');
         }
       }
       
       // participants 테이블에 저장
       if (participantRelations.isNotEmpty) {
+        if (kDebugMode) {
+          print('💾 참여자 저장 중: ${participantRelations.length}명');
+          print('💾 참여자 데이터: $participantRelations');
+        }
+        
         await supabase
             .from('diary_entry_participants')
             .insert(participantRelations);
+        
+        if (kDebugMode) {
+          print('✅ 참여자 저장 완료');
+        }
       }
       
       // 친구 정보를 포함한 완전한 일지 데이터 반환
@@ -1315,10 +1401,18 @@ class DatabaseService {
         throw Exception('자기 자신을 친구로 연동할 수 없습니다');
       }
       
-      // connected_user_id 업데이트
+      if (kDebugMode) {
+        print('🔗 친구 연동: ${friend.displayName} → 연결 사용자 ID: $targetUserId');
+      }
+      
+      // connected_user_id만 업데이트 (nickname은 유지)
+      // 사용자가 지정한 닉네임을 그대로 유지함
       final response = await supabase
           .from('friends')
-          .update({'connected_user_id': targetUserId})
+          .update({
+            'connected_user_id': targetUserId,
+            // nickname은 업데이트하지 않음 - 사용자가 지정한 이름 유지
+          })
           .eq('user_id', currentUserId)
           .eq('id', friend.id!)
           .select('id, connected_user_id, nickname, memo, added_at')

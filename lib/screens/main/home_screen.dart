@@ -49,6 +49,11 @@ class HomeScreen extends StatelessWidget {
     // 현재 사용자의 ID (가장 정확한 식별자)
     final currentUserId = userProfile?['id'];
     
+    if (kDebugMode) {
+      print('🔍 친구 통계 집계 시작');
+      print('📊 총 일지 수: ${diaryList.length}');
+    }
+    
     // 친구 이름(displayName)을 기준으로 그룹화하여 카운트 (본인 제외)
     for (var entry in diaryList) {
       if (entry.friends != null) {
@@ -59,14 +64,28 @@ class HomeScreen extends StatelessWidget {
           }
           
           final name = friend.displayName;
+          
+          if (kDebugMode) {
+            // print('👤 친구 발견: $name (ID: ${friend.id}, connectedUserId: ${friend.connectedUserId})');
+          }
+          
           friendCountByName[name] = (friendCountByName[name] ?? 0) + 1;
           
-          // 각 이름의 대표 Friend 객체 저장 (첫 번째로 등장한 것)
-          if (!friendByName.containsKey(name)) {
+          // 각 이름의 대표 Friend 객체 저장 
+          // 연동된 친구를 우선적으로 저장 (connectedUserId가 있는 경우)
+          if (!friendByName.containsKey(name) || 
+              (friendByName[name]!.connectedUserId == null && friend.connectedUserId != null)) {
             friendByName[name] = friend;
+            if (kDebugMode) {
+              // print('✅ 대표 친구로 설정: $name (연동: ${friend.connectedUserId != null})');
+            }
           }
         }
       }
+    }
+    
+    if (kDebugMode) {
+      print('📊 집계 결과: $friendCountByName');
     }
     
     // 결과를 Map<Friend, int> 형태로 변환
