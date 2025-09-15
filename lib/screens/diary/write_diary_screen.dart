@@ -663,8 +663,16 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           return friendName.contains(searchQuery);
                         }).toList();
 
-                    // 검색 결과가 없고 검색어가 2글자 이상이면 "새 친구 추가" 옵션 표시
-                    if (filteredFriends.isEmpty &&
+                    // 전체 친구 목록에서도 검색하여 이미 존재하는지 확인
+                    final allMatchingFriends = widget.friends.where((f) {
+                      final friendName = f.displayName
+                          .toLowerCase()
+                          .replaceAll(' ', '');
+                      return friendName.contains(searchQuery);
+                    }).toList();
+
+                    // 검색 결과가 없고 (전체 목록에서도 없고) 검색어가 2글자 이상이면 "새 친구 추가" 옵션 표시
+                    if (allMatchingFriends.isEmpty &&
                         textEditingValue.text.trim().length >= 2) {
                       return [
                         Friend(
@@ -676,10 +684,28 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                       ];
                     }
 
+                    // 이미 선택된 친구인 경우 안내 메시지 표시
+                    if (filteredFriends.isEmpty && allMatchingFriends.isNotEmpty) {
+                      return [
+                        Friend(
+                          id: -2, // 안내 메시지용 특별한 ID
+                          nickname: '이미 선택된 친구입니다',
+                          addedAt: DateTime.now(),
+                        ),
+                      ];
+                    }
+
                     return filteredFriends;
                   },
                   onSelected: (Friend selected) async {
                     // 비회원도 친구 선택 가능
+                    
+                    // 안내 메시지인 경우 아무 동작 안함
+                    if (selected.id == -2) {
+                      friendSearchController.clear();
+                      _friendSearchFocusNode.unfocus();
+                      return;
+                    }
                     
                     // 새 친구 추가 옵션이 선택된 경우
                     if (selected.id == -1) {
@@ -775,6 +801,32 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                                 itemBuilder: (context, index) {
                                   final option = options.elementAt(index);
 
+                                  // 안내 메시지인 경우
+                                  if (option.id == -2) {
+                                    return ListTile(
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade200,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.check_circle,
+                                          size: 16,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        option.nickname,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                      enabled: false,
+                                    );
+                                  }
+                                  
                                   // 새 친구 추가 옵션인 경우
                                   if (option.id == -1) {
                                     return ListTile(

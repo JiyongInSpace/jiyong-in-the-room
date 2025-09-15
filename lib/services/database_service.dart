@@ -50,7 +50,7 @@ class DatabaseService {
 
   /// 검색어로 테마 검색하기
   static Future<List<EscapeTheme>> searchThemes(String searchQuery, {int limit = 30}) async {
-    if (searchQuery.trim().length < 2) {
+    if (searchQuery.trim().length < 1) {
       return []; // 검색어가 너무 짧으면 빈 목록 반환
     }
 
