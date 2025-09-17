@@ -13,6 +13,8 @@ import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/connectivity_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
 import 'package:jiyong_in_the_room/services/friend_service.dart';
+import 'package:jiyong_in_the_room/services/unified_storage_service.dart';
+import 'package:jiyong_in_the_room/services/sync_queue_service.dart';
 import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
 import 'package:jiyong_in_the_room/widgets/onboarding_dialog.dart';
 import 'package:jiyong_in_the_room/services/onboarding_service.dart';
@@ -35,6 +37,9 @@ void main() async {
   
   // ConnectivityService 초기화
   await ConnectivityService().initialize();
+  
+  // SyncQueueService 초기화
+  await SyncQueueService.initialize();
   
   runApp(const MyApp());
 }
@@ -73,34 +78,18 @@ class _MyAppState extends State<MyApp> {
     _loadDiaryEntries();
   }
   
-  // 일지 목록 로드 (회원: DB, 비회원: 로컬)
+  // 일지 목록 로드 (통합 스토리지 서비스 사용)
   Future<void> _loadDiaryEntries() async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에서 로드
-        final entries = await DatabaseService.getMyDiaryEntries();
-        if (mounted) {
-          setState(() {
-            diaryList.clear();
-            if (entries != null) {
-              diaryList.addAll(entries);
-            }
-          });
-          if (kDebugMode) {
-            print('📋 DB 일지 목록 로드됨: ${entries?.length ?? 0}개');
-          }
-        }
-      } else {
-        // 비회원: 로컬에서 로드
-        final localEntries = LocalStorageService.getLocalDiaries();
-        if (mounted) {
-          setState(() {
-            diaryList.clear();
-            diaryList.addAll(localEntries);
-          });
-          if (kDebugMode) {
-            print('📋 로컬 일지 목록 로드됨: ${localEntries.length}개');
-          }
+      // UnifiedStorageService를 사용하여 로컬 우선 로드
+      final entries = await UnifiedStorageService.getDiaries();
+      if (mounted) {
+        setState(() {
+          diaryList.clear();
+          diaryList.addAll(entries);
+        });
+        if (kDebugMode) {
+          print('⚡ 통합 스토리지에서 일지 로드됨: ${entries.length}개 (캐시 적용)');
         }
       }
     } catch (e) {
@@ -328,34 +317,18 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  // 로그인 시 사용자 데이터 로드
+  // 로그인 시 사용자 데이터 로드 (통합 스토리지 서비스 사용)
   Future<void> _loadUserData() async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에서 친구 목록 로드
-        final friends = await DatabaseService.getMyFriends();
-        if (mounted) {
-          setState(() {
-            friendsList.clear();
-            if (friends != null) {
-              friendsList.addAll(friends);
-            }
-          });
-          if (kDebugMode) {
-            print('📋 친구 목록 로드됨: ${friends?.length ?? 0}명');
-          }
-        }
-      } else {
-        // 비회원: 로컬에서 친구 목록 로드
-        final friends = await FriendService.getFriends();
-        if (mounted) {
-          setState(() {
-            friendsList.clear();
-            friendsList.addAll(friends);
-          });
-          if (kDebugMode) {
-            print('📋 친구 목록 로드됨: ${friends.length}명');
-          }
+      // UnifiedStorageService를 사용하여 로컬 우선 로드
+      final friends = await UnifiedStorageService.getFriends();
+      if (mounted) {
+        setState(() {
+          friendsList.clear();
+          friendsList.addAll(friends);
+        });
+        if (kDebugMode) {
+          print('⚡ 통합 스토리지에서 친구 로드됨: ${friends.length}명 (캐시 적용)');
         }
       }
       

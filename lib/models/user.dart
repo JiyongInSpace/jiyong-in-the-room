@@ -38,7 +38,8 @@ class User {
 
 // 친구 정보
 class Friend {
-  final int? id; // 친구 고유 ID (SERIAL INTEGER)
+  final String? uuid; // 친구 고유 UUID (신규)
+  final int? id; // 친구 고유 ID (레거시 - SERIAL INTEGER)
   final String? connectedUserId; // 연결된 유저 ID (없으면 연결되지 않은 상태) - UUID 유지
   final User? user; // 연결된 경우에만 실제 유저 정보
   final DateTime addedAt;
@@ -46,6 +47,7 @@ class Friend {
   final String? memo;
 
   Friend({
+    this.uuid,
     this.id,
     this.connectedUserId,
     this.user,
@@ -72,6 +74,7 @@ class Friend {
   // JSON 변환
   Map<String, dynamic> toJson() {
     return {
+      'uuid': uuid,
       'id': id,
       'connected_user_id': connectedUserId,
       'user': user?.toJson(),
@@ -83,6 +86,7 @@ class Friend {
 
   factory Friend.fromJson(Map<String, dynamic> json) {
     return Friend(
+      uuid: json['uuid'] as String?,
       id: json['id'] as int?,
       connectedUserId: json['connected_user_id'] as String?,
       user: json['user'] != null 
@@ -91,6 +95,19 @@ class Friend {
       addedAt: DateTime.parse(json['added_at'] as String),
       nickname: json['nickname'] as String,
       memo: json['memo'] as String?,
+    );
+  }
+  
+  // UUID 생성 헬퍼 메서드 추가
+  Friend copyWithUuid(String newUuid) {
+    return Friend(
+      uuid: newUuid,
+      id: id,
+      connectedUserId: connectedUserId,
+      user: user,
+      addedAt: addedAt,
+      nickname: nickname,
+      memo: memo,
     );
   }
 }

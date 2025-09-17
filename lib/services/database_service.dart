@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/utils/supabase.dart';
+import 'package:jiyong_in_the_room/utils/uuid_helper.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
@@ -315,7 +316,10 @@ class DatabaseService {
 
     try {
       final currentUserId = AuthService.currentUser!.id;
+      final newUuid = UuidHelper.generate(); // UUID 생성
+      
       final friendData = {
+        'uuid': newUuid,
         'user_id': currentUserId,
         'connected_user_id': null,
         'nickname': nickname,
@@ -326,10 +330,11 @@ class DatabaseService {
       final response = await supabase
           .from('friends')
           .insert(friendData)
-          .select('id, connected_user_id, nickname, memo, added_at')
+          .select('uuid, id, connected_user_id, nickname, memo, added_at')
           .single();
 
       return Friend(
+        uuid: response['uuid'] as String?,
         id: response['id'] as int,
         connectedUserId: response['connected_user_id'],
         user: null, // 일단 null로 처리
@@ -955,9 +960,11 @@ class DatabaseService {
 
     try {
       final currentUserId = AuthService.currentUser!.id;
+      final newUuid = UuidHelper.generate(); // UUID 생성
       
       // 일지 데이터 준비
       final entryData = entry.toJson();
+      entryData['uuid'] = newUuid; // 새로운 UUID 추가
       entryData['user_id'] = currentUserId; // 현재 사용자로 설정
       entryData.remove('id'); // DB에서 자동 생성 (SERIAL)
       entryData.remove('created_at'); // DB에서 자동 생성

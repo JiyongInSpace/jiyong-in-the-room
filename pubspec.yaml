@@ -46,6 +46,7 @@ dependencies:
   path: ^1.9.0
   connectivity_plus: ^6.0.5
   shared_preferences: ^2.2.2
+  uuid: ^4.2.1
 
 dev_dependencies:
   flutter_test:

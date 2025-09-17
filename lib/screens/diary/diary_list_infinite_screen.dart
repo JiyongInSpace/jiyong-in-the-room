@@ -9,6 +9,8 @@ import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/services/auth_service.dart';
 import 'package:jiyong_in_the_room/services/database_service.dart';
 import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/unified_storage_service.dart';
+import 'package:jiyong_in_the_room/services/cache_service.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/diary_filter_dialog.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
@@ -85,7 +87,7 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
     }
   }
 
-  // 일지 목록 로딩 (회원: DB, 비회원: 로컬)
+  // 일지 목록 로딩 (통합 스토리지 사용, 로컬 우선)
   Future<void> _loadDiaries({bool reset = false}) async {
     if (_isLoading) return;
 
@@ -103,30 +105,54 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
       List<DiaryEntry> diaries;
       
       if (AuthService.isLoggedIn) {
-        // 회원: DB에서 페이징 조회
-        diaries = await DatabaseService.getMyDiaryEntriesPaginated(
-          page: _currentPage,
-          limit: _pageSize,
-          searchQuery: _currentSearchQuery,
-          filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
-          ratingFilters: _selectedRatingFilters.isNotEmpty ? _selectedRatingFilters : null,
-          startDate: _startDate,
-          endDate: _endDate,
-        );
-        
-        if (mounted) {
-          setState(() {
-            if (diaries.length < _pageSize) {
-              _hasMore = false;
-            }
-            
-            _diaryList.addAll(diaries);
-            _currentPage++;
-          });
+        // 회원: 통합 스토리지 사용 (로컬 우선 + 캐시 적용)
+        if (_currentPage == 0 && !_hasActiveFilters) {
+          // 첫 페이지이고 필터가 없으면 캐시된 전체 데이터 사용
+          final allDiaries = await UnifiedStorageService.getDiaries(forceRefresh: reset);
+          
+          // 클라이언트 사이드 페이징
+          final startIndex = _currentPage * _pageSize;
+          final endIndex = startIndex + _pageSize;
+          
+          diaries = allDiaries.sublist(
+            startIndex,
+            endIndex > allDiaries.length ? allDiaries.length : endIndex,
+          );
+          
+          if (mounted) {
+            setState(() {
+              if (diaries.length < _pageSize || endIndex >= allDiaries.length) {
+                _hasMore = false;
+              }
+              _diaryList.addAll(diaries);
+              _currentPage++;
+            });
+          }
+        } else {
+          // 필터가 있거나 페이징이 필요한 경우 DB 직접 조회
+          diaries = await DatabaseService.getMyDiaryEntriesPaginated(
+            page: _currentPage,
+            limit: _pageSize,
+            searchQuery: _currentSearchQuery,
+            filterFriendIds: _selectedFriends.map((f) => f.id!).toList(),
+            ratingFilters: _selectedRatingFilters.isNotEmpty ? _selectedRatingFilters : null,
+            startDate: _startDate,
+            endDate: _endDate,
+          );
+          
+          if (mounted) {
+            setState(() {
+              if (diaries.length < _pageSize) {
+                _hasMore = false;
+              }
+              _diaryList.addAll(diaries);
+              _currentPage++;
+            });
+          }
         }
       } else {
-        // 비회원: 로컬에서 전체 조회 후 클라이언트 사이드 필터링/페이징
-        var localDiaries = LocalStorageService.getLocalDiaries();
+        // 비회원: 로컬 데이터만 사용 (클라이언트 사이드 필터링/페이징)
+        var localDiaries = await UnifiedStorageService.getDiaries();
         
         // 검색 필터 적용
         if (_currentSearchQuery != null && _currentSearchQuery!.isNotEmpty) {
@@ -213,6 +239,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
 
   // Pull to refresh
   Future<void> _onRefresh() async {
+    // 캐시 무효화하여 최신 데이터 가져오기
+    CacheService.invalidatePattern('diaries');
     await _loadDiaries(reset: true);
   }
   

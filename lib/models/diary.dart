@@ -3,7 +3,8 @@ import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 
 class DiaryEntry {
-  final int id;                 // SERIAL (DB와 일치)
+  final String? uuid;            // 일지 고유 UUID (신규)
+  final int id;                 // SERIAL (레거시 - DB와 일치)
   final String userId;          // 작성자 ID (UUID)
   final int themeId;            // 테마 ID (INTEGER)
   final EscapeTheme? theme;     // 테마 정보 (조인 시에만)
@@ -20,6 +21,7 @@ class DiaryEntry {
   final DateTime updatedAt;     // 수정 시간
 
   DiaryEntry({
+    this.uuid,
     required this.id,
     required this.userId,
     required this.themeId,
@@ -42,6 +44,7 @@ class DiaryEntry {
 
   // copyWith 메서드
   DiaryEntry copyWith({
+    String? uuid,
     int? id,
     String? userId,
     int? themeId,
@@ -59,6 +62,7 @@ class DiaryEntry {
     DateTime? updatedAt,
   }) {
     return DiaryEntry(
+      uuid: uuid ?? this.uuid,
       id: id ?? this.id,
       userId: userId ?? this.userId,
       themeId: themeId ?? this.themeId,
@@ -80,6 +84,7 @@ class DiaryEntry {
   // JSON 직렬화
   Map<String, dynamic> toJson() {
     return {
+      'uuid': uuid,
       'id': id,
       'user_id': userId,
       'theme_id': themeId,
@@ -102,6 +107,7 @@ class DiaryEntry {
 
   factory DiaryEntry.fromJson(Map<String, dynamic> json) {
     return DiaryEntry(
+      uuid: json['uuid'] as String?,
       id: json['id'] as int,
       userId: json['user_id'] as String,
       themeId: json['theme_id'] as int,

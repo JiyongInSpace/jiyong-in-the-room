@@ -1,6 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
+import 'package:jiyong_in_the_room/utils/uuid_helper.dart';
 import 'package:flutter/foundation.dart';
 
 /// 로컬 저장소 서비스
@@ -70,16 +71,20 @@ class LocalStorageService {
     try {
       // 로컬 ID 생성 (큰 양수 사용)
       final localId = _generateLocalDiaryId();
+      final newUuid = UuidHelper.generate(); // UUID 생성
       
-      // 로컬용 엔트리 생성 (ID만 변경, 나머지는 동일)
-      final localEntry = entry.copyWith(id: localId);
+      // 로컬용 엔트리 생성 (ID와 UUID 모두 설정)
+      final localEntry = entry.copyWith(
+        id: localId,
+        uuid: newUuid,
+      );
       
       // JSON으로 변환하여 저장 (마이그레이션 용이)
       final jsonData = localEntry.toJson();
       await _diaryBox.put(localId, jsonData);
       
       if (kDebugMode) {
-        print('💾 로컬 일지 저장 완료: ID=$localId');
+        print('💾 로컬 일지 저장 완료: ID=$localId, UUID=$newUuid');
       }
       
       return localEntry;
@@ -210,9 +215,11 @@ class LocalStorageService {
     try {
       // 로컬 친구 ID 생성 (32비트 범위 내)
       final localId = _generateLocalFriendId();
+      final newUuid = UuidHelper.generate(); // UUID 생성
       
       // 로컬용 친구 생성
       final localFriend = Friend(
+        uuid: newUuid,
         id: localId,
         nickname: friend.nickname,
         memo: friend.memo,
@@ -222,6 +229,7 @@ class LocalStorageService {
       
       // Map으로 변환하여 저장
       final data = {
+        'uuid': localFriend.uuid,
         'id': localFriend.id,
         'nickname': localFriend.nickname,
         'memo': localFriend.memo,
@@ -279,10 +287,10 @@ class LocalStorageService {
   }
   
   /// 로컬 친구 수정
-  static Future<Friend> updateFriend(Friend friend) async {
+  static Future<Friend> updateFriend(int friendId, {String? nickname, String? memo}) async {
     try {
-      if (friend.id == null) {
-        throw Exception('친구 ID가 없습니다');
+      if (friendId <= 0) {
+        throw Exception('올바르지 않은 친구 ID입니다');
       }
       
       final data = {
