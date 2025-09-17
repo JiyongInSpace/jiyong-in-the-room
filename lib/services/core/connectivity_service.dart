@@ -35,6 +35,12 @@ class ConnectivityService {
   
   /// 연결 상태 변경 스트림 (UI 표시용 - 짧은 끊김은 필터링)
   Stream<bool> get connectionStream => _connectionController.stream;
+  
+  /// 현재 연결 상태 (static 접근)
+  static bool get isOnline => _instance._isConnected;
+  
+  /// 연결 상태 변경 스트림 (static 접근)
+  static Stream<bool> get connectionStreamStatic => _instance._connectionController.stream;
 
   /// 서비스 초기화
   Future<void> initialize() async {

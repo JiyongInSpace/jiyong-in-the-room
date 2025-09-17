@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:jiyong_in_the_room/services/connectivity_service.dart';
+import 'package:jiyong_in_the_room/services/core/connectivity_service.dart';
 
 /// 오프라인 상태를 사용자에게 알리는 배너 위젯
 /// 

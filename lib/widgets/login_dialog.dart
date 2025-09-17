@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
 import 'package:jiyong_in_the_room/widgets/terms_agreement_dialog.dart';
 
 class LoginDialog extends StatelessWidget {

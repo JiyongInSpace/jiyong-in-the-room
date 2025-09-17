@@ -8,16 +8,17 @@ import 'package:jiyong_in_the_room/constants/app_colors.dart';
 import 'package:jiyong_in_the_room/screens/main/home_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/connectivity_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/friend_service.dart';
-import 'package:jiyong_in_the_room/services/unified_storage_service.dart';
-import 'package:jiyong_in_the_room/services/sync_queue_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/core/connectivity_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/business/friend_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/sync_queue_service.dart';
+import 'package:jiyong_in_the_room/services/data/cache_service.dart';
 import 'package:jiyong_in_the_room/widgets/offline_banner.dart';
 import 'package:jiyong_in_the_room/widgets/onboarding_dialog.dart';
-import 'package:jiyong_in_the_room/services/onboarding_service.dart';
+import 'package:jiyong_in_the_room/services/core/onboarding_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +58,7 @@ class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
   Map<String, dynamic>? userProfile;
   bool _isInitialLoading = true; // 초기 로딩 상태
-  bool _shouldShowMigrationDialog = false; // 마이그레이션 다이얼로그 표시 플래그
+  // 마이그레이션 다이얼로그 기능은 현재 사용하지 않음 (로컬 우선 아키텍처로 변경)
   bool _hasShownOnboarding = false; // 온보딩 표시 여부
   
   void addDiary(DiaryEntry entry) {
@@ -287,24 +288,20 @@ class _MyAppState extends State<MyApp> {
           isLoggedIn = session != null;
         });
         if (isLoggedIn) {
-          // 로그인 시 비회원 데이터 정리하고 DB 데이터 로드
+          // 로그인 시 로컬 데이터를 유지하고 백그라운드 동기화만 수행
           if (kDebugMode) {
-            print('🔄 로그인 감지: 비회원 데이터 정리 중...');
-            print('  - 기존 일지: ${diaryList.length}개');
-            print('  - 기존 친구: ${friendsList.length}명');
-          }
-          
-          setState(() {
-            diaryList.clear(); // 기존 로컬 데이터 정리
-            friendsList.clear(); // 기존 로컬 친구 정리
-          });
-          
-          if (kDebugMode) {
-            print('✅ 비회원 데이터 정리 완료. DB 데이터 로드 시작...');
+            print('🔄 로그인 감지: 로컬 우선 데이터 로드 시작...');
+            print('  - 기존 일지: ${diaryList.length}개 (유지)');
+            print('  - 기존 친구: ${friendsList.length}명 (유지)');
           }
           
           _loadUserProfile();
-          _loadUserData();
+          
+          // 캐시 무효화 후 데이터 새로고침
+          if (kDebugMode) {
+            print('🔄 로그인 시 캐시 무효화 및 데이터 새로고침...');
+          }
+          _performInitialSync(); // 초기 동기화 + 전체 데이터 새로고침
         } else {
           setState(() {
             userProfile = null;
@@ -324,11 +321,18 @@ class _MyAppState extends State<MyApp> {
       final friends = await UnifiedStorageService.getFriends();
       if (mounted) {
         setState(() {
-          friendsList.clear();
-          friendsList.addAll(friends);
+          // 기존 로컬 친구가 있다면 병합, 없다면 새로 설정
+          if (friendsList.isEmpty) {
+            friendsList.addAll(friends);
+          } else {
+            // 중복 제거하며 병합
+            final existingIds = friendsList.map((f) => f.id).toSet();
+            final newFriends = friends.where((f) => !existingIds.contains(f.id));
+            friendsList.addAll(newFriends);
+          }
         });
         if (kDebugMode) {
-          print('⚡ 통합 스토리지에서 친구 로드됨: ${friends.length}명 (캐시 적용)');
+          print('⚡ 통합 스토리지에서 친구 로드됨: ${friends.length}명 → 총 ${friendsList.length}명');
         }
       }
       
@@ -381,13 +385,114 @@ class _MyAppState extends State<MyApp> {
       print('🔄 전체 데이터 새로고침 시작');
     }
     
+    // 캐시 무효화
+    CacheService.clear();
+    
     await Future.wait([
       _loadUserProfile(), // 프로필 로드
-      _loadUserData(),    // 일지 + 친구 데이터 로드
+      _loadDiaryEntries(), // 일지 데이터 로드 (UnifiedStorage 사용)
+      _loadFriendsData(),  // 친구 데이터 로드 (새로 추가)
     ]);
     
     if (kDebugMode) {
       print('✅ 전체 데이터 새로고침 완료');
+    }
+  }
+  
+  // 친구 데이터만 로드하는 메서드 추가
+  Future<void> _loadFriendsData() async {
+    try {
+      final friends = await UnifiedStorageService.getFriends(forceRefresh: true);
+      if (mounted) {
+        setState(() {
+          friendsList.clear();
+          friendsList.addAll(friends);
+        });
+        if (kDebugMode) {
+          print('⚡ 친구 데이터 새로고침 완료: ${friends.length}명');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 친구 데이터 로드 실패: $e');
+      }
+    }
+  }
+  
+  // 로그인 시 초기 동기화 수행
+  Future<void> _performInitialSync() async {
+    if (kDebugMode) {
+      print('🔄 초기 동기화 시작 - DB 데이터를 로컬로 가져오기');
+    }
+    
+    try {
+      // 캐시 무효화
+      CacheService.clear();
+      
+      // 로컬 데이터 개수 확인
+      final localDiaries = LocalStorageService.getLocalDiaries();
+      final localFriends = LocalStorageService.getLocalFriends();
+      
+      if (kDebugMode) {
+        print('📊 현재 로컬 데이터: 일지 ${localDiaries.length}개, 친구 ${localFriends.length}명');
+      }
+      
+      // DB에서 데이터 가져오기
+      final dbDiaries = await DatabaseService.getMyDiaryEntries();
+      final dbFriends = await DatabaseService.getMyFriends();
+      
+      if (kDebugMode) {
+        print('📊 DB 데이터: 일지 ${dbDiaries.length}개, 친구 ${dbFriends.length}명');
+      }
+      
+      // DB 데이터가 더 많으면 로컬로 복사
+      if (dbDiaries.length > localDiaries.length) {
+        if (kDebugMode) {
+          print('📥 DB 일지 데이터를 로컬로 복사 중...');
+        }
+        
+        for (final diary in dbDiaries) {
+          // 로컬에 없는 일지만 추가
+          final exists = localDiaries.any((local) => local.id == diary.id);
+          if (!exists) {
+            await LocalStorageService.saveDiary(diary);
+            if (kDebugMode) {
+              print('✅ 일지 복사됨: ${diary.theme?.name ?? diary.id.toString()}');
+            }
+          }
+        }
+      }
+      
+      if (dbFriends.length > localFriends.length) {
+        if (kDebugMode) {
+          print('📥 DB 친구 데이터를 로컬로 복사 중...');
+        }
+        
+        for (final friend in dbFriends) {
+          // 로컬에 없는 친구만 추가
+          final exists = localFriends.any((local) => local.nickname == friend.nickname);
+          if (!exists) {
+            await LocalStorageService.saveFriend(friend);
+            if (kDebugMode) {
+              print('✅ 친구 복사됨: ${friend.nickname}');
+            }
+          }
+        }
+      }
+      
+      // 모든 데이터 새로고침
+      await _refreshAllData();
+      
+      if (kDebugMode) {
+        print('✅ 초기 동기화 완료');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ 초기 동기화 실패: $e');
+      }
+      // 실패해도 기본 새로고침은 수행
+      await _refreshAllData();
     }
   }
   

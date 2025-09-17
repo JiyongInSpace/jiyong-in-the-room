@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 
 /// 로그인 후 로컬 데이터 마이그레이션 안내 다이얼로그

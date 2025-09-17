@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
 
 /// 일지 필터 설정 다이얼로그
 class DiaryFilterDialog extends StatefulWidget {

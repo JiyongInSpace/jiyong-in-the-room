@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/escape_room_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
+import 'package:jiyong_in_the_room/services/business/escape_room_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/business/friend_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -562,7 +563,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       
                       // 회원만 친구 추가 가능 (비회원은 친구 기능 사용 불가)
                       if (AuthService.isLoggedIn) {
-                        final savedFriend = await DatabaseService.addFriend(
+                        final savedFriend = await FriendService.addFriend(
                           nickname: friendName,
                           memo: null,
                         );
@@ -933,11 +934,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
                       if (confirmed == true) {
                         try {
-                          if (AuthService.isLoggedIn) {
-                            await DatabaseService.deleteDiaryEntry(widget.entry.id);
-                          } else {
-                            await LocalStorageService.deleteDiary(widget.entry.id);
-                          }
+                          // UnifiedStorageService로 삭제 (로컬 우선 + 백그라운드 동기화)
+                          await UnifiedStorageService.deleteDiary(widget.entry);
                           
                           if (mounted) {
                             Navigator.pop(context, 'deleted');
@@ -1003,16 +1001,16 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                         // 회원/비회원에 따라 다른 저장 로직
                         DiaryEntry savedEntry;
                         
-                        if (AuthService.isLoggedIn) {
-                          // 회원: 데이터베이스에 수정 사항 저장
-                          savedEntry = await DatabaseService.updateDiaryEntry(
-                            updatedEntry,
-                            selectedFriends: selectedFriends.isNotEmpty ? selectedFriends : null,
-                          );
-                        } else {
-                          // 비회원: 로컬 저장소에 수정 사항 저장
-                          savedEntry = await LocalStorageService.updateDiary(updatedEntry);
-                        }
+                        // UnifiedStorageService로 수정 (로컬 우선 + 백그라운드 동기화)
+                        final friendIds = selectedFriends
+                            .where((friend) => friend.id != null)
+                            .map((friend) => friend.id!)
+                            .toList();
+                            
+                        savedEntry = await UnifiedStorageService.updateDiary(
+                          updatedEntry,
+                          friendIds: friendIds.isNotEmpty ? friendIds : null,
+                        );
                         
                         if (mounted) {
                           setState(() {

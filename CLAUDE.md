@@ -27,34 +27,66 @@ This is a Flutter application for tracking escape room experiences. The app allo
 - `flutter run -d linux` - Run on Linux
 - `flutter run -d windows` - Run on Windows
 
-## Architecture
+## Architecture (업데이트: 2025-09-17)
 
-### Core Structure
+### 🏗️ Local-First Architecture
 
-The app follows a simple Flutter architecture pattern:
+The app now follows a **local-first architecture** with background synchronization:
 
-- **main.dart**: Entry point with global state management for diary entries
-- **models/**: Data models for the application
-  - `diary.dart`: DiaryEntry model representing escape room experiences
+- **Local Storage**: Primary source of truth using Hive for instant performance
+- **Cloud Sync**: Background synchronization to Supabase with retry logic
+- **Optimistic Updates**: UI updates immediately, sync happens asynchronously
+- **Offline Support**: Full functionality without network connection
+
+### 📂 Core Structure
+
+#### **서비스 계층 (Services) - 카테고리별 정리 완료**
+```
+lib/services/
+├── 🔐 auth/                     # 인증 관련
+│   ├── auth_service.dart        # Google 로그인, 사용자 인증
+│   └── profile_service.dart     # 프로필 이미지, 사용자 정보
+├── 💼 business/                 # 비즈니스 로직  
+│   ├── friend_service.dart      # 친구 관리 (통합 서비스)
+│   └── escape_room_service.dart # 카페/테마 데이터 조회
+├── 🔧 core/                     # 핵심 시스템
+│   ├── connectivity_service.dart # 네트워크 연결 관리
+│   ├── error_service.dart       # 에러 처리 및 메시지 변환
+│   └── onboarding_service.dart  # 온보딩 플로우
+└── 💾 data/                     # 데이터 관리
+    ├── cache_service.dart       # 메모리 캐시 (TTL 기반)
+    ├── database_service.dart    # Supabase DB 연동
+    ├── local_storage_service.dart # Hive 로컬 저장소
+    ├── sync_queue_service.dart  # 백그라운드 동기화 큐
+    └── unified_storage_service.dart # 로컬 우선 통합 스토리지
+```
+
+#### **기타 구조**
+- **main.dart**: Entry point + 인증 상태 관리 + 데이터 마이그레이션
+- **models/**: Data models with JSON serialization
+  - `diary.dart`: DiaryEntry model with UUID support
   - `escape_cafe.dart`: EscapeCafe and EscapeTheme models
-  - `user.dart`: User and Friend models
-- **screens/**: UI screens for different app functions
-  - `diary_list_screen.dart`: Main list view of diary entries
-  - `diary_detail_screen.dart`: Detailed view of individual entries
-  - `write_diary_screen.dart`: Form for creating new entries
-  - `edit_diary_screen.dart`: Form for editing existing entries
+  - `user.dart`: User and Friend models with UUID support
+- **screens/**: UI screens organized by feature areas
+- **widgets/**: Reusable UI components and dialogs
 
-### State Management
+### 🔄 Data Flow (로컬 우선 아키텍처)
 
-- Uses StatefulWidget at the app level (MyApp) to manage the global list of diary entries
-- Callback functions (onAdd, onUpdate) are passed down to child widgets for state updates
-- No external state management library is used
+```
+User Action → Business Service → UnifiedStorageService → Local Storage (즉시) + Sync Queue (백그라운드)
+```
 
-### Data Flow
+1. **즉시 업데이트**: 모든 CRUD 작업이 로컬 스토리지에 즉시 반영
+2. **백그라운드 동기화**: SyncQueue가 비동기로 클라우드 동기화 처리
+3. **충돌 해결**: UUID 기반 식별로 멀티디바이스 동기화 지원
+4. **오프라인 지원**: 네트워크 없이도 모든 기능 사용 가능
 
-- DiaryEntry objects are created with mock data structure including cafe, theme, friends, ratings, and game results
-- Navigation between screens uses Navigator.push with MaterialPageRoute
-- Data is passed between screens through constructor parameters and return values
+### 🚀 State Management
+
+- **UnifiedStorageService**: 로컬 우선 데이터 관리
+- **CacheService**: 메모리 캐시 (TTL 기반)
+- **AuthService**: 인증 상태 전역 관리
+- **Callback 패턴**: UI 간 데이터 전파
 
 ### Key Models Relationships
 
@@ -151,7 +183,27 @@ dependencies:
 
 ### 최근 구현 완료
 
-#### 🚀 2025-09-02 최신 업데이트 (비회원 친구 시스템 + 게임화 요소)
+#### 🚀 2025-09-17 최신 업데이트 (로컬 우선 아키텍처 완성 + 서비스 정리)
+- **🏗️ 완전한 로컬 우선 아키텍처 전환**:
+  - **CacheService**: TTL 기반 메모리 캐시 시스템 구현
+  - **UnifiedStorageService**: 로컬 우선 + 백그라운드 동기화 통합 서비스
+  - **SyncQueueService**: 우선순위 기반 동기화 큐 + exponential backoff
+  - **모든 CRUD 작업**: 즉시 로컬 업데이트 + 비동기 클라우드 동기화
+- **📂 서비스 계층 아키텍처 정리**:
+  - **auth/**: 인증 관련 서비스 (AuthService, ProfileService)
+  - **business/**: 비즈니스 로직 (FriendService, EscapeRoomService)
+  - **core/**: 핵심 시스템 (ConnectivityService, ErrorService, OnboardingService)
+  - **data/**: 데이터 관리 (CacheService, DatabaseService, LocalStorageService, SyncQueueService, UnifiedStorageService)
+- **⚡ 성능 개선**:
+  - **즉시 UI 반응**: 모든 폼 저장이 로컬에 즉시 반영
+  - **메모리 캐시**: 반복 조회 시 즉시 로드
+  - **오프라인 지원**: 네트워크 없이도 완전한 기능 사용
+- **🔧 개발 경험 개선**:
+  - **명확한 책임 분리**: 각 서비스의 역할과 의존성 명확화
+  - **유지보수성**: 기능별 디렉토리 구조로 코드 찾기 쉬움
+  - **확장성**: 새로운 기능 추가 시 적절한 위치 명확
+
+#### 🚀 2025-09-02 이전 업데이트 (비회원 친구 시스템 + 게임화 요소)
 - **👥 완전한 비회원 친구 시스템**:
   - **로컬 친구 관리**: Hive를 사용한 친구 추가/수정/삭제
   - **FriendService 통합**: 회원/비회원 자동 구분 서비스 계층

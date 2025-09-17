@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
-import 'package:jiyong_in_the_room/services/escape_room_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/friend_service.dart';
+import 'package:jiyong_in_the_room/services/business/escape_room_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/business/friend_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -1163,8 +1164,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                           updatedAt: now,
                         );
 
-                        // 로컬에 저장
-                        final savedEntry = await LocalStorageService.saveDiary(localEntry);
+                        // UnifiedStorageService로 저장 (로컬 우선)
+                        final savedEntry = await UnifiedStorageService.saveDiary(localEntry);
 
                         if (mounted) {
                           setState(() {
@@ -1212,11 +1213,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                             .map((friend) => friend.id!)
                             .toList();
 
-                        // DB에 저장
-                        final savedEntry = await DatabaseService.addDiaryEntry(
+                        // UnifiedStorageService로 저장 (로컬 우선 + 백그라운드 동기화)
+                        final savedEntry = await UnifiedStorageService.saveDiary(
                           newEntry,
                           friendIds: friendIds.isNotEmpty ? friendIds : null,
-                          enableMutualFriendsEntries: false, // 친구 일지 공유 비활성화
                         );
 
                         if (mounted) {

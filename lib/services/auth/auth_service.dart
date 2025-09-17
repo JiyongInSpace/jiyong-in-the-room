@@ -3,7 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jiyong_in_the_room/utils/supabase.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
 
 class AuthService {
   // 현재 사용자 상태

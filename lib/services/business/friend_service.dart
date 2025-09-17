@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
 
 /// 친구 관리 통합 서비스 클래스
 /// 회원/비회원 상관없이 일관된 API 제공
@@ -14,20 +15,11 @@ class FriendService {
     String? memo,
   }) async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에 저장
-        return await DatabaseService.addFriend(
-          nickname: nickname,
-          memo: memo,
-        );
-      } else {
-        // 비회원: 로컬에 저장
-        return await LocalStorageService.saveFriend(Friend(
-          nickname: nickname,
-          memo: memo,
-          addedAt: DateTime.now(),
-        ));
-      }
+      // UnifiedStorageService로 저장 (로컬 우선 + 백그라운드 동기화)
+      return await UnifiedStorageService.saveFriend(
+        nickname: nickname,
+        memo: memo,
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 추가 실패: $e');
@@ -43,25 +35,12 @@ class FriendService {
     String? memo,
   }) async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에서 수정
-        return await DatabaseService.updateFriend(
-          friend,
-          newNickname: nickname,
-          newMemo: memo,
-        );
-      } else {
-        // 비회원: 로컬에서 수정
-        final updatedFriend = Friend(
-          id: friend.id,
-          connectedUserId: friend.connectedUserId,
-          user: friend.user,
-          nickname: nickname,
-          memo: memo,
-          addedAt: friend.addedAt,
-        );
-        return await LocalStorageService.updateFriend(updatedFriend);
-      }
+      // UnifiedStorageService로 수정 (로컬 우선 + 백그라운드 동기화)
+      return await UnifiedStorageService.updateFriend(
+        friend,
+        newNickname: nickname,
+        newMemo: memo,
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 수정 실패: $e');
@@ -73,15 +52,8 @@ class FriendService {
   /// 친구 삭제 (회원/비회원 자동 구분)
   static Future<void> deleteFriend(Friend friend) async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에서 삭제
-        await DatabaseService.deleteFriend(friend);
-      } else {
-        // 비회원: 로컬에서 삭제
-        if (friend.id != null) {
-          await LocalStorageService.deleteFriend(friend.id!);
-        }
-      }
+      // UnifiedStorageService로 삭제 (로컬 우선 + 백그라운드 동기화)
+      await UnifiedStorageService.deleteFriend(friend);
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 삭제 실패: $e');
@@ -93,14 +65,8 @@ class FriendService {
   /// 친구 목록 조회 (회원/비회원 자동 구분)
   static Future<List<Friend>> getFriends() async {
     try {
-      if (AuthService.isLoggedIn) {
-        // 회원: DB에서 조회
-        final friends = await DatabaseService.getMyFriends();
-        return friends ?? [];
-      } else {
-        // 비회원: 로컬에서 조회
-        return LocalStorageService.getLocalFriends();
-      }
+      // UnifiedStorageService로 조회 (로컬 우선 + 백그라운드 동기화)
+      return await UnifiedStorageService.getFriends();
     } catch (e) {
       if (kDebugMode) {
         print('❌ 친구 목록 조회 실패: $e');

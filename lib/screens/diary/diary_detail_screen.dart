@@ -3,9 +3,9 @@ import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/widgets/diary_management_bottom_sheet.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
@@ -534,13 +534,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   print('🗑️ 일지 상세페이지에서 삭제 시도: ID=${widget.entry.id}, 로그인 여부=${AuthService.isLoggedIn}');
                 }
                 
-                if (AuthService.isLoggedIn) {
-                  // 회원: 데이터베이스에서 삭제
-                  await DatabaseService.deleteDiaryEntry(widget.entry.id);
-                } else {
-                  // 비회원: 로컬에서 삭제
-                  await LocalStorageService.deleteDiary(widget.entry.id);
-                }
+                // UnifiedStorageService로 삭제 (로컬 우선 + 백그라운드 동기화)
+                await UnifiedStorageService.deleteDiary(widget.entry);
                 
                 // UI 콜백 호출
                 if (widget.onDelete != null) {

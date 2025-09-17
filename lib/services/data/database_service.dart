@@ -4,8 +4,8 @@ import 'package:jiyong_in_the_room/utils/uuid_helper.dart';
 import 'package:jiyong_in_the_room/models/escape_cafe.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/error_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/core/error_service.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
 
 class DatabaseService {

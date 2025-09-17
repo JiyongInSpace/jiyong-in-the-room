@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/cache_service.dart';
-import 'package:jiyong_in_the_room/services/connectivity_service.dart';
-import 'package:jiyong_in_the_room/services/sync_queue_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/cache_service.dart';
+import 'package:jiyong_in_the_room/services/core/connectivity_service.dart';
+import 'package:jiyong_in_the_room/services/data/sync_queue_service.dart';
 import 'package:jiyong_in_the_room/utils/uuid_helper.dart';
 
 /// 로컬 우선 통합 스토리지 서비스

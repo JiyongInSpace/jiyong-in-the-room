@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/escape_cafe.dart';
+import '../../models/escape_cafe.dart';
 
 class EscapeRoomService {
   static final _client = Supabase.instance.client;

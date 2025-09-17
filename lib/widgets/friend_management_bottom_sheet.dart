@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/friend_service.dart';
-import 'package:jiyong_in_the_room/services/error_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/business/friend_service.dart';
+import 'package:jiyong_in_the_room/services/core/error_service.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
 
 /// 친구 관리 바텀시트 공통 위젯

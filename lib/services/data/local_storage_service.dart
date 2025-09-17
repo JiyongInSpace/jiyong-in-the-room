@@ -293,21 +293,41 @@ class LocalStorageService {
         throw Exception('올바르지 않은 친구 ID입니다');
       }
       
-      final data = {
-        'id': friend.id,
-        'nickname': friend.nickname,
-        'memo': friend.memo,
-        'connected_user_id': friend.connectedUserId,
-        'added_at': friend.addedAt.toIso8601String(),
-      };
-      
-      await _friendBox.put(friend.id!, data);
-      
-      if (kDebugMode) {
-        print('✏️ 로컬 친구 수정 완료: ${friend.id}');
+      // 기존 친구 정보 가져오기
+      final existingData = _friendBox.get(friendId);
+      if (existingData == null) {
+        throw Exception('친구를 찾을 수 없습니다');
       }
       
-      return friend;
+      final existingFriend = Friend.fromJson(Map<String, dynamic>.from(existingData));
+      
+      // 수정된 친구 객체 생성
+      final updatedFriend = Friend(
+        id: friendId,
+        uuid: existingFriend.uuid,
+        nickname: nickname ?? existingFriend.nickname,
+        memo: memo ?? existingFriend.memo,
+        connectedUserId: existingFriend.connectedUserId,
+        user: existingFriend.user,
+        addedAt: existingFriend.addedAt,
+      );
+      
+      final data = {
+        'id': updatedFriend.id,
+        'uuid': updatedFriend.uuid,
+        'nickname': updatedFriend.nickname,
+        'memo': updatedFriend.memo,
+        'connected_user_id': updatedFriend.connectedUserId,
+        'added_at': updatedFriend.addedAt.toIso8601String(),
+      };
+      
+      await _friendBox.put(friendId, data);
+      
+      if (kDebugMode) {
+        print('✏️ 로컬 친구 수정 완료: $friendId');
+      }
+      
+      return updatedFriend;
     } catch (e) {
       if (kDebugMode) {
         print('❌ 로컬 친구 수정 실패: $e');

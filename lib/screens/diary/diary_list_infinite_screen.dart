@@ -6,11 +6,10 @@ import 'package:jiyong_in_the_room/screens/diary/diary_detail_screen.dart';
 import 'package:jiyong_in_the_room/screens/diary/edit_diary_screen.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/unified_storage_service.dart';
-import 'package:jiyong_in_the_room/services/cache_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/unified_storage_service.dart';
+import 'package:jiyong_in_the_room/services/data/cache_service.dart';
 import 'package:jiyong_in_the_room/widgets/diary_entry_card.dart';
 import 'package:jiyong_in_the_room/widgets/diary_filter_dialog.dart';
 import 'package:jiyong_in_the_room/utils/rating_utils.dart';
@@ -435,13 +434,8 @@ class _DiaryListInfiniteScreenState extends State<DiaryListInfiniteScreen> {
             print('🗑️ 일지 삭제 시작: ID=${entry.id}, 로그인 여부=${AuthService.isLoggedIn}');
           }
           
-          if (AuthService.isLoggedIn) {
-            // 회원: 데이터베이스에서 삭제
-            await DatabaseService.deleteDiaryEntry(entry.id);
-          } else {
-            // 비회원: 로컬에서 삭제
-            await LocalStorageService.deleteDiary(entry.id);
-          }
+          // UnifiedStorageService로 삭제 (로컬 우선 + 백그라운드 동기화)
+          await UnifiedStorageService.deleteDiary(entry);
           
           // UI에서 제거
           _deleteDiary(entry);

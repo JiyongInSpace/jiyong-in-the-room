@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/local_storage_service.dart';
-import 'package:jiyong_in_the_room/services/friend_service.dart';
-import 'package:jiyong_in_the_room/services/error_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/data/local_storage_service.dart';
+import 'package:jiyong_in_the_room/services/business/friend_service.dart';
+import 'package:jiyong_in_the_room/services/core/error_service.dart';
 import 'package:jiyong_in_the_room/screens/friends/friend_detail_screen.dart';
 import 'package:jiyong_in_the_room/widgets/skeleton_widgets.dart';
 import 'package:jiyong_in_the_room/widgets/common_input_fields.dart';
@@ -297,7 +297,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     
                     // 코드로 친구 추가 시도
                     try {
-                      final friend = await DatabaseService.addFriendByCode(
+                      final friend = await FriendService.addFriendByCode(
                         userCode,
                         nickname: nickname.isEmpty ? null : nickname,
                         memo: memo.isEmpty ? null : memo,
@@ -408,7 +408,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               }
               
               try {
-                final updatedFriend = await DatabaseService.linkFriendWithCode(friend, userCode);
+                final updatedFriend = await FriendService.linkFriendWithCode(friend, userCode);
                 
                 // UI 업데이트를 위해 콜백 호출
                 widget.onUpdate(friend, updatedFriend);
@@ -958,7 +958,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                final updatedFriend = await DatabaseService.unlinkFriend(friend);
+                final updatedFriend = await FriendService.unlinkFriend(friend);
                 
                 // UI 업데이트를 위해 콜백 호출
                 widget.onUpdate(friend, updatedFriend);

@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jiyong_in_the_room/models/diary.dart';
 import 'package:jiyong_in_the_room/models/user.dart';
-import 'package:jiyong_in_the_room/services/auth_service.dart';
-import 'package:jiyong_in_the_room/services/database_service.dart';
-import 'package:jiyong_in_the_room/services/connectivity_service.dart';
+import 'package:jiyong_in_the_room/services/auth/auth_service.dart';
+import 'package:jiyong_in_the_room/services/data/database_service.dart';
+import 'package:jiyong_in_the_room/services/core/connectivity_service.dart';
 
 /// 동기화 작업 타입
 enum SyncOperation {
@@ -112,7 +112,7 @@ class SyncQueueService {
       _queueBox = await Hive.openBox<String>(_boxName);
       
       // 연결 상태 변화 감지하여 자동 동기화
-      ConnectivityService.connectionStream.listen((isOnline) {
+      ConnectivityService.connectionStreamStatic.listen((isOnline) {
         if (isOnline && AuthService.isLoggedIn) {
           _startPeriodicSync();
         } else {
